@@ -7,7 +7,7 @@ UIScrollView 下拉刷新/上拉加载控件。async/await 驱动，一行接入
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/your-repo/Refreshable.git", from: "1.0.0")
+    .package(url: "https://github.com/astralchen/Refreshable.git", from: "1.0.0")
 ]
 ```
 
