@@ -5,10 +5,10 @@ import UIKit
 @MainActor
 final class MockStyle: RefreshableStyle {
     let view: UIView = UIView()
-    let height: CGFloat
+    let extent: CGFloat
 
-    init(height: CGFloat = 54) {
-        self.height = height
+    init(extent: CGFloat = 54) {
+        self.extent = extent
     }
 
     struct StateRecord: Equatable {

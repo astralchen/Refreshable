@@ -9,8 +9,8 @@ public final class DefaultFooterStyle: RefreshableStyle {
     /// 显示上拉加载内容的容器视图。
     public let view: UIView = UIView()
 
-    /// 默认 footer 高度。
-    public let height: CGFloat = 54
+    /// 默认 footer 轴向尺寸。
+    public let extent: CGFloat = 54
 
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
@@ -21,7 +21,7 @@ public final class DefaultFooterStyle: RefreshableStyle {
     }
 
     private func setupUI() {
-        view.frame.size.height = height
+        view.frame.size.height = extent
 
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false

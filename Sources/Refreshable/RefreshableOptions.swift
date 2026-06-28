@@ -4,7 +4,7 @@ import UIKit
 public struct RefreshableOptions {
     /// 触发刷新动作所需的拖动距离。
     ///
-    /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.height` 作为触发距离。
+    /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.extent` 作为触发距离。
     public var triggerOffset: CGFloat?
 
     /// 展开和恢复 `contentInset` 时使用的动画时长。
@@ -16,9 +16,9 @@ public struct RefreshableOptions {
     /// `endRefreshing()` 或 `endLoadingMore()`。
     public var automaticallyEndRefreshing: Bool
 
-    /// 一个布尔值，指示内容不足一屏时是否仍允许触发上拉加载。
+    /// 一个布尔值，指示内容未填满当前滚动轴时是否仍允许触发加载更多。
     ///
-    /// 此选项仅影响通过 `loadMoreable` 安装的 footer 组件。
+    /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
     /// 状态变化时在主线程调用的闭包。
@@ -32,7 +32,7 @@ public struct RefreshableOptions {
     ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度。
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
-    ///   - allowsLoadMoreWhenContentFits: 内容不足一屏时是否仍允许触发上拉加载。
+    ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
         triggerOffset: CGFloat? = nil,

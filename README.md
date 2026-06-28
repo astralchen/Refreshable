@@ -1,6 +1,6 @@
 # Refreshable
 
-UIScrollView 下拉刷新/上拉加载控件。async/await 驱动，一行接入，支持自定义 UI。Swift 6.0，iOS 13+。
+UIScrollView 刷新/加载更多控件。async/await 驱动，一行接入，支持 `.top`、`.bottom`、`.leading`、`.trailing` 四个语义边缘和自定义 UI。Swift 6.0，iOS 13+。
 
 ## 安装
 
@@ -40,18 +40,22 @@ tableView.loadMoreable {
 ```swift
 // 下拉刷新
 scrollView.refreshable { /* async */ }
+scrollView.refreshable(edge: .leading) { /* async */ }
 scrollView.refreshable(options: options) { /* async */ }
 scrollView.refreshable(style: MyStyle()) { /* async */ }
 scrollView.refreshable(style: MyStyle(), options: options) { /* async */ }
 scrollView.beginRefreshing()
+scrollView.beginRefreshing(edge: .leading)
 scrollView.endRefreshing()
 
 // 上拉加载
 scrollView.loadMoreable { /* async */ }
+scrollView.loadMoreable(edge: .trailing) { /* async */ }
 scrollView.loadMoreable(options: options) { /* async */ }
 scrollView.loadMoreable(style: MyStyle()) { /* async */ }
 scrollView.loadMoreable(style: MyStyle(), options: options) { /* async */ }
 scrollView.beginLoadingMore()
+scrollView.beginLoadingMore(edge: .trailing)
 scrollView.endLoadingMore()
 
 // 没有更多数据
@@ -60,7 +64,9 @@ scrollView.resetNoMoreData()
 
 // 状态查询
 scrollView.refreshState
+scrollView.refreshState(edge: .leading)
 scrollView.loadMoreState
+scrollView.loadMoreState(edge: .trailing)
 scrollView.isRefreshActive
 scrollView.isLoadMoreActive
 
@@ -70,6 +76,8 @@ scrollView.setLoadMoreEnabled(false)
 scrollView.removeRefreshable()
 scrollView.removeLoadMoreable()
 ```
+
+`leading` 和 `trailing` 是语义方向，会根据 `UIScrollView.effectiveUserInterfaceLayoutDirection` 在 LTR/RTL 下自动映射到物理 left/right。
 
 ## 行为配置
 
@@ -103,10 +111,10 @@ tableView.loadMoreable(options: options) {
 
 选项默认值保持一行接入行为：
 
-- `triggerOffset: nil` 使用 `style.height` 作为触发距离
+- `triggerOffset: nil` 使用 `style.extent` 作为触发距离
 - `animationDuration: 0.25`
 - `automaticallyEndRefreshing: true`，action 完成后自动收起
-- `allowsLoadMoreWhenContentFits: false`，内容不足一屏时默认不触发上拉加载
+- `allowsLoadMoreWhenContentFits: false`，内容未填满当前滚动轴时默认不触发加载更多
 
 ## 并发语义
 
@@ -131,7 +139,7 @@ tableView.refreshable {
 ```swift
 class MyHeaderStyle: RefreshableStyle {
     let view: UIView = MyCustomView()
-    let height: CGFloat = 60
+    let extent: CGFloat = 60
 
     func update(state: RefreshState, progress: CGFloat) {
         switch state {
@@ -140,7 +148,7 @@ class MyHeaderStyle: RefreshableStyle {
         case .triggered:      // 达到阈值，松手即触发
         case .refreshing:     // 刷新中
         case .ending:         // 收起动画中
-        case .noMoreData:     // 没有更多数据（仅 footer）
+        case .noMoreData:     // 没有更多数据（仅 loadMoreable）
         }
     }
 }

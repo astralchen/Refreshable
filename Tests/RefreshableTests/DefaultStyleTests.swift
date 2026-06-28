@@ -6,10 +6,10 @@ import UIKit
 @MainActor
 struct DefaultHeaderStyleTests {
 
-    @Test("初始化后 height 为 54")
-    func height() {
+    @Test("初始化后 extent 为 54")
+    func extent() {
         let style = DefaultHeaderStyle()
-        #expect(style.height == 54)
+        #expect(style.extent == 54)
     }
 
     @Test("view 不为 nil 且有子视图")
@@ -34,10 +34,10 @@ struct DefaultHeaderStyleTests {
 @MainActor
 struct DefaultFooterStyleTests {
 
-    @Test("初始化后 height 为 54")
-    func height() {
+    @Test("初始化后 extent 为 54")
+    func extent() {
         let style = DefaultFooterStyle()
-        #expect(style.height == 54)
+        #expect(style.extent == 54)
     }
 
     @Test("update 不 crash，各状态均可调用")

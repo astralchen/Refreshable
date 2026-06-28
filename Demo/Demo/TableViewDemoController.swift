@@ -25,23 +25,27 @@ class TableViewDemoController: UIViewController, UITableViewDataSource {
 
         tableView.refreshable {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
-            self.page = 0
-            self.items = (1...20).map { "刷新后 Item \($0)" }
-            self.tableView.reloadData()
-            self.tableView.resetNoMoreData()
+            await MainActor.run {
+                self.page = 0
+                self.items = (1...20).map { "刷新后 Item \($0)" }
+                self.tableView.reloadData()
+                self.tableView.resetNoMoreData()
+            }
         }
 
         tableView.loadMoreable {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-            self.page += 1
-            if self.page >= 3 {
-                self.tableView.noMoreData()
-                return
+            await MainActor.run {
+                self.page += 1
+                if self.page >= 3 {
+                    self.tableView.noMoreData()
+                    return
+                }
+                let start = self.items.count + 1
+                let newItems = (start..<start + 15).map { "Item \($0)" }
+                self.items.append(contentsOf: newItems)
+                self.tableView.reloadData()
             }
-            let start = self.items.count + 1
-            let newItems = (start..<start + 15).map { "Item \($0)" }
-            self.items.append(contentsOf: newItems)
-            self.tableView.reloadData()
         }
     }
 

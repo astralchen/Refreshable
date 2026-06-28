@@ -191,8 +191,9 @@ struct FooterRefreshComponentTests {
 
     @Test("contentSize 变化时 footer view 位置更新")
     func contentSizeChange() {
-        let (_, component, style) = makeSUT()
+        let (scrollView, component, style) = makeSUT()
         let newSize = CGSize(width: 375, height: 3000)
+        scrollView.contentSize = newSize
         component.scrollViewContentSizeDidChange(contentSize: newSize)
         #expect(style.view.frame.origin.y == 3000)
     }

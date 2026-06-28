@@ -25,7 +25,7 @@ public class RefreshComponent: NSObject {
     var action: (@Sendable () async -> Void)?
 
     var triggerThreshold: CGFloat {
-        let rawValue = options.triggerOffset ?? style.height
+        let rawValue = options.triggerOffset ?? style.extent
         guard rawValue.isFinite, rawValue > 0 else { return 1 }
         return rawValue
     }
@@ -55,7 +55,7 @@ public class RefreshComponent: NSObject {
     // MARK: - Init
 
     init(
-        style: some RefreshableStyle,
+        style: any RefreshableStyle,
         options: RefreshableOptions = RefreshableOptions(),
         action: @escaping @Sendable () async -> Void
     ) {

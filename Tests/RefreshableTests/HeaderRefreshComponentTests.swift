@@ -28,8 +28,8 @@ struct HeaderRefreshComponentTests {
     @Test("style.view frame 在 scrollView 上方")
     func viewFrame() {
         let (_, _, style) = makeSUT()
-        #expect(style.view.frame.origin.y == -style.height)
-        #expect(style.view.frame.size.height == style.height)
+        #expect(style.view.frame.origin.y == -style.extent)
+        #expect(style.view.frame.size.height == style.extent)
     }
 
     @Test("安装后 style 收到 idle 状态更新")
@@ -280,11 +280,11 @@ struct HeaderRefreshComponentTests {
         #expect(scrollView.contentInset.top == 13)
     }
 
-    @Test("非正 style.height 使用最小 header 触发距离")
-    func nonPositiveHeaderStyleHeightUsesMinimumThreshold() {
+    @Test("非正 style.extent 使用最小 header 触发距离")
+    func nonPositiveHeaderStyleExtentUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
-        let style = MockStyle(height: 0)
+        let style = MockStyle(extent: 0)
         let component = HeaderRefreshComponent(
             style: style,
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)

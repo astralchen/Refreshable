@@ -41,22 +41,26 @@ class CollectionViewDemoController: UIViewController, UICollectionViewDataSource
 
         collectionView.refreshable {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
-            self.page = 0
-            self.items = Array(1...18)
-            self.collectionView.reloadData()
-            self.collectionView.resetNoMoreData()
+            await MainActor.run {
+                self.page = 0
+                self.items = Array(1...18)
+                self.collectionView.reloadData()
+                self.collectionView.resetNoMoreData()
+            }
         }
 
         collectionView.loadMoreable {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-            self.page += 1
-            if self.page >= 3 {
-                self.collectionView.noMoreData()
-                return
+            await MainActor.run {
+                self.page += 1
+                if self.page >= 3 {
+                    self.collectionView.noMoreData()
+                    return
+                }
+                let start = self.items.count + 1
+                self.items.append(contentsOf: Array(start..<start + 12))
+                self.collectionView.reloadData()
             }
-            let start = self.items.count + 1
-            self.items.append(contentsOf: Array(start..<start + 12))
-            self.collectionView.reloadData()
         }
     }
 
