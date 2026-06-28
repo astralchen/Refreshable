@@ -24,6 +24,8 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 - async 闭包返回后自动结束刷新，动画收回
 - 支持 `beginRefreshing()` 手动触发（代码驱动，如首次进入页面）
 - 支持 `endRefreshing()` 手动结束（兜底）
+- 支持通过 `RefreshableOptions` 调整触发距离、动画时长、自动结束和状态回调
+- 支持运行时启用、禁用和移除下拉刷新组件
 
 ### 3.2 上拉加载
 
@@ -34,7 +36,8 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 - 支持 `endLoadingMore()` 手动结束
 - 支持 `noMoreData()` 标记无更多数据（显示终态文案，停止触发）
 - 支持 `resetNoMoreData()` 重置状态（如下拉刷新后重新允许上拉）
-- 内容不足一屏时不触发上拉
+- 内容不足一屏时默认不触发上拉，可通过 `allowsLoadMoreWhenContentFits` 开启
+- 支持运行时启用、禁用和移除上拉加载组件
 
 ### 3.3 防重入
 
@@ -61,17 +64,43 @@ UITableView、UICollectionView 及任何 UIScrollView 子类均可使用。
 ```swift
 // 下拉刷新
 scrollView.refreshable { await vm.fetch() }
+scrollView.refreshable(options: RefreshableOptions()) { await vm.fetch() }
 scrollView.refreshable(style: CustomHeader()) { await vm.fetch() }
+scrollView.refreshable(style: CustomHeader(), options: RefreshableOptions()) { await vm.fetch() }
 scrollView.beginRefreshing()
 scrollView.endRefreshing()
+scrollView.setRefreshEnabled(false)
+scrollView.removeRefreshable()
 
 // 上拉加载
 scrollView.loadMoreable { await vm.loadNext() }
+scrollView.loadMoreable(options: RefreshableOptions()) { await vm.loadNext() }
 scrollView.loadMoreable(style: CustomFooter()) { await vm.loadNext() }
+scrollView.loadMoreable(style: CustomFooter(), options: RefreshableOptions()) { await vm.loadNext() }
 scrollView.beginLoadingMore()
 scrollView.endLoadingMore()
 scrollView.noMoreData()
 scrollView.resetNoMoreData()
+scrollView.setLoadMoreEnabled(false)
+scrollView.removeLoadMoreable()
+
+// 状态查询
+scrollView.refreshState
+scrollView.loadMoreState
+scrollView.isRefreshActive
+scrollView.isLoadMoreActive
+```
+
+`RefreshableOptions`：
+
+```swift
+RefreshableOptions(
+    triggerOffset: nil,
+    animationDuration: 0.25,
+    automaticallyEndRefreshing: true,
+    allowsLoadMoreWhenContentFits: false,
+    onStateChange: nil
+)
 ```
 
 ## 5. 状态机
@@ -169,6 +198,7 @@ Refreshable/
 ├── Sources/Refreshable/
 │   ├── RefreshState.swift
 │   ├── RefreshableStyle.swift
+│   ├── RefreshableOptions.swift
 │   ├── DefaultHeaderStyle.swift
 │   ├── DefaultFooterStyle.swift
 │   ├── RefreshComponent.swift
@@ -178,6 +208,7 @@ Refreshable/
 ├── Tests/RefreshableTests/
 │   ├── MockStyle.swift
 │   ├── RefreshStateTests.swift
+│   ├── RefreshableOptionsTests.swift
 │   ├── DefaultStyleTests.swift
 │   ├── RefreshComponentTests.swift
 │   ├── HeaderRefreshComponentTests.swift
@@ -191,17 +222,18 @@ Refreshable/
 
 ## 11. 测试覆盖
 
-74 个测试用例，7 个 Suite：
+91 个测试用例，8 个 Suite：
 
 | Suite | 数量 | 覆盖点 |
 |-------|------|--------|
 | RefreshState | 2 | isRefreshing、Equatable |
+| RefreshableOptions | 2 | 默认配置、自定义配置 |
 | DefaultHeaderStyle | 3 | height、子视图、全状态 update |
 | DefaultFooterStyle | 2 | height、全状态 update |
-| RefreshComponent 基类 | 4 | originalInset、setState 去重、scrollView 替换、完整流转 |
-| HeaderRefreshComponent | 12 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、action 执行 |
-| FooterRefreshComponent | 16 | 安装、状态机、防重入、noMoreData/reset、contentSize 变化、内容不足一屏 |
-| UIScrollView+Refreshable | 15 | 设置/替换组件、手动控制、Header+Footer 共存、UITableView/UICollectionView 兼容 |
+| RefreshComponent 基类 | 8 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、自动结束 |
+| HeaderRefreshComponent | 22 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、action 执行、取消任务 |
+| FooterRefreshComponent | 28 | 安装、状态机、防重入、noMoreData/reset、contentSize 变化、内容不足一屏、短内容加载选项 |
+| UIScrollView+Refreshable | 24 | 设置/替换/移除组件、手动控制、状态查询、启停控制、Header+Footer 共存、UITableView/UICollectionView 兼容 |
 
 ## 12. Demo 示例
 

@@ -32,20 +32,69 @@ tableView.loadMoreable {
 ```swift
 // 下拉刷新
 scrollView.refreshable { /* async */ }
+scrollView.refreshable(options: options) { /* async */ }
 scrollView.refreshable(style: MyStyle()) { /* async */ }
+scrollView.refreshable(style: MyStyle(), options: options) { /* async */ }
 scrollView.beginRefreshing()
 scrollView.endRefreshing()
 
 // 上拉加载
 scrollView.loadMoreable { /* async */ }
+scrollView.loadMoreable(options: options) { /* async */ }
 scrollView.loadMoreable(style: MyStyle()) { /* async */ }
+scrollView.loadMoreable(style: MyStyle(), options: options) { /* async */ }
 scrollView.beginLoadingMore()
 scrollView.endLoadingMore()
 
 // 没有更多数据
 scrollView.noMoreData()
 scrollView.resetNoMoreData()
+
+// 状态查询
+scrollView.refreshState
+scrollView.loadMoreState
+scrollView.isRefreshActive
+scrollView.isLoadMoreActive
+
+// 运行时控制
+scrollView.setRefreshEnabled(false)
+scrollView.setLoadMoreEnabled(false)
+scrollView.removeRefreshable()
+scrollView.removeLoadMoreable()
 ```
+
+## 行为配置
+
+用 `RefreshableOptions` 调整触发距离、动画时长、自动结束、短内容加载和状态回调：
+
+```swift
+let options = RefreshableOptions(
+    triggerOffset: 80,
+    animationDuration: 0.35,
+    automaticallyEndRefreshing: false,
+    allowsLoadMoreWhenContentFits: true,
+    onStateChange: { state in
+        print(state)
+    }
+)
+
+tableView.refreshable(options: options) {
+    await viewModel.fetchLatest()
+    tableView.endRefreshing()
+}
+
+tableView.loadMoreable(options: options) {
+    await viewModel.fetchNextPage()
+    tableView.endLoadingMore()
+}
+```
+
+选项默认值保持一行接入行为：
+
+- `triggerOffset: nil` 使用 `style.height` 作为触发距离
+- `animationDuration: 0.25`
+- `automaticallyEndRefreshing: true`，action 完成后自动收起
+- `allowsLoadMoreWhenContentFits: false`，内容不足一屏时默认不触发上拉加载
 
 ## 自定义样式
 
