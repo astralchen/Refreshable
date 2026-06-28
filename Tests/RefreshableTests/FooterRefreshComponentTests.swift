@@ -109,6 +109,18 @@ struct FooterRefreshComponentTests {
         #expect(style.records.isEmpty)
     }
 
+    @Test("beginLoadingMore: ending 时忽略")
+    func beginLoadingMoreWhenEnding() {
+        let (_, component, style) = makeSUT()
+        component.setState(.ending)
+        style.reset()
+
+        component.beginLoadingMore()
+
+        #expect(component.state == .ending)
+        #expect(style.records.isEmpty)
+    }
+
     @Test("beginLoadingMore: noMoreData 时忽略")
     func beginLoadingMoreWhenNoMoreData() {
         let (_, component, _) = makeSUT()
@@ -298,6 +310,24 @@ struct FooterRefreshComponentTests {
         component.beginLoadingMore()
 
         #expect(scrollView.contentInset.bottom == 106)
+    }
+
+    @Test("非正 triggerOffset 使用最小 footer 触发距离")
+    func nonPositiveFooterTriggerOffsetUsesMinimumThreshold() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 16
+        let style = MockStyle()
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(triggerOffset: -10, animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.beginLoadingMore()
+
+        #expect(component.originalInset.bottom == 16)
+        #expect(scrollView.contentInset.bottom == 17)
     }
 
     @Test("automaticallyEndRefreshing 为 false 时 footer action 完成后保持 refreshing")

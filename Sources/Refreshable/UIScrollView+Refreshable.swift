@@ -215,7 +215,7 @@ extension UIScrollView {
 
     /// 移除当前安装的下拉刷新组件。
     ///
-    /// 移除时会取消正在执行的刷新任务，并从滚动视图中移除 header 视图。
+    /// 移除时会取消正在执行的刷新任务，恢复顶部 inset，并从滚动视图中移除 header 视图。
     @MainActor
     public func removeRefreshable() {
         headerComponent = nil
@@ -223,7 +223,7 @@ extension UIScrollView {
 
     /// 移除当前安装的上拉加载组件。
     ///
-    /// 移除时会取消正在执行的加载任务，并从滚动视图中移除 footer 视图。
+    /// 移除时会取消正在执行的加载任务，恢复底部 inset，并从滚动视图中移除 footer 视图。
     @MainActor
     public func removeLoadMoreable() {
         footerComponent = nil
@@ -238,9 +238,7 @@ extension UIScrollView {
         }
         set {
             if let old = headerComponent, old !== newValue {
-                old.cancelCurrentTask(resetState: false)
-                old.style.view.removeFromSuperview()
-                old.scrollView = nil
+                old.prepareForRemoval()
             }
             objc_setAssociatedObject(self, AssociatedKeys.header, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
@@ -253,9 +251,7 @@ extension UIScrollView {
         }
         set {
             if let old = footerComponent, old !== newValue {
-                old.cancelCurrentTask(resetState: false)
-                old.style.view.removeFromSuperview()
-                old.scrollView = nil
+                old.prepareForRemoval()
             }
             objc_setAssociatedObject(self, AssociatedKeys.footer, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }

@@ -41,6 +41,29 @@ struct UIScrollViewExtensionTests {
         #expect(style1.view.superview == nil)
     }
 
+    @Test("刷新中替换 header 会恢复 top inset")
+    func replacingRefreshingHeaderRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentInset.top = 20
+        let style1 = MockStyle()
+        scrollView.refreshable(
+            style: style1,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginRefreshing()
+        #expect(scrollView.contentInset.top == 74)
+
+        let style2 = MockStyle()
+        scrollView.refreshable(
+            style: style2,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        #expect(style1.view.superview == nil)
+        #expect(scrollView.contentInset.top == 20)
+        #expect(scrollView.headerComponent?.originalInset.top == 20)
+    }
+
     @Test("beginRefreshing 转发到 headerComponent")
     func beginRefreshing() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
@@ -93,6 +116,30 @@ struct UIScrollViewExtensionTests {
 
         #expect(scrollView.footerComponent?.style === style2)
         #expect(style1.view.superview == nil)
+    }
+
+    @Test("加载中替换 footer 会恢复 bottom inset")
+    func replacingLoadingFooterRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        let style1 = MockStyle()
+        scrollView.loadMoreable(
+            style: style1,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 66)
+
+        let style2 = MockStyle()
+        scrollView.loadMoreable(
+            style: style2,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        #expect(style1.view.superview == nil)
+        #expect(scrollView.contentInset.bottom == 12)
+        #expect(scrollView.footerComponent?.originalInset.bottom == 12)
     }
 
     @Test("beginLoadingMore 转发到 footerComponent")
@@ -249,6 +296,25 @@ struct UIScrollViewExtensionTests {
         #expect(style.view.superview == nil)
     }
 
+    @Test("刷新中移除 header 会恢复 top inset")
+    func removeRefreshableWhileRefreshingRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentInset.top = 20
+        let style = MockStyle()
+        scrollView.refreshable(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginRefreshing()
+        #expect(scrollView.contentInset.top == 74)
+
+        scrollView.removeRefreshable()
+
+        #expect(scrollView.headerComponent == nil)
+        #expect(style.view.superview == nil)
+        #expect(scrollView.contentInset.top == 20)
+    }
+
     @Test("removeLoadMoreable 移除 footer 组件和视图")
     func removeLoadMoreable() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
@@ -259,5 +325,25 @@ struct UIScrollViewExtensionTests {
 
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)
+    }
+
+    @Test("加载中移除 footer 会恢复 bottom inset")
+    func removeLoadMoreableWhileLoadingRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        let style = MockStyle()
+        scrollView.loadMoreable(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 66)
+
+        scrollView.removeLoadMoreable()
+
+        #expect(scrollView.footerComponent == nil)
+        #expect(style.view.superview == nil)
+        #expect(scrollView.contentInset.bottom == 12)
     }
 }

@@ -24,6 +24,12 @@ public class RefreshComponent: NSObject {
     let options: RefreshableOptions
     var action: (@MainActor () async -> Void)?
 
+    var triggerThreshold: CGFloat {
+        let rawValue = options.triggerOffset ?? style.height
+        guard rawValue.isFinite, rawValue > 0 else { return 1 }
+        return rawValue
+    }
+
     private(set) var state: RefreshState = .idle {
         didSet {
             guard state != oldValue else { return }
@@ -119,6 +125,7 @@ public class RefreshComponent: NSObject {
     func trigger() {
         guard isEnabled else { return }
         guard !state.isRefreshing else { return }
+        guard state != .ending else { return }
         captureOriginalInset()
         setState(.refreshing)
         startActionTask()
@@ -136,7 +143,9 @@ public class RefreshComponent: NSObject {
         UIView.animate(withDuration: options.animationDuration, animations: {
             self.resetInset(for: scrollView)
         }, completion: { _ in
-            self.setState(.idle)
+            if self.state == .ending {
+                self.setState(.idle)
+            }
         })
     }
 
@@ -192,6 +201,22 @@ public class RefreshComponent: NSObject {
 
         if !enabled {
             cancelCurrentTask(resetState: true)
+        }
+    }
+
+    func prepareForRemoval() {
+        cancelCurrentTask(resetState: false)
+        restoreInsetIfNeeded()
+        style.view.removeFromSuperview()
+        scrollView = nil
+    }
+
+    private func restoreInsetIfNeeded() {
+        guard state.isRefreshing || state == .ending else { return }
+        guard let scrollView else { return }
+
+        UIView.performWithoutAnimation {
+            resetInset(for: scrollView)
         }
     }
 

@@ -144,6 +144,18 @@ struct HeaderRefreshComponentTests {
         #expect(style.records.isEmpty)
     }
 
+    @Test("beginRefreshing 在 ending 时忽略")
+    func beginRefreshingWhenEnding() {
+        let (_, component, style) = makeSUT()
+        component.setState(.ending)
+        style.reset()
+
+        component.beginRefreshing()
+
+        #expect(component.state == .ending)
+        #expect(style.records.isEmpty)
+    }
+
     // MARK: - endRefreshing
 
     @Test("endRefreshing 从 refreshing 进入收尾流程")
@@ -248,6 +260,40 @@ struct HeaderRefreshComponentTests {
         component.beginRefreshing()
 
         #expect(scrollView.contentInset.top == 92)
+    }
+
+    @Test("非正 triggerOffset 使用最小 header 触发距离")
+    func nonPositiveHeaderTriggerOffsetUsesMinimumThreshold() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentInset.top = 12
+        let style = MockStyle()
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(triggerOffset: 0, animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.beginRefreshing()
+
+        #expect(component.originalInset.top == 12)
+        #expect(scrollView.contentInset.top == 13)
+    }
+
+    @Test("非正 style.height 使用最小 header 触发距离")
+    func nonPositiveHeaderStyleHeightUsesMinimumThreshold() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentInset.top = 12
+        let style = MockStyle(height: 0)
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.beginRefreshing()
+
+        #expect(component.originalInset.top == 12)
+        #expect(scrollView.contentInset.top == 13)
     }
 
     @Test("automaticallyEndRefreshing 为 false 时 action 完成后保持 refreshing")

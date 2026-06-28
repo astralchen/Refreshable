@@ -4,8 +4,6 @@ import UIKit
 @MainActor
 final class HeaderRefreshComponent: RefreshComponent {
 
-    private var threshold: CGFloat { options.triggerOffset ?? style.height }
-
     override func installView(in scrollView: UIScrollView) {
         let sv = style.view
         sv.frame = CGRect(x: 0, y: -style.height, width: scrollView.bounds.width, height: style.height)
@@ -25,8 +23,8 @@ final class HeaderRefreshComponent: RefreshComponent {
         switch state {
         case .idle, .pulling:
             if scrollView.isDragging && offsetY < 0 {
-                let progress = min(-offsetY / threshold, 1.0)
-                if -offsetY >= threshold {
+                let progress = min(-offsetY / triggerThreshold, 1.0)
+                if -offsetY >= triggerThreshold {
                     setState(.triggered)
                 } else {
                     setState(.pulling(progress))
@@ -35,8 +33,8 @@ final class HeaderRefreshComponent: RefreshComponent {
 
         case .triggered:
             if scrollView.isDragging {
-                if -offsetY < threshold {
-                    let progress = min(-offsetY / threshold, 1.0)
+                if -offsetY < triggerThreshold {
+                    let progress = min(-offsetY / triggerThreshold, 1.0)
                     setState(.pulling(progress))
                 }
             }
@@ -57,7 +55,7 @@ final class HeaderRefreshComponent: RefreshComponent {
 
         if newState == .refreshing {
             UIView.animate(withDuration: options.animationDuration) {
-                scrollView.contentInset.top = self.originalInset.top + self.threshold
+                scrollView.contentInset.top = self.originalInset.top + self.triggerThreshold
             }
         }
     }
@@ -71,14 +69,15 @@ final class HeaderRefreshComponent: RefreshComponent {
     func beginRefreshing() {
         guard isEnabled else { return }
         guard !state.isRefreshing else { return }
+        guard state != .ending else { return }
         guard let scrollView else { return }
 
         captureOriginalInset()
         setState(.refreshing)
 
         UIView.animate(withDuration: options.animationDuration) {
-            scrollView.contentInset.top = self.originalInset.top + self.threshold
-            scrollView.contentOffset.y = -self.originalInset.top - self.threshold
+            scrollView.contentInset.top = self.originalInset.top + self.triggerThreshold
+            scrollView.contentOffset.y = -self.originalInset.top - self.triggerThreshold
         }
 
         startActionTask()
