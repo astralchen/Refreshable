@@ -203,6 +203,24 @@ struct FooterRefreshComponentTests {
         #expect(scrollView.contentInset.bottom == 10)
     }
 
+    @Test("开始加载时重新捕获当前 bottom inset")
+    func recapturesFooterInsetAtStart() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        scrollView.contentInset.bottom = 30
+        component.beginLoadingMore()
+
+        #expect(component.originalInset.bottom == 30)
+        #expect(scrollView.contentInset.bottom == 84)
+    }
+
     // MARK: - scrollView 释放
 
     @Test("scrollView 为 nil 时 endRefreshing 回到 idle")

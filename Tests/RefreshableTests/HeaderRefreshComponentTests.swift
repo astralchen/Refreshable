@@ -186,6 +186,23 @@ struct HeaderRefreshComponentTests {
         #expect(scrollView.contentInset.top == 20)
     }
 
+    @Test("开始刷新时重新捕获当前 top inset")
+    func recapturesHeaderInsetAtStart() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        scrollView.contentInset.top = 40
+        component.beginRefreshing()
+
+        #expect(component.originalInset.top == 40)
+        #expect(scrollView.contentInset.top == 94)
+    }
+
     // MARK: - Action 执行
 
     @Test("trigger 执行 action 闭包")
