@@ -60,6 +60,35 @@ struct TaijiRefreshStyleTests {
         #expect(style.view === view)
     }
 
+    @Test("view creates expected visual layers after layout")
+    func viewCreatesVisualLayers() throws {
+        let style = TaijiRefreshStyle()
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 92)
+        style.view.layoutIfNeeded()
+
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        #expect(taijiView.debugLayerNames.contains("mist"))
+        #expect(taijiView.debugLayerNames.contains("backArc"))
+        #expect(taijiView.debugLayerNames.contains("frontArc"))
+        #expect(taijiView.debugLayerNames.contains("body"))
+        #expect(taijiView.debugLayerNames.contains("ripple"))
+        #expect(taijiView.debugParticleCount == 18)
+    }
+
+    @Test("taiji visual diameter stays compact inside refresh header")
+    func visualDiameterIsCompact() throws {
+        let style = TaijiRefreshStyle()
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 92)
+        style.view.layoutIfNeeded()
+
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        #expect(taijiView.debugBodyFrame.width >= 44)
+        #expect(taijiView.debugBodyFrame.width <= 56)
+        #expect(taijiView.debugBodyFrame.height == taijiView.debugBodyFrame.width)
+    }
+
     private func findLabels(in view: UIView) -> [UILabel] {
         var labels: [UILabel] = []
         if let label = view as? UILabel {
