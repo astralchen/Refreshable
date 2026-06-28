@@ -101,6 +101,24 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.isContinuousAnimationActive == false)
     }
 
+    @Test("pulling starts visible ambient motion")
+    func pullingStartsAmbientMotion() throws {
+        let style = TaijiRefreshStyle()
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 92)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: .pulling(0.62), progress: 0.62)
+
+        #expect(taijiView.debugAnimationKeys.contains("taiji.pullOrbit"))
+        #expect(taijiView.debugAnimationKeys.contains("taiji.pullTwinkle"))
+
+        style.update(state: .idle, progress: 0)
+
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.pullOrbit"))
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.pullTwinkle"))
+    }
+
     @Test("theme switch records palette without resetting render state")
     func themeSwitchKeepsRenderState() throws {
         let style = TaijiRefreshStyle(theme: .light)
