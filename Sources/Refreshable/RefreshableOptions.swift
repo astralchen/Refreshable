@@ -1,5 +1,39 @@
 import UIKit
 
+/// 刷新视图的展示方式。
+public enum RefreshablePresentation: Sendable, Equatable {
+    /// 将刷新视图放在滚动内容边缘，并在 action 执行期间通过 `contentInset` 保持可见。
+    case contentInset
+
+    /// 将刷新视图浮在滚动视图当前可见区域的对应边缘内侧。
+    ///
+    /// overlay 模式不会修改 `contentInset`，适合全屏视频流等不希望内容被顶开或挤开的场景。
+    ///
+    /// - Parameter spacing: 刷新视图与安全区域边缘之间的距离。
+    /// - Parameter locksContentOffset: 是否在边界拖动时将内容固定在当前边界。
+    case overlay(spacing: CGFloat = 12, locksContentOffset: Bool = false)
+}
+
+extension RefreshablePresentation {
+    var usesContentInset: Bool {
+        switch self {
+        case .contentInset:
+            true
+        case .overlay:
+            false
+        }
+    }
+
+    var locksContentOffset: Bool {
+        switch self {
+        case .contentInset:
+            false
+        case .overlay(_, let locksContentOffset):
+            locksContentOffset
+        }
+    }
+}
+
 /// 一组用于配置刷新和加载更多行为的选项。
 public struct RefreshableOptions {
     /// 触发刷新动作所需的拖动距离。
@@ -21,12 +55,12 @@ public struct RefreshableOptions {
     /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
-    /// 一个布尔值，指示 action 执行期间是否保持刷新视图可见。
+    /// 刷新视图的展示方式。
     ///
-    /// 默认值为 `true`，组件会在 action 执行期间保持对应方向的
-    /// `contentInset`，让刷新视图持续可见。设置为 `false` 时，组件只在拖动
-    /// 过程中显示；松手触发 action 后不会保持占位，适合全屏视频流等场景。
-    public var keepsRefreshViewVisibleDuringAction: Bool
+    /// 默认值为 `.contentInset`，保持传统列表刷新体验。设置为 `.overlay` 时，刷新视图
+    /// 会浮在滚动视图可见区域的对应边缘内侧，不会修改 `contentInset`。overlay 可选择
+    /// 在边界拖动时锁定内容偏移，适合下拉时不希望视频画面移动的全屏视频流。
+    public var presentation: RefreshablePresentation
 
     /// 状态变化时在主线程调用的闭包。
     ///
@@ -40,21 +74,21 @@ public struct RefreshableOptions {
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
-    ///   - keepsRefreshViewVisibleDuringAction: action 执行期间是否保持刷新视图可见。
+    ///   - presentation: 刷新视图的展示方式。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
         triggerOffset: CGFloat? = nil,
         animationDuration: TimeInterval = 0.25,
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
-        keepsRefreshViewVisibleDuringAction: Bool = true,
+        presentation: RefreshablePresentation = .contentInset,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
         self.triggerOffset = triggerOffset
         self.animationDuration = animationDuration
         self.automaticallyEndRefreshing = automaticallyEndRefreshing
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
-        self.keepsRefreshViewVisibleDuringAction = keepsRefreshViewVisibleDuringAction
+        self.presentation = presentation
         self.onStateChange = onStateChange
     }
 }

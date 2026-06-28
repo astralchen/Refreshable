@@ -109,7 +109,7 @@ public class RefreshComponent: NSObject {
         case .triggered:
             style.view.alpha = 1
         case .refreshing:
-            style.view.alpha = options.keepsRefreshViewVisibleDuringAction ? 1 : 0
+            style.view.alpha = 1
         case .ending:
             // ending 期间保持可见，动画结束后回到 idle 时会置 0
             break

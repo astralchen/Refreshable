@@ -234,6 +234,25 @@ struct FooterRefreshComponentTests {
         #expect(scrollView.contentInset.bottom == 84)
     }
 
+    @Test("开始加载时滚动到刚好露出底部刷新视图的位置")
+    func beginLoadingMoreScrollsToRevealFooterView() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 30
+        scrollView.contentOffset.y = 2000 - 667 + 30
+        let style = MockStyle(extent: 54)
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+        let expectedOffsetY = CGFloat(2000 - 667 + 30 + 54)
+
+        component.beginLoadingMore()
+
+        #expect(scrollView.contentOffset.y == expectedOffsetY)
+    }
+
     // MARK: - scrollView 释放
 
     @Test("scrollView 为 nil 时 endRefreshing 回到 idle")

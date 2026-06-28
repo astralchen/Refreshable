@@ -54,7 +54,9 @@ struct EdgeRefreshComponentTests {
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1000, height: 480)
         scrollView.contentInset.right = 10
+        scrollView.contentOffset.x = 1000 - 320 + 10
         let style = MockStyle(extent: 48)
+        let expectedOffsetX = CGFloat(1000 - 320 + 10 + 48)
 
         scrollView.loadMoreable(
             edge: .trailing,
@@ -65,6 +67,7 @@ struct EdgeRefreshComponentTests {
 
         #expect(scrollView.loadMoreState(edge: .trailing) == .refreshing)
         #expect(scrollView.contentInset.right == 58)
+        #expect(scrollView.contentOffset.x == expectedOffsetX)
 
         scrollView.noMoreData(edge: .trailing)
 
@@ -72,11 +75,12 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.loadMoreState(edge: .trailing) == .noMoreData)
     }
 
-    @Test("loadMore 可在 action 执行期间不保持占位 UI")
-    func loadMoreCanAvoidPersistentInsetWhileActionRuns() {
+    @Test("overlay loadMore 在 action 执行期间保持可见但不占位")
+    func overlayLoadMoreStaysVisibleWithoutPersistentInsetWhileActionRuns() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1200)
         scrollView.contentInset.bottom = 12
+        scrollView.contentOffset.y = 732
         let style = MockStyle(extent: 76)
 
         scrollView.loadMoreable(
@@ -85,15 +89,99 @@ struct EdgeRefreshComponentTests {
             options: RefreshableOptions(
                 animationDuration: 0,
                 automaticallyEndRefreshing: false,
-                keepsRefreshViewVisibleDuringAction: false
+                presentation: .overlay(spacing: 12)
             )
         ) {}
         scrollView.beginLoadingMore(edge: .bottom)
 
         #expect(scrollView.loadMoreState(edge: .bottom) == .refreshing)
         #expect(scrollView.contentInset.bottom == 12)
-        #expect(style.view.alpha == 0)
+        #expect(scrollView.contentOffset.y == 732)
+        #expect(style.view.alpha == 1)
         #expect(style.lastState == .refreshing)
+    }
+
+    @Test("overlay 展示模式将刷新视图固定在可见区域边缘且不调整 inset")
+    func overlayPresentationPinsViewInVisibleViewportWithoutInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 320, height: 1200)
+        scrollView.contentOffset = CGPoint(x: 0, y: 120)
+        scrollView.contentInset.top = 8
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 12)
+            )
+        ) {}
+
+        #expect(style.view.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+
+        scrollView.beginRefreshing(edge: .top)
+
+        #expect(scrollView.refreshState(edge: .top) == .refreshing)
+        #expect(scrollView.contentInset.top == 8)
+        #expect(style.view.alpha == 1)
+        #expect(style.view.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+    }
+
+    @Test("overlay 展示模式默认保留系统弹性位移")
+    func overlayPresentationAllowsContentOffsetMovementByDefault() {
+        let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 320, height: 1200)
+        scrollView.contentInset.top = 8
+        scrollView.contentOffset = CGPoint(x: 0, y: -8)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 60,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 12)
+            )
+        ) {}
+
+        scrollView.contentOffset = CGPoint(x: 0, y: -68)
+        scrollView.component(for: .top)?.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -68))
+
+        #expect(scrollView.refreshState(edge: .top) == .triggered)
+        #expect(scrollView.contentOffset.y == -68)
+    }
+
+    @Test("overlay 锁定内容位移时下拉仍触发但 contentOffset 保持顶部边界")
+    func overlayPresentationCanLockTopContentOffsetWhilePulling() {
+        let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 320, height: 1200)
+        scrollView.contentInset.top = 8
+        scrollView.contentOffset = CGPoint(x: 0, y: -8)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 60,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 12, locksContentOffset: true)
+            )
+        ) {}
+
+        scrollView.contentOffset = CGPoint(x: 0, y: -68)
+        scrollView.component(for: .top)?.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -68))
+
+        #expect(scrollView.refreshState(edge: .top) == .triggered)
+        #expect(scrollView.contentOffset.y == -8)
+        #expect(style.view.frame == CGRect(x: 0, y: 4, width: 320, height: 44))
     }
 
     @Test("noMoreData(edge:) 对 refresh 组件无副作用")
