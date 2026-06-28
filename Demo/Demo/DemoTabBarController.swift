@@ -13,6 +13,11 @@ final class DemoTabBarController: UITabBarController {
                 imageName: "list.bullet.rectangle"
             ),
             makeNavigationController(
+                rootViewController: TaijiRefreshDemoController(),
+                title: "太极",
+                imageName: "circle.lefthalf.filled"
+            ),
+            makeNavigationController(
                 rootViewController: CollectionViewDemoController(),
                 title: "网格",
                 imageName: "square.grid.2x2.fill"
