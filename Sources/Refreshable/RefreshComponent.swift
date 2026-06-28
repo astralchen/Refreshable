@@ -184,6 +184,15 @@ public class RefreshComponent: NSObject {
         }
     }
 
+    func setEnabled(_ enabled: Bool) {
+        guard isEnabled != enabled else { return }
+        isEnabled = enabled
+
+        if !enabled {
+            cancelCurrentTask(resetState: true)
+        }
+    }
+
     // MARK: - KVO
 
     private func addObservers(to scrollView: UIScrollView) {

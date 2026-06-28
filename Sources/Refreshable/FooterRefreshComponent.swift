@@ -26,6 +26,7 @@ final class FooterRefreshComponent: RefreshComponent {
     }
 
     override func scrollViewDidScroll(contentOffset: CGPoint) {
+        guard isEnabled else { return }
         guard let scrollView else { return }
 
         let contentHeight = scrollView.contentSize.height

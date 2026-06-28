@@ -138,6 +138,32 @@ extension UIScrollView {
         loadMoreState.isRefreshing
     }
 
+    // MARK: - 运行时控制
+
+    /// 启用或禁用下拉刷新。禁用时会取消正在执行的刷新任务。
+    @MainActor
+    public func setRefreshEnabled(_ enabled: Bool) {
+        headerComponent?.setEnabled(enabled)
+    }
+
+    /// 启用或禁用上拉加载。禁用时会取消正在执行的加载任务。
+    @MainActor
+    public func setLoadMoreEnabled(_ enabled: Bool) {
+        footerComponent?.setEnabled(enabled)
+    }
+
+    /// 移除下拉刷新组件。
+    @MainActor
+    public func removeRefreshable() {
+        headerComponent = nil
+    }
+
+    /// 移除上拉加载组件。
+    @MainActor
+    public func removeLoadMoreable() {
+        footerComponent = nil
+    }
+
     // MARK: - Internal Accessors
 
     @MainActor
@@ -146,8 +172,11 @@ extension UIScrollView {
             objc_getAssociatedObject(self, AssociatedKeys.header) as? HeaderRefreshComponent
         }
         set {
-            // 移除旧组件的视图
-            headerComponent?.style.view.removeFromSuperview()
+            if let old = headerComponent, old !== newValue {
+                old.cancelCurrentTask(resetState: false)
+                old.style.view.removeFromSuperview()
+                old.scrollView = nil
+            }
             objc_setAssociatedObject(self, AssociatedKeys.header, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
@@ -158,7 +187,11 @@ extension UIScrollView {
             objc_getAssociatedObject(self, AssociatedKeys.footer) as? FooterRefreshComponent
         }
         set {
-            footerComponent?.style.view.removeFromSuperview()
+            if let old = footerComponent, old !== newValue {
+                old.cancelCurrentTask(resetState: false)
+                old.style.view.removeFromSuperview()
+                old.scrollView = nil
+            }
             objc_setAssociatedObject(self, AssociatedKeys.footer, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }

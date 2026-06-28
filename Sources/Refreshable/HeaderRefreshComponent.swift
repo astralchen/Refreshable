@@ -16,6 +16,7 @@ final class HeaderRefreshComponent: RefreshComponent {
     }
 
     override func scrollViewDidScroll(contentOffset: CGPoint) {
+        guard isEnabled else { return }
         guard let scrollView else { return }
 
         let adjustedTop = originalInset.top

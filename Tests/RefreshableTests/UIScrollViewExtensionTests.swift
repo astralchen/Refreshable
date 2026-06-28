@@ -211,4 +211,53 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.isRefreshActive == true)
         #expect(scrollView.isLoadMoreActive == true)
     }
+
+    // MARK: - 运行时控制
+
+    @Test("禁用 header 后 beginRefreshing 不触发")
+    func disableHeaderPreventsBeginRefreshing() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+
+        scrollView.setRefreshEnabled(false)
+        scrollView.beginRefreshing()
+
+        #expect(scrollView.refreshState == .idle)
+    }
+
+    @Test("禁用 footer 后 beginLoadingMore 不触发")
+    func disableFooterPreventsBeginLoadingMore() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+
+        scrollView.setLoadMoreEnabled(false)
+        scrollView.beginLoadingMore()
+
+        #expect(scrollView.loadMoreState == .idle)
+    }
+
+    @Test("removeRefreshable 移除 header 组件和视图")
+    func removeRefreshable() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        scrollView.refreshable(style: style, options: RefreshableOptions()) {}
+
+        scrollView.removeRefreshable()
+
+        #expect(scrollView.headerComponent == nil)
+        #expect(style.view.superview == nil)
+    }
+
+    @Test("removeLoadMoreable 移除 footer 组件和视图")
+    func removeLoadMoreable() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        scrollView.loadMoreable(style: style, options: RefreshableOptions()) {}
+
+        scrollView.removeLoadMoreable()
+
+        #expect(scrollView.footerComponent == nil)
+        #expect(style.view.superview == nil)
+    }
 }
