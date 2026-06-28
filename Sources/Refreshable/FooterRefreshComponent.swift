@@ -84,19 +84,18 @@ final class FooterRefreshComponent: RefreshComponent {
     // MARK: - Manual Trigger
 
     func beginLoadingMore() {
+        guard isEnabled else { return }
         guard !state.isRefreshing, state != .noMoreData else { return }
+        guard let scrollView else { return }
 
+        captureOriginalInset()
         setState(.refreshing)
 
-        guard let scrollView else { return }
         UIView.animate(withDuration: options.animationDuration) {
             scrollView.contentInset.bottom = self.originalInset.bottom + self.threshold
         }
 
-        Task { @MainActor [weak self] in
-            await self?.action?()
-            self?.endRefreshing()
-        }
+        startActionTask()
     }
 
     // MARK: - No More Data

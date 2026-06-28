@@ -38,6 +38,10 @@ public class RefreshComponent: NSObject {
     private var offsetObservation: NSKeyValueObservation?
     private var sizeObservation: NSKeyValueObservation?
     private var panStateObservation: NSKeyValueObservation?
+    private var currentTask: Task<Void, Never>?
+    private var actionGeneration = 0
+
+    var isEnabled = true
 
     // MARK: - Init
 
@@ -54,6 +58,7 @@ public class RefreshComponent: NSObject {
 
     deinit {
         // NSKeyValueObservation 会在 deinit 时自动 invalidate
+        currentTask?.cancel()
     }
 
     // MARK: - Subclass Hooks
@@ -110,13 +115,11 @@ public class RefreshComponent: NSObject {
     }
 
     func trigger() {
+        guard isEnabled else { return }
         guard !state.isRefreshing else { return }
+        captureOriginalInset()
         setState(.refreshing)
-
-        Task { @MainActor [weak self] in
-            await self?.action?()
-            self?.endRefreshing()
-        }
+        startActionTask()
     }
 
     func endRefreshing() {
@@ -138,6 +141,47 @@ public class RefreshComponent: NSObject {
     /// 子类重写以恢复 inset
     func resetInset(for scrollView: UIScrollView) {
         // override
+    }
+
+    func captureOriginalInset() {
+        if let scrollView {
+            originalInset = scrollView.contentInset
+        }
+    }
+
+    func startActionTask() {
+        currentTask?.cancel()
+        actionGeneration += 1
+        let generation = actionGeneration
+        currentTask = Task { @MainActor [weak self] in
+            guard let action = self?.action else { return }
+            await action()
+
+            guard !Task.isCancelled else { return }
+            guard self?.options.automaticallyEndRefreshing == true else {
+                self?.currentTask = nil
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 1_000_000)
+
+            guard !Task.isCancelled, let self, self.actionGeneration == generation else { return }
+            self.currentTask = nil
+            self.endRefreshing()
+        }
+    }
+
+    func cancelCurrentTask(resetState: Bool) {
+        currentTask?.cancel()
+        currentTask = nil
+        actionGeneration += 1
+
+        guard resetState else { return }
+        if state.isRefreshing || state == .ending {
+            endRefreshing()
+        } else if state != .idle && state != .noMoreData {
+            setState(.idle)
+        }
     }
 
     // MARK: - KVO

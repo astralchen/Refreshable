@@ -9,7 +9,10 @@ struct HeaderRefreshComponentTests {
     private func makeSUT() -> (UIScrollView, HeaderRefreshComponent, MockStyle) {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
         component.scrollView = scrollView
         return (scrollView, component, style)
     }
@@ -101,7 +104,10 @@ struct HeaderRefreshComponentTests {
         var callCount = 0
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {
             callCount += 1
         }
         component.scrollView = scrollView
@@ -225,5 +231,44 @@ struct HeaderRefreshComponentTests {
         component.beginRefreshing()
 
         #expect(scrollView.contentInset.top == 92)
+    }
+
+    @Test("automaticallyEndRefreshing 为 false 时 action 完成后保持 refreshing")
+    func headerManualEndOption() async {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.trigger()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(component.state == .refreshing)
+    }
+
+    @Test("取消 header 当前任务会结束刷新")
+    func cancelHeaderTask() async {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        var observedCancellation = false
+        let component = HeaderRefreshComponent(style: style) {
+            do {
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            } catch {
+                observedCancellation = Task.isCancelled
+            }
+        }
+        component.scrollView = scrollView
+
+        component.trigger()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        component.cancelCurrentTask(resetState: true)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(observedCancellation == true)
+        #expect([RefreshState.ending, .idle].contains(component.state))
     }
 }

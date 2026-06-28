@@ -68,9 +68,11 @@ final class HeaderRefreshComponent: RefreshComponent {
     // MARK: - Manual Trigger
 
     func beginRefreshing() {
+        guard isEnabled else { return }
         guard !state.isRefreshing else { return }
         guard let scrollView else { return }
 
+        captureOriginalInset()
         setState(.refreshing)
 
         UIView.animate(withDuration: options.animationDuration) {
@@ -78,9 +80,6 @@ final class HeaderRefreshComponent: RefreshComponent {
             scrollView.contentOffset.y = -self.originalInset.top - self.threshold
         }
 
-        Task { @MainActor [weak self] in
-            await self?.action?()
-            self?.endRefreshing()
-        }
+        startActionTask()
     }
 }

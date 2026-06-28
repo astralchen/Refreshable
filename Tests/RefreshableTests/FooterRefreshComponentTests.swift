@@ -10,7 +10,10 @@ struct FooterRefreshComponentTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
-        let component = FooterRefreshComponent(style: style) {}
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
         component.scrollView = scrollView
         return (scrollView, component, style)
     }
@@ -89,14 +92,17 @@ struct FooterRefreshComponentTests {
 
     @Test("beginLoadingMore 从 idle 进入 refreshing")
     func beginLoadingMore() {
-        let (_, component, _) = makeSUT()
+        let (scrollView, component, style) = makeSUT()
+        #expect(component.scrollView === scrollView)
+        style.reset()
         component.beginLoadingMore()
-        #expect(component.state == .refreshing)
+        #expect(style.records.contains { $0.state == .refreshing })
     }
 
     @Test("beginLoadingMore: 已在 refreshing 时忽略")
     func beginLoadingMoreWhenRefreshing() {
-        let (_, component, style) = makeSUT()
+        let (scrollView, component, style) = makeSUT()
+        #expect(component.scrollView === scrollView)
         component.beginLoadingMore()
         style.reset()
         component.beginLoadingMore()
@@ -173,7 +179,7 @@ struct FooterRefreshComponentTests {
 
     @Test("contentSize 变化时 footer view 位置更新")
     func contentSizeChange() {
-        let (scrollView, component, style) = makeSUT()
+        let (_, component, style) = makeSUT()
         let newSize = CGSize(width: 375, height: 3000)
         component.scrollViewContentSizeDidChange(contentSize: newSize)
         #expect(style.view.frame.origin.y == 3000)
@@ -257,5 +263,22 @@ struct FooterRefreshComponentTests {
         component.beginLoadingMore()
 
         #expect(scrollView.contentInset.bottom == 106)
+    }
+
+    @Test("automaticallyEndRefreshing 为 false 时 footer action 完成后保持 refreshing")
+    func footerManualEndOption() async {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.trigger()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        #expect(component.state == .refreshing)
     }
 }

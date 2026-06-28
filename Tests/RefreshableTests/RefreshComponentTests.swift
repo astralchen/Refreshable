@@ -122,4 +122,26 @@ struct RefreshComponentTests {
 
         #expect(states == [.pulling(0.5), .triggered])
     }
+
+    @Test("默认 action 完成后自动结束刷新")
+    func automaticallyEndsRefreshingAfterActionCompletes() async {
+        await confirmation(expectedCount: 1) { confirm in
+            var didConfirm = false
+            let style = MockStyle()
+            let component = HeaderRefreshComponent(
+                style: style,
+                options: RefreshableOptions(onStateChange: { state in
+                    guard !didConfirm, state == .ending || state == .idle else { return }
+                    didConfirm = true
+                    confirm()
+                })
+            ) {}
+            let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+            component.scrollView = scrollView
+            #expect(component.scrollView === scrollView)
+
+            component.trigger()
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+    }
 }
