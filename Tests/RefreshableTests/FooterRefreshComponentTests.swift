@@ -246,6 +246,23 @@ struct FooterRefreshComponentTests {
         #expect(component.state == .idle)
     }
 
+    @Test("allowsLoadMoreWhenContentFits 为 true 时内容不足一屏也可触发")
+    func allowsLoadMoreWhenContentFits() {
+        let scrollView = DraggingScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 100)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle()
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
+        ) {}
+        component.scrollView = scrollView
+
+        component.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(component.state == .triggered)
+    }
+
     // MARK: - Action 执行
 
     @Test("trigger 执行 action 闭包")
@@ -298,5 +315,13 @@ struct FooterRefreshComponentTests {
         try? await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(component.state == .refreshing)
+    }
+}
+
+private final class DraggingScrollView: UIScrollView {
+    var isDraggingOverride = false
+
+    override var isDragging: Bool {
+        isDraggingOverride
     }
 }

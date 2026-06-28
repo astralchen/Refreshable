@@ -33,8 +33,8 @@ final class FooterRefreshComponent: RefreshComponent {
         let frameHeight = scrollView.bounds.height
         let adjustedBottom = originalInset.bottom
 
-        // 内容不足一屏时不触发上拉
-        guard contentHeight > frameHeight else { return }
+        // 默认内容不足一屏时不触发上拉；可通过 options 放开。
+        guard options.allowsLoadMoreWhenContentFits || contentHeight > frameHeight else { return }
 
         let bottomOffset = contentOffset.y + frameHeight - contentHeight - adjustedBottom
 
