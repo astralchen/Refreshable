@@ -1,6 +1,9 @@
 import UIKit
 
-/// 刷新组件基类，管理状态机、KVO 和 inset
+/// 刷新组件的基础类型。
+///
+/// 此类型协调共享的状态切换、滚动视图观察和 inset 恢复逻辑。
+/// 通常不需要直接使用此类型；请通过 `UIScrollView` 的刷新 API 安装组件。
 @MainActor
 public class RefreshComponent: NSObject {
 
@@ -32,7 +35,7 @@ public class RefreshComponent: NSObject {
         }
     }
 
-    /// 记录 scrollView 原始 contentInset，刷新时在此基础上增减
+    /// 记录滚动视图的原始 `contentInset`，刷新时在此基础上增减。
     var originalInset: UIEdgeInsets = .zero
 
     private var offsetObservation: NSKeyValueObservation?
@@ -63,35 +66,34 @@ public class RefreshComponent: NSObject {
 
     // MARK: - Subclass Hooks
 
-    /// 将 style.view 安装到 scrollView 中，子类实现
+    /// 将 `style.view` 安装到指定滚动视图中。
     func installView(in scrollView: UIScrollView) {
         // override
     }
 
-    /// scrollView 的 contentOffset 变化时调用
+    /// 滚动视图的 `contentOffset` 变化时调用。
     func scrollViewDidScroll(contentOffset: CGPoint) {
         // override
     }
 
-    /// scrollView 的 contentSize 变化时调用
+    /// 滚动视图的 `contentSize` 变化时调用。
     func scrollViewContentSizeDidChange(contentSize: CGSize) {
         // override
     }
 
-    /// 用户松手时调用
+    /// 用户结束拖动时调用。
     func scrollViewDidEndDragging() {
         // override
     }
 
-    /// 状态变化回调，子类可重写以调整 inset
+    /// 状态变化时调用，子类可重写以调整 inset。
     func stateDidChange(from oldState: RefreshState, to newState: RefreshState) {
         // override
     }
 
     // MARK: - View Visibility
 
-    /// 控制 style.view 的可见性，模拟 UIRefreshControl 的显示逻辑：
-    /// idle 时完全透明，pulling 时跟随 progress 渐显，triggered/refreshing 时完全显示
+    /// 控制 `style.view` 的可见性，模拟 `UIRefreshControl` 的显示逻辑。
     private func updateViewVisibility(state: RefreshState, progress: CGFloat) {
         switch state {
         case .idle:
@@ -138,7 +140,7 @@ public class RefreshComponent: NSObject {
         })
     }
 
-    /// 子类重写以恢复 inset
+    /// 恢复指定滚动视图的 inset。
     func resetInset(for scrollView: UIScrollView) {
         // override
     }
