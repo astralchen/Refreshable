@@ -18,9 +18,9 @@ extension UIScrollView {
     ///
     /// 再次调用此方法会替换已经安装的 header 组件。
     ///
-    /// - Parameter action: 触发刷新时在主线程执行的异步操作。
+    /// - Parameter action: 触发刷新时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func refreshable(action: @MainActor @escaping () async -> Void) {
+    public func refreshable(action: @escaping @Sendable () async -> Void) {
         refreshable(style: DefaultHeaderStyle(), options: RefreshableOptions(), action: action)
     }
 
@@ -28,9 +28,9 @@ extension UIScrollView {
     ///
     /// - Parameters:
     ///   - options: 控制触发距离、动画和状态回调的配置。
-    ///   - action: 触发刷新时在主线程执行的异步操作。
+    ///   - action: 触发刷新时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func refreshable(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
+    public func refreshable(options: RefreshableOptions, action: @escaping @Sendable () async -> Void) {
         refreshable(style: DefaultHeaderStyle(), options: options, action: action)
     }
 
@@ -38,9 +38,9 @@ extension UIScrollView {
     ///
     /// - Parameters:
     ///   - style: 显示刷新状态的 header 样式对象。
-    ///   - action: 触发刷新时在主线程执行的异步操作。
+    ///   - action: 触发刷新时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func refreshable(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
+    public func refreshable(style: some RefreshableStyle, action: @escaping @Sendable () async -> Void) {
         refreshable(style: style, options: RefreshableOptions(), action: action)
     }
 
@@ -51,12 +51,12 @@ extension UIScrollView {
     /// - Parameters:
     ///   - style: 显示刷新状态的 header 样式对象。
     ///   - options: 控制触发距离、动画和状态回调的配置。
-    ///   - action: 触发刷新时在主线程执行的异步操作。
+    ///   - action: 触发刷新时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
     public func refreshable(
         style: some RefreshableStyle,
         options: RefreshableOptions,
-        action: @MainActor @escaping () async -> Void
+        action: @escaping @Sendable () async -> Void
     ) {
         let component = HeaderRefreshComponent(style: style, options: options, action: action)
         self.headerComponent = component
@@ -85,9 +85,9 @@ extension UIScrollView {
     ///
     /// 再次调用此方法会替换已经安装的 footer 组件。
     ///
-    /// - Parameter action: 触发加载更多时在主线程执行的异步操作。
+    /// - Parameter action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(action: @MainActor @escaping () async -> Void) {
+    public func loadMoreable(action: @escaping @Sendable () async -> Void) {
         loadMoreable(style: DefaultFooterStyle(), options: RefreshableOptions(), action: action)
     }
 
@@ -95,9 +95,9 @@ extension UIScrollView {
     ///
     /// - Parameters:
     ///   - options: 控制触发距离、动画和状态回调的配置。
-    ///   - action: 触发加载更多时在主线程执行的异步操作。
+    ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
+    public func loadMoreable(options: RefreshableOptions, action: @escaping @Sendable () async -> Void) {
         loadMoreable(style: DefaultFooterStyle(), options: options, action: action)
     }
 
@@ -105,9 +105,9 @@ extension UIScrollView {
     ///
     /// - Parameters:
     ///   - style: 显示加载更多状态的 footer 样式对象。
-    ///   - action: 触发加载更多时在主线程执行的异步操作。
+    ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
+    public func loadMoreable(style: some RefreshableStyle, action: @escaping @Sendable () async -> Void) {
         loadMoreable(style: style, options: RefreshableOptions(), action: action)
     }
 
@@ -118,12 +118,12 @@ extension UIScrollView {
     /// - Parameters:
     ///   - style: 显示加载更多状态的 footer 样式对象。
     ///   - options: 控制触发距离、动画和状态回调的配置。
-    ///   - action: 触发加载更多时在主线程执行的异步操作。
+    ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
     public func loadMoreable(
         style: some RefreshableStyle,
         options: RefreshableOptions,
-        action: @MainActor @escaping () async -> Void
+        action: @escaping @Sendable () async -> Void
     ) {
         let component = FooterRefreshComponent(style: style, options: options, action: action)
         self.footerComponent = component

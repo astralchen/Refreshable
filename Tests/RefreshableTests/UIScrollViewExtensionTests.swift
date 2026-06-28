@@ -1,5 +1,6 @@
 import Testing
 @testable import Refreshable
+import Dispatch
 import UIKit
 
 @Suite("UIScrollView+Refreshable")
@@ -70,6 +71,23 @@ struct UIScrollViewExtensionTests {
         scrollView.refreshable { }
         scrollView.beginRefreshing()
         #expect(scrollView.headerComponent?.state == .refreshing)
+    }
+
+    @Test("refreshable action 可在后台语义下执行")
+    func refreshableActionCanRunWithBackgroundSemantics() async {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let probe = SendableActionProbe()
+        let action = makeMainActorSignalAction(probe: probe)
+
+        scrollView.refreshable(options: RefreshableOptions(animationDuration: 0), action: action)
+        scrollView.beginRefreshing()
+
+        #expect(await probe.waitUntilRun() == true)
+        #expect(await probe.didSignalMainActor() == true)
+        for _ in 0..<100 where scrollView.refreshState != .idle {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(scrollView.refreshState == .idle)
     }
 
     @Test("endRefreshing 转发到 headerComponent")
@@ -148,6 +166,25 @@ struct UIScrollViewExtensionTests {
         scrollView.loadMoreable { }
         scrollView.beginLoadingMore()
         #expect(scrollView.footerComponent?.state == .refreshing)
+    }
+
+    @Test("loadMoreable action 可显式切回 MainActor")
+    func loadMoreableActionCanHopToMainActor() async {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let probe = MainActorActionProbe()
+        let action: @Sendable () async -> Void = {
+            await MainActor.run {
+                probe.mark()
+            }
+        }
+
+        scrollView.loadMoreable(options: RefreshableOptions(animationDuration: 0), action: action)
+        scrollView.beginLoadingMore()
+        for _ in 0..<100 where probe.didRun == false {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+
+        #expect(probe.didRun == true)
     }
 
     @Test("endLoadingMore 转发到 footerComponent")
@@ -345,5 +382,51 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)
         #expect(scrollView.contentInset.bottom == 12)
+    }
+}
+
+private actor SendableActionProbe {
+    private var hasRun = false
+    private var signaledMainActor: Bool?
+
+    func mark(signaledMainActor: Bool) {
+        hasRun = true
+        self.signaledMainActor = signaledMainActor
+    }
+
+    func waitUntilRun() async -> Bool {
+        for _ in 0..<100 {
+            if hasRun { return true }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return hasRun
+    }
+
+    func didSignalMainActor() -> Bool? {
+        signaledMainActor
+    }
+}
+
+private func makeMainActorSignalAction(probe: SendableActionProbe) -> @Sendable () async -> Void {
+    {
+        let semaphore = DispatchSemaphore(value: 0)
+        Task { @MainActor in
+            semaphore.signal()
+        }
+        let signaled = waitForMainActorSignal(semaphore)
+        await probe.mark(signaledMainActor: signaled)
+    }
+}
+
+private func waitForMainActorSignal(_ semaphore: DispatchSemaphore) -> Bool {
+    semaphore.wait(timeout: .now() + 2) == .success
+}
+
+@MainActor
+private final class MainActorActionProbe {
+    private(set) var didRun = false
+
+    func mark() {
+        didRun = true
     }
 }

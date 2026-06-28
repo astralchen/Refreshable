@@ -100,15 +100,15 @@ struct HeaderRefreshComponentTests {
     // MARK: - 防重入
 
     @Test("trigger: 已在 refreshing 时不重复触发")
-    func preventReentry() {
-        var callCount = 0
+    func preventReentry() async {
+        let counter = ActionCallCounter()
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         let component = HeaderRefreshComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
         ) {
-            callCount += 1
+            await counter.increment()
         }
         component.scrollView = scrollView
 
@@ -117,8 +117,9 @@ struct HeaderRefreshComponentTests {
 
         // 再次触发应被忽略
         component.trigger()
-        // callCount 验证需要等 Task 执行，但 trigger 的 guard 是同步的
+        // action 执行计数需要等 Task 调度，但 trigger 的 guard 是同步的
         #expect(component.state == .refreshing)
+        #expect(await counter.waitUntilCount(1) == 1)
     }
 
     // MARK: - beginRefreshing
@@ -316,12 +317,12 @@ struct HeaderRefreshComponentTests {
     func cancelHeaderTask() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        var observedCancellation = false
+        let cancellationProbe = CancellationProbe()
         let component = HeaderRefreshComponent(style: style) {
             do {
                 try await Task.sleep(nanoseconds: 1_000_000_000)
             } catch {
-                observedCancellation = Task.isCancelled
+                await cancellationProbe.markObserved(Task.isCancelled)
             }
         }
         component.scrollView = scrollView
@@ -331,7 +332,39 @@ struct HeaderRefreshComponentTests {
         component.cancelCurrentTask(resetState: true)
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        #expect(observedCancellation == true)
+        #expect(await cancellationProbe.waitUntilObserved() == true)
         #expect([RefreshState.ending, .idle].contains(component.state))
+    }
+}
+
+private actor ActionCallCounter {
+    private var count = 0
+
+    func increment() {
+        count += 1
+    }
+
+    func waitUntilCount(_ expectedCount: Int) async -> Int {
+        for _ in 0..<100 {
+            if count >= expectedCount { return count }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return count
+    }
+}
+
+private actor CancellationProbe {
+    private var observedCancellation = false
+
+    func markObserved(_ isCancelled: Bool) {
+        observedCancellation = isCancelled
+    }
+
+    func waitUntilObserved() async -> Bool {
+        for _ in 0..<100 {
+            if observedCancellation { return true }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return observedCancellation
     }
 }

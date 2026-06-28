@@ -11,7 +11,7 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 |------|------|
 | 语言 | Swift 6.0+（strict concurrency） |
 | 最低系统 | iOS 13 |
-| 并发模型 | async/await，`@MainActor` 隔离 |
+| 并发模型 | async/await；UIKit 安装和状态 API 保持 `@MainActor`，action 为 `@Sendable () async -> Void` |
 | 分发方式 | Swift Package Manager |
 | 依赖 | 无第三方依赖，仅 UIKit |
 
@@ -188,7 +188,7 @@ UIScrollView+Refreshable.swift    公开 API（associated object 持有组件）
 - **关联存储**：`objc_setAssociatedObject` 存放 Component，scrollView 强引用 component，component weak 引用 scrollView
 - **KVO 监听**：`contentOffset`（滚动）、`contentSize`（footer 位置跟随）、`panGestureRecognizer.state`（松手检测）
 - **inset 管理**：记录原始 `contentInset`，刷新时在其上增减，结束时恢复
-- **线程安全**：所有组件和样式标记 `@MainActor`，action 闭包为 `@MainActor () async -> Void`
+- **线程安全**：所有组件安装、状态控制和样式更新标记 `@MainActor`；action 闭包为 SwiftUI 风格的 `@Sendable () async -> Void`，需要更新 UI 时由调用方显式回到主 actor
 
 ## 10. 文件结构
 
@@ -222,7 +222,7 @@ Refreshable/
 
 ## 11. 测试覆盖
 
-91 个测试用例，8 个 Suite：
+103 个测试用例，8 个 Suite：
 
 | Suite | 数量 | 覆盖点 |
 |-------|------|--------|
@@ -230,10 +230,10 @@ Refreshable/
 | RefreshableOptions | 2 | 默认配置、自定义配置 |
 | DefaultHeaderStyle | 3 | height、子视图、全状态 update |
 | DefaultFooterStyle | 2 | height、全状态 update |
-| RefreshComponent 基类 | 8 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、自动结束 |
-| HeaderRefreshComponent | 22 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、action 执行、取消任务 |
-| FooterRefreshComponent | 28 | 安装、状态机、防重入、noMoreData/reset、contentSize 变化、内容不足一屏、短内容加载选项 |
-| UIScrollView+Refreshable | 24 | 设置/替换/移除组件、手动控制、状态查询、启停控制、Header+Footer 共存、UITableView/UICollectionView 兼容 |
+| RefreshComponent 基类 | 9 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、`@Sendable` action 存储、自动结束 |
+| HeaderRefreshComponent | 25 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、action 执行、取消任务 |
+| FooterRefreshComponent | 30 | 安装、状态机、防重入、noMoreData/reset、contentSize 变化、内容不足一屏、短内容加载选项 |
+| UIScrollView+Refreshable | 30 | 设置/替换/移除组件、`@Sendable` action 语义、显式 MainActor 回跳、手动控制、状态查询、启停控制、Header+Footer 共存、UITableView/UICollectionView 兼容 |
 
 ## 12. Demo 示例
 

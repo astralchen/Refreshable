@@ -18,12 +18,20 @@ import Refreshable
 
 // 下拉刷新
 tableView.refreshable {
-    await viewModel.fetchLatest()
+    let items = await service.fetchLatest()
+    await MainActor.run {
+        viewModel.items = items
+        tableView.reloadData()
+    }
 }
 
 // 上拉加载
 tableView.loadMoreable {
-    await viewModel.fetchNextPage()
+    let nextPage = await service.fetchNextPage()
+    await MainActor.run {
+        viewModel.append(nextPage)
+        tableView.reloadData()
+    }
 }
 ```
 
@@ -80,12 +88,16 @@ let options = RefreshableOptions(
 
 tableView.refreshable(options: options) {
     await viewModel.fetchLatest()
-    tableView.endRefreshing()
+    await MainActor.run {
+        tableView.endRefreshing()
+    }
 }
 
 tableView.loadMoreable(options: options) {
     await viewModel.fetchNextPage()
-    tableView.endLoadingMore()
+    await MainActor.run {
+        tableView.endLoadingMore()
+    }
 }
 ```
 
@@ -95,6 +107,22 @@ tableView.loadMoreable(options: options) {
 - `animationDuration: 0.25`
 - `automaticallyEndRefreshing: true`，action 完成后自动收起
 - `allowsLoadMoreWhenContentFits: false`，内容不足一屏时默认不触发上拉加载
+
+## 并发语义
+
+`refreshable` 和 `loadMoreable` 的 action 是 SwiftUI 风格的 `@Sendable () async -> Void`，不会默认隔离到 `@MainActor`。组件安装、状态查询、手动启停和移除 API 仍是 `@MainActor`，因为它们会同步读写 UIKit 状态。
+
+如果 action 内需要更新 UI 或主 actor 状态，请显式切回主 actor：
+
+```swift
+tableView.refreshable {
+    let items = await service.fetchLatest()
+    await MainActor.run {
+        viewModel.items = items
+        tableView.reloadData()
+    }
+}
+```
 
 ## 自定义样式
 

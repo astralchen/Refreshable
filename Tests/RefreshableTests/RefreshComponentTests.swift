@@ -123,6 +123,14 @@ struct RefreshComponentTests {
         #expect(states == [.pulling(0.5), .triggered])
     }
 
+    @Test("组件以 Sendable action 存储异步操作")
+    func storesSendableAction() {
+        let action: @Sendable () async -> Void = {}
+        let component = HeaderRefreshComponent(style: MockStyle(), action: action)
+
+        expectSendableAction(component.action)
+    }
+
     @Test("默认 action 完成后自动结束刷新")
     func automaticallyEndsRefreshingAfterActionCompletes() async {
         await confirmation(expectedCount: 1) { confirm in
@@ -144,4 +152,8 @@ struct RefreshComponentTests {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
     }
+}
+
+private func expectSendableAction(_ action: (@Sendable () async -> Void)?) {
+    #expect(action != nil)
 }

@@ -22,7 +22,7 @@ public class RefreshComponent: NSObject {
 
     let style: any RefreshableStyle
     let options: RefreshableOptions
-    var action: (@MainActor () async -> Void)?
+    var action: (@Sendable () async -> Void)?
 
     var triggerThreshold: CGFloat {
         let rawValue = options.triggerOffset ?? style.height
@@ -57,7 +57,7 @@ public class RefreshComponent: NSObject {
     init(
         style: some RefreshableStyle,
         options: RefreshableOptions = RefreshableOptions(),
-        action: @MainActor @escaping () async -> Void
+        action: @escaping @Sendable () async -> Void
     ) {
         self.style = style
         self.options = options
@@ -164,21 +164,31 @@ public class RefreshComponent: NSObject {
         currentTask?.cancel()
         actionGeneration += 1
         let generation = actionGeneration
-        currentTask = Task { @MainActor [weak self] in
-            guard let action = self?.action else { return }
+        let action = action
+
+        currentTask = Task.detached { [weak self, action] in
+            guard let action else { return }
             await action()
 
             guard !Task.isCancelled else { return }
-            guard self?.options.automaticallyEndRefreshing == true else {
-                self?.currentTask = nil
-                return
+            let shouldAutomaticallyEnd = await MainActor.run { [weak self] in
+                guard let self else { return false }
+                guard self.options.automaticallyEndRefreshing else {
+                    self.currentTask = nil
+                    return false
+                }
+                return true
             }
+            guard shouldAutomaticallyEnd else { return }
 
             try? await Task.sleep(nanoseconds: 1_000_000)
 
-            guard !Task.isCancelled, let self, self.actionGeneration == generation else { return }
-            self.currentTask = nil
-            self.endRefreshing()
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
+                guard !Task.isCancelled, let self, self.actionGeneration == generation else { return }
+                self.currentTask = nil
+                self.endRefreshing()
+            }
         }
     }
 
