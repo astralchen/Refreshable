@@ -104,4 +104,22 @@ struct RefreshComponentTests {
         // 验证所有状态更新都被记录
         #expect(style.records.count == 6)
     }
+
+    @Test("状态变化时调用 onStateChange")
+    func stateChangeCallback() {
+        var states: [RefreshState] = []
+        let style = MockStyle()
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(onStateChange: { state in
+                states.append(state)
+            })
+        ) {}
+        component.scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+
+        component.setState(.pulling(0.5))
+        component.setState(.triggered)
+
+        #expect(states == [.pulling(0.5), .triggered])
+    }
 }

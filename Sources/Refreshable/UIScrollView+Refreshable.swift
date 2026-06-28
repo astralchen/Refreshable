@@ -112,6 +112,32 @@ extension UIScrollView {
         footerComponent?.resetNoMoreData()
     }
 
+    // MARK: - 状态查询
+
+    /// 当前下拉刷新状态。未安装 header 时返回 idle。
+    @MainActor
+    public var refreshState: RefreshState {
+        headerComponent?.state ?? .idle
+    }
+
+    /// 当前上拉加载状态。未安装 footer 时返回 idle。
+    @MainActor
+    public var loadMoreState: RefreshState {
+        footerComponent?.state ?? .idle
+    }
+
+    /// header 是否正在刷新。
+    @MainActor
+    public var isRefreshActive: Bool {
+        refreshState.isRefreshing
+    }
+
+    /// footer 是否正在加载。
+    @MainActor
+    public var isLoadMoreActive: Bool {
+        loadMoreState.isRefreshing
+    }
+
     // MARK: - Internal Accessors
 
     @MainActor

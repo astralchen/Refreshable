@@ -27,6 +27,7 @@ public class RefreshComponent: NSObject {
             let progress: CGFloat = if case .pulling(let p) = state { p } else { 0 }
             style.update(state: state, progress: progress)
             updateViewVisibility(state: state, progress: progress)
+            options.onStateChange?(state)
             stateDidChange(from: oldValue, to: state)
         }
     }

@@ -189,4 +189,26 @@ struct UIScrollViewExtensionTests {
         #expect(cv.headerComponent != nil)
         #expect(cv.footerComponent != nil)
     }
+
+    // MARK: - 状态查询
+
+    @Test("公开查询 header 和 footer 状态")
+    func publicStateQuery() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+
+        scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+        scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+
+        #expect(scrollView.refreshState == .idle)
+        #expect(scrollView.loadMoreState == .idle)
+
+        scrollView.beginRefreshing()
+        scrollView.beginLoadingMore()
+
+        #expect(scrollView.refreshState == .refreshing)
+        #expect(scrollView.loadMoreState == .refreshing)
+        #expect(scrollView.isRefreshActive == true)
+        #expect(scrollView.isLoadMoreActive == true)
+    }
 }
