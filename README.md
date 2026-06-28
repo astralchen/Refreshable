@@ -162,6 +162,40 @@ tableView.refreshable(style: MyHeaderStyle()) {
 
 > 无需管理 `view.alpha`，组件会自动处理（idle 透明，拖拽渐显，刷新时完全显示）。
 
+## 太极玻璃样式
+
+内置 `TaijiRefreshStyle` 提供 80-100pt 的紧凑 refresh header。它使用 Core Animation 渲染通透太极体、短星雾和 3D 倾斜轨道；刷新中持续旋转，开启“减弱动态效果”时会改为光晕呼吸，结束态释放一次涟漪。
+
+```swift
+let taijiStyle = TaijiRefreshStyle(extent: 88, theme: .system)
+
+tableView.refreshable(
+    style: taijiStyle,
+    options: RefreshableOptions(triggerOffset: 88)
+) {
+    await viewModel.fetchLatest()
+}
+
+// 运行时主题切换会保留当前刷新状态，并执行短色彩过渡。
+taijiStyle.setTheme(.dark, animated: true)
+taijiStyle.setTheme(.light, animated: true)
+```
+
+也可以提供自定义调色：
+
+```swift
+let nebula = TaijiRefreshPalette(
+    backgroundTint: UIColor(red: 0.07, green: 0.03, blue: 0.18, alpha: 0.20),
+    primaryGlow: UIColor(red: 0.78, green: 0.42, blue: 1.00, alpha: 1),
+    secondaryGlow: UIColor(red: 0.30, green: 0.92, blue: 1.00, alpha: 1),
+    glassHighlight: UIColor(red: 0.94, green: 0.92, blue: 1.00, alpha: 0.94),
+    shadowCore: UIColor(red: 0.05, green: 0.02, blue: 0.16, alpha: 0.96),
+    particle: UIColor(red: 0.92, green: 0.78, blue: 1.00, alpha: 1)
+)
+
+taijiStyle.setTheme(.custom(nebula), animated: true)
+```
+
 ## 兼容性
 
 - iOS 13+
