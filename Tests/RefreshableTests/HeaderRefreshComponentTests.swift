@@ -208,4 +208,22 @@ struct HeaderRefreshComponentTests {
         component.endRefreshing()
         #expect(component.state == .idle)
     }
+
+    // MARK: - Options
+
+    @Test("自定义 triggerOffset 用于 header inset")
+    func customHeaderTriggerOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentInset.top = 12
+        let style = MockStyle()
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(triggerOffset: 80, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.beginRefreshing()
+
+        #expect(scrollView.contentInset.top == 92)
+    }
 }

@@ -4,7 +4,7 @@ import UIKit
 @MainActor
 final class HeaderRefreshComponent: RefreshComponent {
 
-    private var threshold: CGFloat { style.height }
+    private var threshold: CGFloat { options.triggerOffset ?? style.height }
 
     override func installView(in scrollView: UIScrollView) {
         let sv = style.view
@@ -55,7 +55,7 @@ final class HeaderRefreshComponent: RefreshComponent {
         guard let scrollView else { return }
 
         if newState == .refreshing {
-            UIView.animate(withDuration: 0.25) {
+            UIView.animate(withDuration: options.animationDuration) {
                 scrollView.contentInset.top = self.originalInset.top + self.threshold
             }
         }
@@ -73,7 +73,7 @@ final class HeaderRefreshComponent: RefreshComponent {
 
         setState(.refreshing)
 
-        UIView.animate(withDuration: 0.25) {
+        UIView.animate(withDuration: options.animationDuration) {
             scrollView.contentInset.top = self.originalInset.top + self.threshold
             scrollView.contentOffset.y = -self.originalInset.top - self.threshold
         }

@@ -4,7 +4,7 @@ import UIKit
 @MainActor
 final class FooterRefreshComponent: RefreshComponent {
 
-    private var threshold: CGFloat { style.height }
+    private var threshold: CGFloat { options.triggerOffset ?? style.height }
 
     override func installView(in scrollView: UIScrollView) {
         let sv = style.view
@@ -71,7 +71,7 @@ final class FooterRefreshComponent: RefreshComponent {
         guard let scrollView else { return }
 
         if newState == .refreshing {
-            UIView.animate(withDuration: 0.25) {
+            UIView.animate(withDuration: options.animationDuration) {
                 scrollView.contentInset.bottom = self.originalInset.bottom + self.threshold
             }
         }
@@ -89,7 +89,7 @@ final class FooterRefreshComponent: RefreshComponent {
         setState(.refreshing)
 
         guard let scrollView else { return }
-        UIView.animate(withDuration: 0.25) {
+        UIView.animate(withDuration: options.animationDuration) {
             scrollView.contentInset.bottom = self.originalInset.bottom + self.threshold
         }
 
@@ -108,7 +108,7 @@ final class FooterRefreshComponent: RefreshComponent {
                 setState(.noMoreData)
                 return
             }
-            UIView.animate(withDuration: 0.25, animations: {
+            UIView.animate(withDuration: options.animationDuration, animations: {
                 scrollView.contentInset.bottom = self.originalInset.bottom
             }, completion: { _ in
                 self.setState(.noMoreData)

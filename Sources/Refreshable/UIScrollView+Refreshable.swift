@@ -17,13 +17,29 @@ extension UIScrollView {
     /// 使用默认样式添加下拉刷新
     @MainActor
     public func refreshable(action: @MainActor @escaping () async -> Void) {
-        refreshable(style: DefaultHeaderStyle(), action: action)
+        refreshable(style: DefaultHeaderStyle(), options: RefreshableOptions(), action: action)
+    }
+
+    /// 使用默认样式和行为配置添加下拉刷新
+    @MainActor
+    public func refreshable(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
+        refreshable(style: DefaultHeaderStyle(), options: options, action: action)
     }
 
     /// 使用自定义样式添加下拉刷新
     @MainActor
     public func refreshable(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
-        let component = HeaderRefreshComponent(style: style, action: action)
+        refreshable(style: style, options: RefreshableOptions(), action: action)
+    }
+
+    /// 使用自定义样式和行为配置添加下拉刷新
+    @MainActor
+    public func refreshable(
+        style: some RefreshableStyle,
+        options: RefreshableOptions,
+        action: @MainActor @escaping () async -> Void
+    ) {
+        let component = HeaderRefreshComponent(style: style, options: options, action: action)
         self.headerComponent = component
         component.scrollView = self
     }
@@ -45,13 +61,29 @@ extension UIScrollView {
     /// 使用默认样式添加上拉加载
     @MainActor
     public func loadMoreable(action: @MainActor @escaping () async -> Void) {
-        loadMoreable(style: DefaultFooterStyle(), action: action)
+        loadMoreable(style: DefaultFooterStyle(), options: RefreshableOptions(), action: action)
+    }
+
+    /// 使用默认样式和行为配置添加上拉加载
+    @MainActor
+    public func loadMoreable(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
+        loadMoreable(style: DefaultFooterStyle(), options: options, action: action)
     }
 
     /// 使用自定义样式添加上拉加载
     @MainActor
     public func loadMoreable(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
-        let component = FooterRefreshComponent(style: style, action: action)
+        loadMoreable(style: style, options: RefreshableOptions(), action: action)
+    }
+
+    /// 使用自定义样式和行为配置添加上拉加载
+    @MainActor
+    public func loadMoreable(
+        style: some RefreshableStyle,
+        options: RefreshableOptions,
+        action: @MainActor @escaping () async -> Void
+    ) {
+        let component = FooterRefreshComponent(style: style, options: options, action: action)
         self.footerComponent = component
         component.scrollView = self
     }

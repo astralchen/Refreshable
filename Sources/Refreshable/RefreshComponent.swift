@@ -18,6 +18,7 @@ public class RefreshComponent: NSObject {
     }
 
     let style: any RefreshableStyle
+    let options: RefreshableOptions
     var action: (@MainActor () async -> Void)?
 
     private(set) var state: RefreshState = .idle {
@@ -39,8 +40,13 @@ public class RefreshComponent: NSObject {
 
     // MARK: - Init
 
-    init(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
+    init(
+        style: some RefreshableStyle,
+        options: RefreshableOptions = RefreshableOptions(),
+        action: @MainActor @escaping () async -> Void
+    ) {
         self.style = style
+        self.options = options
         self.action = action
         super.init()
     }
@@ -121,7 +127,7 @@ public class RefreshComponent: NSObject {
             return
         }
 
-        UIView.animate(withDuration: 0.25, animations: {
+        UIView.animate(withDuration: options.animationDuration, animations: {
             self.resetInset(for: scrollView)
         }, completion: { _ in
             self.setState(.idle)

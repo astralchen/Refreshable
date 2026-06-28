@@ -239,4 +239,23 @@ struct FooterRefreshComponentTests {
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
     }
+
+    // MARK: - Options
+
+    @Test("自定义 triggerOffset 用于 footer inset")
+    func customFooterTriggerOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 16
+        let style = MockStyle()
+        let component = FooterRefreshComponent(
+            style: style,
+            options: RefreshableOptions(triggerOffset: 90, automaticallyEndRefreshing: false)
+        ) {}
+        component.scrollView = scrollView
+
+        component.beginLoadingMore()
+
+        #expect(scrollView.contentInset.bottom == 106)
+    }
 }
