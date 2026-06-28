@@ -337,8 +337,56 @@ final class TaijiRefreshView: UIView {
             animation.duration = 0.26
             animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
             rippleLayer.add(animation, forKey: "taiji.ripple")
+            addVanishAnimation(for: state)
         } else {
             rippleLayer.removeAnimation(forKey: "taiji.ripple")
+            bodyContainerLayer.removeAnimation(forKey: "taiji.vanish")
+            mistLayer.removeAnimation(forKey: "taiji.vanishMist")
+            glowLayer.removeAnimation(forKey: "taiji.vanishGlow")
+        }
+    }
+
+    private func addVanishAnimation(for state: TaijiRefreshRenderState) {
+        if bodyContainerLayer.animation(forKey: "taiji.vanish") == nil {
+            let sourceTransform = bodyContainerLayer.presentation()?.transform ?? bodyContainerLayer.transform
+            let liftedTransform = CATransform3DTranslate(sourceTransform, 0, -bodyContainerLayer.bounds.height * 0.42, 0)
+            let veilTransform = CATransform3DScale(liftedTransform, 0.46, 1.34, 1)
+
+            let transform = CAKeyframeAnimation(keyPath: "transform")
+            transform.values = [
+                NSValue(caTransform3D: sourceTransform),
+                NSValue(caTransform3D: liftedTransform),
+                NSValue(caTransform3D: veilTransform),
+            ]
+            transform.keyTimes = [0, 0.54, 1]
+
+            let opacity = CABasicAnimation(keyPath: "opacity")
+            opacity.fromValue = max(0.36, state.bodyAlpha)
+            opacity.toValue = 0
+
+            let animation = CAAnimationGroup()
+            animation.animations = [transform, opacity]
+            animation.duration = 0.42
+            animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            bodyContainerLayer.add(animation, forKey: "taiji.vanish")
+        }
+
+        if mistLayer.animation(forKey: "taiji.vanishMist") == nil {
+            let animation = CABasicAnimation(keyPath: "opacity")
+            animation.fromValue = max(0.16, state.glowIntensity)
+            animation.toValue = 0
+            animation.duration = 0.48
+            animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            mistLayer.add(animation, forKey: "taiji.vanishMist")
+        }
+
+        if glowLayer.animation(forKey: "taiji.vanishGlow") == nil {
+            let animation = CABasicAnimation(keyPath: "transform.scale")
+            animation.fromValue = 1
+            animation.toValue = 1.32
+            animation.duration = 0.36
+            animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            glowLayer.add(animation, forKey: "taiji.vanishGlow")
         }
     }
 

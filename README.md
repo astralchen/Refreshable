@@ -164,7 +164,7 @@ tableView.refreshable(style: MyHeaderStyle()) {
 
 ## 太极玻璃样式
 
-内置 `TaijiRefreshStyle` 提供 80-100pt 的紧凑 refresh header。它使用 Core Animation 渲染通透太极体、短星雾和 3D 倾斜轨道；刷新中持续旋转，开启“减弱动态效果”时会改为光晕呼吸，结束态释放一次涟漪。
+内置 `TaijiRefreshStyle` 提供 80-100pt 的紧凑 refresh header。它使用 Core Animation 渲染通透太极体、短星雾和 3D 倾斜轨道；刷新中持续旋转，开启“减弱动态效果”时会改为光晕呼吸，结束态释放一次涟漪并上浮雾化消失。
 
 ```swift
 let taijiStyle = TaijiRefreshStyle(extent: 88, theme: .system)

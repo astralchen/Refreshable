@@ -157,6 +157,45 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.debugAnimationKeys.contains("taiji.ripple"))
     }
 
+    @Test("ending lifts and dissolves the taiji body")
+    func endingUsesVanishAnimation() throws {
+        let style = TaijiRefreshStyle()
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 92)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        let endingState = TaijiRefreshRenderState.make(
+            state: .ending,
+            progress: 0,
+            reduceMotion: false,
+            reduceTransparency: false
+        )
+        taijiView.apply(
+            renderState: endingState,
+            palette: .dark,
+            animated: false,
+            reduceTransparency: false
+        )
+
+        #expect(taijiView.debugAnimationKeys.contains("taiji.ripple"))
+        #expect(taijiView.debugAnimationKeys.contains("taiji.vanish"))
+
+        let pullingState = TaijiRefreshRenderState.make(
+            state: .pulling(0.25),
+            progress: 0.25,
+            reduceMotion: false,
+            reduceTransparency: false
+        )
+        taijiView.apply(
+            renderState: pullingState,
+            palette: .dark,
+            animated: false,
+            reduceTransparency: false
+        )
+
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.vanish"))
+    }
+
     private func findLabels(in view: UIView) -> [UILabel] {
         var labels: [UILabel] = []
         if let label = view as? UILabel {
