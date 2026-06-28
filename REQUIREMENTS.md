@@ -26,7 +26,7 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 - 支持 `beginRefreshing()` 手动触发（代码驱动，如首次进入页面）
 - 支持 `beginRefreshing(edge:)` 手动触发指定边缘
 - 支持 `endRefreshing()` 手动结束（兜底）
-- 支持通过 `RefreshableOptions` 调整触发距离、动画时长、自动结束和状态回调
+- 支持通过 `RefreshableOptions` 调整触发距离、动画时长、自动结束、action 期间可见性和状态回调
 - 支持运行时启用、禁用和移除指定边缘刷新组件
 
 ### 3.2 加载更多
@@ -114,6 +114,7 @@ RefreshableOptions(
     animationDuration: 0.25,
     automaticallyEndRefreshing: true,
     allowsLoadMoreWhenContentFits: false,
+    keepsRefreshViewVisibleDuringAction: true,
     onStateChange: nil
 )
 ```

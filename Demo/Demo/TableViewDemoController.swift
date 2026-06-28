@@ -9,8 +9,8 @@ class TableViewDemoController: UIViewController, UITableViewDataSource {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "TableView Demo"
-        view.backgroundColor = .systemBackground
+        title = "列表刷新"
+        view.backgroundColor = .systemGroupedBackground
 
         setupTableView()
         loadInitialData()
@@ -19,8 +19,10 @@ class TableViewDemoController: UIViewController, UITableViewDataSource {
     private func setupTableView() {
         tableView.frame = view.bounds
         tableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        tableView.backgroundColor = .systemGroupedBackground
         tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+        tableView.rowHeight = 64
+        tableView.separatorInset = UIEdgeInsets(top: 0, left: 56, bottom: 0, right: 16)
         view.addSubview(tableView)
 
         tableView.refreshable {
@@ -61,8 +63,16 @@ class TableViewDemoController: UIViewController, UITableViewDataSource {
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell")
+            ?? UITableViewCell(style: .subtitle, reuseIdentifier: "Cell")
+
         cell.textLabel?.text = items[indexPath.row]
+        cell.textLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        cell.detailTextLabel?.text = indexPath.row.isMultiple(of: 2) ? "下拉刷新后重置数据" : "滚到底部自动加载更多"
+        cell.detailTextLabel?.textColor = .secondaryLabel
+        cell.imageView?.image = UIImage(systemName: indexPath.row.isMultiple(of: 2) ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+        cell.imageView?.tintColor = indexPath.row.isMultiple(of: 2) ? .systemIndigo : .systemTeal
+        cell.backgroundColor = .secondarySystemGroupedBackground
         return cell
     }
 }

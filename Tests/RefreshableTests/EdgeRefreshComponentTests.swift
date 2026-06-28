@@ -72,6 +72,30 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.loadMoreState(edge: .trailing) == .noMoreData)
     }
 
+    @Test("loadMore 可在 action 执行期间不保持占位 UI")
+    func loadMoreCanAvoidPersistentInsetWhileActionRuns() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 320, height: 1200)
+        scrollView.contentInset.bottom = 12
+        let style = MockStyle(extent: 76)
+
+        scrollView.loadMoreable(
+            edge: .bottom,
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                keepsRefreshViewVisibleDuringAction: false
+            )
+        ) {}
+        scrollView.beginLoadingMore(edge: .bottom)
+
+        #expect(scrollView.loadMoreState(edge: .bottom) == .refreshing)
+        #expect(scrollView.contentInset.bottom == 12)
+        #expect(style.view.alpha == 0)
+        #expect(style.lastState == .refreshing)
+    }
+
     @Test("noMoreData(edge:) 对 refresh 组件无副作用")
     func noMoreDataIsNoOpForRefreshComponent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -99,6 +123,26 @@ struct EdgeRefreshComponentTests {
         #expect(leadingStyle.view.frame.width == 40)
         #expect(trailingStyle.view.frame.origin.x == -50)
         #expect(trailingStyle.view.frame.width == 50)
+    }
+
+    @Test("刷新中切换布局方向后仍恢复原本占用的物理 inset")
+    func changingLayoutDirectionWhileRefreshingRestoresOriginalPhysicalInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentInset = UIEdgeInsets(top: 20, left: 6, bottom: 12, right: 8)
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginRefreshing(edge: .leading)
+        scrollView.semanticContentAttribute = .forceRightToLeft
+        scrollView.endRefreshing(edge: .leading)
+
+        #expect(scrollView.contentInset.left == 6)
+        #expect(scrollView.contentInset.right == 8)
     }
 
     @Test("移除一个 edge 不污染其他 edge 的 inset")

@@ -81,7 +81,7 @@ scrollView.removeLoadMoreable()
 
 ## 行为配置
 
-用 `RefreshableOptions` 调整触发距离、动画时长、自动结束、短内容加载和状态回调：
+用 `RefreshableOptions` 调整触发距离、动画时长、自动结束、短内容加载、action 期间可见性和状态回调：
 
 ```swift
 let options = RefreshableOptions(
@@ -89,6 +89,7 @@ let options = RefreshableOptions(
     animationDuration: 0.35,
     automaticallyEndRefreshing: false,
     allowsLoadMoreWhenContentFits: true,
+    keepsRefreshViewVisibleDuringAction: true,
     onStateChange: { state in
         print(state)
     }
@@ -115,6 +116,7 @@ tableView.loadMoreable(options: options) {
 - `animationDuration: 0.25`
 - `automaticallyEndRefreshing: true`，action 完成后自动收起
 - `allowsLoadMoreWhenContentFits: false`，内容未填满当前滚动轴时默认不触发加载更多
+- `keepsRefreshViewVisibleDuringAction: true`，action 执行期间默认保持刷新视图可见；全屏视频流可设为 `false`
 
 ## 并发语义
 

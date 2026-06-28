@@ -14,27 +14,17 @@ class CollectionViewDemoController: UIViewController, UICollectionViewDataSource
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "CollectionView Demo"
-        view.backgroundColor = .systemBackground
+        title = "网格分页"
+        view.backgroundColor = .systemGroupedBackground
         
         setupCollectionView()
         loadInitialData()
     }
 
     private func setupCollectionView() {
-        let layout = UICollectionViewFlowLayout()
-        let spacing: CGFloat = 12
-        let columns: CGFloat = 3
-        let totalSpacing = spacing * (columns + 1)
-        let itemWidth = (UIScreen.main.bounds.width - totalSpacing) / columns
-        layout.itemSize = CGSize(width: itemWidth, height: itemWidth)
-        layout.minimumInteritemSpacing = spacing
-        layout.minimumLineSpacing = spacing
-        layout.sectionInset = UIEdgeInsets(top: spacing, left: spacing, bottom: spacing, right: spacing)
-
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
+        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: makeLayout())
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = .systemBackground
+        collectionView.backgroundColor = .systemGroupedBackground
         collectionView.dataSource = self
         collectionView.register(ColorCell.self, forCellWithReuseIdentifier: "ColorCell")
         view.addSubview(collectionView)
@@ -64,6 +54,31 @@ class CollectionViewDemoController: UIViewController, UICollectionViewDataSource
         }
     }
 
+    private func makeLayout() -> UICollectionViewCompositionalLayout {
+        let spacing: CGFloat = 6
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0 / 3.0),
+            heightDimension: .fractionalWidth(1.0 / 3.0)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = NSDirectionalEdgeInsets(top: spacing, leading: spacing, bottom: spacing, trailing: spacing)
+
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .fractionalWidth(1.0 / 3.0)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 3)
+
+        let section = NSCollectionLayoutSection(group: group)
+        section.contentInsets = NSDirectionalEdgeInsets(top: spacing, leading: spacing, bottom: spacing, trailing: spacing)
+
+        let layout = UICollectionViewCompositionalLayout(section: section)
+        let configuration = UICollectionViewCompositionalLayoutConfiguration()
+        configuration.scrollDirection = .vertical
+        layout.configuration = configuration
+        return layout
+    }
+
     private func loadInitialData() {
         items = Array(1...18)
         collectionView.reloadData()
@@ -91,7 +106,7 @@ private class ColorCell: UICollectionViewCell {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        contentView.layer.cornerRadius = 10
+        contentView.layer.cornerRadius = 8
         contentView.clipsToBounds = true
 
         label.font = .boldSystemFont(ofSize: 20)

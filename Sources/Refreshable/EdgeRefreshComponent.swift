@@ -6,6 +6,7 @@ class EdgeRefreshComponent: RefreshComponent {
 
     let edge: RefreshableEdge
     let role: RefreshableRole
+    private var activeInsetEdge: RefreshablePhysicalEdge?
 
     init(
         edge: RefreshableEdge,
@@ -76,6 +77,7 @@ class EdgeRefreshComponent: RefreshComponent {
     override func stateDidChange(from oldState: RefreshState, to newState: RefreshState) {
         guard let scrollView else { return }
         guard newState == .refreshing else { return }
+        guard options.keepsRefreshViewVisibleDuringAction else { return }
 
         UIView.animate(withDuration: options.animationDuration) {
             self.applyRefreshingInset(to: scrollView)
@@ -83,10 +85,11 @@ class EdgeRefreshComponent: RefreshComponent {
     }
 
     override func resetInset(for scrollView: UIScrollView) {
-        let physicalEdge = edge.physicalEdge(in: scrollView)
+        let physicalEdge = activeInsetEdge ?? edge.physicalEdge(in: scrollView)
         var inset = scrollView.contentInset
         inset.setValue(originalInset.value(for: physicalEdge), for: physicalEdge)
         scrollView.contentInset = inset
+        activeInsetEdge = nil
     }
 
     // MARK: - Manual Trigger
@@ -201,9 +204,11 @@ class EdgeRefreshComponent: RefreshComponent {
         captureOriginalInset()
         setState(.refreshing)
 
-        UIView.animate(withDuration: options.animationDuration) {
-            self.applyRefreshingInset(to: scrollView)
-            self.adjustContentOffsetForStartEdgeIfNeeded(in: scrollView)
+        if options.keepsRefreshViewVisibleDuringAction {
+            UIView.animate(withDuration: options.animationDuration) {
+                self.applyRefreshingInset(to: scrollView)
+                self.adjustContentOffsetForStartEdgeIfNeeded(in: scrollView)
+            }
         }
 
         startActionTask()
@@ -211,6 +216,7 @@ class EdgeRefreshComponent: RefreshComponent {
 
     private func applyRefreshingInset(to scrollView: UIScrollView) {
         let physicalEdge = edge.physicalEdge(in: scrollView)
+        activeInsetEdge = physicalEdge
         var inset = scrollView.contentInset
         inset.setValue(originalInset.value(for: physicalEdge) + triggerThreshold, for: physicalEdge)
         scrollView.contentInset = inset

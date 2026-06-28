@@ -21,6 +21,13 @@ public struct RefreshableOptions {
     /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
+    /// 一个布尔值，指示 action 执行期间是否保持刷新视图可见。
+    ///
+    /// 默认值为 `true`，组件会在 action 执行期间保持对应方向的
+    /// `contentInset`，让刷新视图持续可见。设置为 `false` 时，组件只在拖动
+    /// 过程中显示；松手触发 action 后不会保持占位，适合全屏视频流等场景。
+    public var keepsRefreshViewVisibleDuringAction: Bool
+
     /// 状态变化时在主线程调用的闭包。
     ///
     /// 安装组件时对样式执行的初始 `idle` 更新不会触发此闭包。
@@ -33,18 +40,21 @@ public struct RefreshableOptions {
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
+    ///   - keepsRefreshViewVisibleDuringAction: action 执行期间是否保持刷新视图可见。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
         triggerOffset: CGFloat? = nil,
         animationDuration: TimeInterval = 0.25,
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
+        keepsRefreshViewVisibleDuringAction: Bool = true,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
         self.triggerOffset = triggerOffset
         self.animationDuration = animationDuration
         self.automaticallyEndRefreshing = automaticallyEndRefreshing
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
+        self.keepsRefreshViewVisibleDuringAction = keepsRefreshViewVisibleDuringAction
         self.onStateChange = onStateChange
     }
 }
