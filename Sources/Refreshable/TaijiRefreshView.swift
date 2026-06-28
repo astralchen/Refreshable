@@ -30,6 +30,17 @@ final class TaijiRefreshView: UIView {
         bodyContainerLayer.frame
     }
 
+    var debugAnimationKeys: [String] {
+        [
+            bodyContainerLayer.animationKeys() ?? [],
+            glowLayer.animationKeys() ?? [],
+            rippleLayer.animationKeys() ?? [],
+            backArcLayer.animationKeys() ?? [],
+            frontArcLayer.animationKeys() ?? [],
+            mistLayer.animationKeys() ?? [],
+        ].flatMap { $0 }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
@@ -87,6 +98,7 @@ final class TaijiRefreshView: UIView {
         animated: Bool,
         reduceTransparency: Bool
     ) {
+        let previousPalette = lastPalette
         lastRenderState = renderState
         lastPalette = palette
         bodyLayer.palette = palette
@@ -115,6 +127,9 @@ final class TaijiRefreshView: UIView {
         updates()
         CATransaction.commit()
 
+        if animated, let previousPalette, previousPalette != palette {
+            animatePaletteChange(from: previousPalette, to: palette)
+        }
         updateRefreshingAnimations(for: renderState)
     }
 
@@ -294,8 +309,72 @@ final class TaijiRefreshView: UIView {
             }
         } else {
             isContinuousAnimationActive = false
+            if let presentation = bodyContainerLayer.presentation() {
+                bodyContainerLayer.transform = presentation.transform
+            }
             bodyContainerLayer.removeAnimation(forKey: "taiji.rotation")
         }
+
+        if state.usesGlowPulse {
+            if glowLayer.animation(forKey: "taiji.glowPulse") == nil {
+                let animation = CABasicAnimation(keyPath: "opacity")
+                animation.fromValue = max(0.35, state.glowIntensity * 0.62)
+                animation.toValue = min(1.0, state.glowIntensity)
+                animation.duration = 1.08
+                animation.autoreverses = true
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                glowLayer.add(animation, forKey: "taiji.glowPulse")
+            }
+        } else {
+            glowLayer.removeAnimation(forKey: "taiji.glowPulse")
+        }
+
+        if state.rippleProgress > 0 {
+            let animation = CABasicAnimation(keyPath: "opacity")
+            animation.fromValue = 0.72
+            animation.toValue = 0
+            animation.duration = 0.26
+            animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            rippleLayer.add(animation, forKey: "taiji.ripple")
+        } else {
+            rippleLayer.removeAnimation(forKey: "taiji.ripple")
+        }
+    }
+
+    private func animatePaletteChange(from previousPalette: TaijiRefreshPalette, to palette: TaijiRefreshPalette) {
+        addColorAnimation(
+            to: frontArcLayer,
+            keyPath: "strokeColor",
+            from: previousPalette.primaryGlow.withAlphaComponent(0.86).cgColor,
+            to: palette.primaryGlow.withAlphaComponent(0.86).cgColor
+        )
+        addColorAnimation(
+            to: backArcLayer,
+            keyPath: "strokeColor",
+            from: previousPalette.secondaryGlow.withAlphaComponent(0.58).cgColor,
+            to: palette.secondaryGlow.withAlphaComponent(0.58).cgColor
+        )
+        addColorAnimation(
+            to: rippleLayer,
+            keyPath: "strokeColor",
+            from: previousPalette.primaryGlow.withAlphaComponent(0.38).cgColor,
+            to: palette.primaryGlow.withAlphaComponent(0.38).cgColor
+        )
+    }
+
+    private func addColorAnimation(
+        to layer: CALayer,
+        keyPath: String,
+        from previousColor: CGColor,
+        to color: CGColor
+    ) {
+        let animation = CABasicAnimation(keyPath: keyPath)
+        animation.fromValue = previousColor
+        animation.toValue = color
+        animation.duration = 0.22
+        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(animation, forKey: "taiji.palette.\(keyPath)")
     }
 }
 

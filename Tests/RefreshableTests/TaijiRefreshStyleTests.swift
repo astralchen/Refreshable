@@ -89,6 +89,74 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.debugBodyFrame.height == taijiView.debugBodyFrame.width)
     }
 
+    @Test("refreshing starts and ending stops continuous animation")
+    func refreshingAnimationLifecycle() throws {
+        let style = TaijiRefreshStyle()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(taijiView.isContinuousAnimationActive == true)
+
+        style.update(state: .ending, progress: 0)
+        #expect(taijiView.isContinuousAnimationActive == false)
+    }
+
+    @Test("theme switch records palette without resetting render state")
+    func themeSwitchKeepsRenderState() throws {
+        let style = TaijiRefreshStyle(theme: .light)
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: .pulling(0.7), progress: 0.7)
+        let before = try #require(taijiView.lastRenderState)
+
+        style.setTheme(.dark, animated: true)
+        let after = try #require(taijiView.lastRenderState)
+
+        #expect(before == after)
+        #expect(taijiView.lastPalette == .dark)
+        #expect(taijiView.debugAnimationKeys.contains { $0.hasPrefix("taiji.palette.") })
+    }
+
+    @Test("reduce motion uses glow pulse and ending uses ripple animation")
+    func reducedMotionGlowPulseAndEndingRipple() throws {
+        let style = TaijiRefreshStyle()
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 92)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        let reducedMotionState = TaijiRefreshRenderState.make(
+            state: .refreshing,
+            progress: 0,
+            reduceMotion: true,
+            reduceTransparency: false
+        )
+        taijiView.apply(
+            renderState: reducedMotionState,
+            palette: .dark,
+            animated: false,
+            reduceTransparency: false
+        )
+
+        #expect(taijiView.isContinuousAnimationActive == false)
+        #expect(taijiView.debugAnimationKeys.contains("taiji.glowPulse"))
+
+        let endingState = TaijiRefreshRenderState.make(
+            state: .ending,
+            progress: 0,
+            reduceMotion: false,
+            reduceTransparency: false
+        )
+        taijiView.apply(
+            renderState: endingState,
+            palette: .dark,
+            animated: false,
+            reduceTransparency: false
+        )
+
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.glowPulse"))
+        #expect(taijiView.debugAnimationKeys.contains("taiji.ripple"))
+    }
+
     private func findLabels(in view: UIView) -> [UILabel] {
         var labels: [UILabel] = []
         if let label = view as? UILabel {
