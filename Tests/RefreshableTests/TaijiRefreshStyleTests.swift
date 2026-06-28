@@ -1,0 +1,73 @@
+import Testing
+@testable import Refreshable
+import UIKit
+
+@Suite("TaijiRefreshStyle")
+@MainActor
+struct TaijiRefreshStyleTests {
+
+    @Test("default extent is within compact header range")
+    func defaultExtent() {
+        let style = TaijiRefreshStyle()
+
+        #expect(style.extent >= 80)
+        #expect(style.extent <= 100)
+        #expect(style.extent == 92)
+    }
+
+    @Test("style uses a stable view and no visible text subviews")
+    func stableViewWithoutVisibleText() {
+        let style = TaijiRefreshStyle()
+        let originalView = style.view
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+        style.setTheme(.dark, animated: true)
+
+        #expect(style.view === originalView)
+        #expect(findLabels(in: style.view).isEmpty)
+    }
+
+    @Test("accessibility label and values map state without visible labels")
+    func accessibilityValues() {
+        let style = TaijiRefreshStyle(accessibilityLabel: "刷新")
+
+        style.update(state: .idle, progress: 0)
+        #expect(style.view.isAccessibilityElement == true)
+        #expect(style.view.accessibilityLabel == "刷新")
+        #expect(style.view.accessibilityValue == "未刷新")
+
+        style.update(state: .pulling(0.4), progress: 0.4)
+        #expect(style.view.accessibilityValue == "下拉中")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(style.view.accessibilityValue == "释放刷新")
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(style.view.accessibilityValue == "正在刷新")
+
+        style.update(state: .ending, progress: 0)
+        #expect(style.view.accessibilityValue == "刷新完成")
+    }
+
+    @Test("setTheme updates theme without replacing the view")
+    func themeSwitchKeepsView() {
+        let style = TaijiRefreshStyle(theme: .light)
+        let view = style.view
+
+        style.setTheme(.dark, animated: true)
+
+        #expect(style.theme == .dark)
+        #expect(style.view === view)
+    }
+
+    private func findLabels(in view: UIView) -> [UILabel] {
+        var labels: [UILabel] = []
+        if let label = view as? UILabel {
+            labels.append(label)
+        }
+        for subview in view.subviews {
+            labels.append(contentsOf: findLabels(in: subview))
+        }
+        return labels
+    }
+}
