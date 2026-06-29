@@ -14,21 +14,45 @@ public final class DefaultFooterStyle: RefreshableStyle {
 
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
+    private let texts: DefaultFooterRefreshTexts
+    private let configuration: DefaultRefreshStyleConfiguration
+    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
 
     /// 创建默认的上拉加载样式。
-    public init() {
+    public init(
+        texts: DefaultFooterRefreshTexts = DefaultFooterRefreshTexts(),
+        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()
+    ) {
+        self.texts = texts
+        self.configuration = configuration
+        self.accessibilityEnvironment = .current
+        setupUI()
+    }
+
+    init(
+        texts: DefaultFooterRefreshTexts = DefaultFooterRefreshTexts(),
+        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(),
+        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    ) {
+        self.texts = texts
+        self.configuration = configuration
+        self.accessibilityEnvironment = accessibilityEnvironment
         setupUI()
     }
 
     private func setupUI() {
         view.frame.size.height = extent
+        view.isAccessibilityElement = true
+        view.accessibilityLabel = texts.accessibilityLabel
 
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(indicator)
 
-        label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.font = UIFontMetrics(forTextStyle: configuration.fontTextStyle)
+            .scaledFont(for: configuration.font)
+        label.adjustsFontForContentSizeCategory = configuration.adjustsFontForContentSizeCategory
+        label.textColor = currentTextColor()
         label.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(label)
 
@@ -47,30 +71,49 @@ public final class DefaultFooterStyle: RefreshableStyle {
     ///   - state: 当前上拉加载状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
     public func update(state: RefreshState, progress: CGFloat) {
+        label.textColor = currentTextColor()
+
         switch state {
         case .idle:
-            label.text = "上拉加载更多"
+            label.text = texts.idle
+            updateAccessibilityValue(texts.idleAccessibilityValue)
             indicator.stopAnimating()
 
         case .pulling:
-            label.text = "上拉加载更多"
+            label.text = texts.pulling
+            updateAccessibilityValue(texts.pullingAccessibilityValue)
             indicator.stopAnimating()
 
         case .triggered:
-            label.text = "释放加载"
+            label.text = texts.triggered
+            updateAccessibilityValue(texts.triggeredAccessibilityValue)
             indicator.stopAnimating()
 
         case .refreshing:
-            label.text = "正在加载..."
+            label.text = texts.refreshing
+            updateAccessibilityValue(texts.refreshingAccessibilityValue)
             indicator.startAnimating()
 
         case .ending:
-            label.text = "加载完成"
+            label.text = texts.ending
+            updateAccessibilityValue(texts.endingAccessibilityValue)
             indicator.stopAnimating()
 
         case .noMoreData:
-            label.text = "没有更多数据"
+            label.text = texts.noMoreData
+            updateAccessibilityValue(texts.noMoreDataAccessibilityValue)
             indicator.stopAnimating()
         }
+    }
+
+    private func currentTextColor() -> UIColor {
+        if configuration.honorsReduceTransparency && accessibilityEnvironment.isReduceTransparencyEnabled {
+            return configuration.reducedTransparencyTextColor
+        }
+        return configuration.textColor
+    }
+
+    private func updateAccessibilityValue(_ value: String) {
+        view.accessibilityValue = value
     }
 }

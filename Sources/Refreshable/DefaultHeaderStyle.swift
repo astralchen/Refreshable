@@ -15,14 +15,36 @@ public final class DefaultHeaderStyle: RefreshableStyle {
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
     private let arrowView = UIImageView()
+    private let texts: DefaultHeaderRefreshTexts
+    private let configuration: DefaultRefreshStyleConfiguration
+    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
 
     /// 创建默认的下拉刷新样式。
-    public init() {
+    public init(
+        texts: DefaultHeaderRefreshTexts = DefaultHeaderRefreshTexts(),
+        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()
+    ) {
+        self.texts = texts
+        self.configuration = configuration
+        self.accessibilityEnvironment = .current
+        setupUI()
+    }
+
+    init(
+        texts: DefaultHeaderRefreshTexts = DefaultHeaderRefreshTexts(),
+        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(),
+        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    ) {
+        self.texts = texts
+        self.configuration = configuration
+        self.accessibilityEnvironment = accessibilityEnvironment
         setupUI()
     }
 
     private func setupUI() {
         view.frame.size.height = extent
+        view.isAccessibilityElement = true
+        view.accessibilityLabel = texts.accessibilityLabel
 
         // Arrow
         let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
@@ -37,8 +59,10 @@ public final class DefaultHeaderStyle: RefreshableStyle {
         view.addSubview(indicator)
 
         // Label
-        label.font = .systemFont(ofSize: 14)
-        label.textColor = .secondaryLabel
+        label.font = UIFontMetrics(forTextStyle: configuration.fontTextStyle)
+            .scaledFont(for: configuration.font)
+        label.adjustsFontForContentSizeCategory = configuration.adjustsFontForContentSizeCategory
+        label.textColor = currentTextColor()
         label.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(label)
 
@@ -60,38 +84,64 @@ public final class DefaultHeaderStyle: RefreshableStyle {
     ///   - state: 当前下拉刷新状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
     public func update(state: RefreshState, progress: CGFloat) {
+        label.textColor = currentTextColor()
+
         switch state {
         case .idle:
-            label.text = "下拉刷新"
+            label.text = texts.idle
+            updateAccessibilityValue(texts.idleAccessibilityValue)
             indicator.stopAnimating()
             arrowView.isHidden = false
             arrowView.transform = .identity
 
         case .pulling(let p):
-            label.text = "下拉刷新"
+            label.text = texts.pulling
+            updateAccessibilityValue(texts.pullingAccessibilityValue)
             indicator.stopAnimating()
             arrowView.isHidden = false
-            let angle = min(p, 1.0) * .pi
-            arrowView.transform = CGAffineTransform(rotationAngle: angle)
+            if honorsReduceMotion {
+                arrowView.transform = .identity
+            } else {
+                let angle = min(p, 1.0) * .pi
+                arrowView.transform = CGAffineTransform(rotationAngle: angle)
+            }
 
         case .triggered:
-            label.text = "释放刷新"
+            label.text = texts.triggered
+            updateAccessibilityValue(texts.triggeredAccessibilityValue)
             indicator.stopAnimating()
             arrowView.isHidden = false
             arrowView.transform = CGAffineTransform(rotationAngle: .pi)
 
         case .refreshing:
-            label.text = "正在刷新..."
+            label.text = texts.refreshing
+            updateAccessibilityValue(texts.refreshingAccessibilityValue)
             indicator.startAnimating()
             arrowView.isHidden = true
 
         case .ending:
-            label.text = "刷新完成"
+            label.text = texts.ending
+            updateAccessibilityValue(texts.endingAccessibilityValue)
             indicator.stopAnimating()
             arrowView.isHidden = true
 
         case .noMoreData:
             break
         }
+    }
+
+    private var honorsReduceMotion: Bool {
+        configuration.honorsReduceMotion && accessibilityEnvironment.isReduceMotionEnabled
+    }
+
+    private func currentTextColor() -> UIColor {
+        if configuration.honorsReduceTransparency && accessibilityEnvironment.isReduceTransparencyEnabled {
+            return configuration.reducedTransparencyTextColor
+        }
+        return configuration.textColor
+    }
+
+    private func updateAccessibilityValue(_ value: String) {
+        view.accessibilityValue = value
     }
 }

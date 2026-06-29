@@ -28,6 +28,83 @@ struct DefaultHeaderStyleTests {
         style.update(state: .ending, progress: 0)
         style.update(state: .noMoreData, progress: 0)
     }
+
+    @Test("默认 header 文案保持现有中文行为")
+    func defaultHeaderTextsStayChinese() throws {
+        let style = DefaultHeaderStyle()
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .idle, progress: 0)
+        #expect(label.text == "下拉刷新")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "释放刷新")
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(label.text == "正在刷新...")
+
+        style.update(state: .ending, progress: 0)
+        #expect(label.text == "刷新完成")
+    }
+
+    @Test("自定义 header 文案和 VoiceOver 值随状态更新")
+    func customHeaderTextsAndAccessibilityValues() throws {
+        let texts = DefaultHeaderRefreshTexts(
+            idle: "Pull down",
+            pulling: "Keep pulling",
+            triggered: "Release now",
+            refreshing: "Refreshing feed",
+            ending: "Updated",
+            accessibilityLabel: "Timeline refresh",
+            idleAccessibilityValue: "Idle",
+            pullingAccessibilityValue: "Pulling",
+            triggeredAccessibilityValue: "Ready",
+            refreshingAccessibilityValue: "Loading",
+            endingAccessibilityValue: "Done"
+        )
+        let style = DefaultHeaderStyle(texts: texts)
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+        #expect(label.text == "Keep pulling")
+        #expect(style.view.isAccessibilityElement)
+        #expect(style.view.accessibilityLabel == "Timeline refresh")
+        #expect(style.view.accessibilityValue == "Pulling")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "Release now")
+        #expect(style.view.accessibilityValue == "Ready")
+    }
+
+    @Test("header 支持 Dynamic Type 配置")
+    func headerSupportsDynamicTypeConfiguration() throws {
+        let style = DefaultHeaderStyle(
+            configuration: DefaultRefreshStyleConfiguration(
+                font: .systemFont(ofSize: 17, weight: .semibold),
+                fontTextStyle: .headline,
+                adjustsFontForContentSizeCategory: true
+            )
+        )
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        #expect(label.adjustsFontForContentSizeCategory)
+        #expect(label.font.pointSize >= 17)
+    }
+
+    @Test("Reduce Motion 开启时 header 不使用渐进旋转")
+    func headerHonorsReduceMotion() throws {
+        let style = DefaultHeaderStyle(
+            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+                isReduceMotionEnabled: true,
+                isReduceTransparencyEnabled: false
+            )
+        )
+        let arrowView = try #require(style.view.firstSubview(ofType: UIImageView.self))
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+
+        #expect(arrowView.transform == .identity)
+    }
 }
 
 @Suite("DefaultFooterStyle", .tags(.ui))
@@ -50,8 +127,96 @@ struct DefaultFooterStyleTests {
         style.update(state: .ending, progress: 0)
         style.update(state: .noMoreData, progress: 0)
     }
+
+    @Test("默认 footer 文案保持现有中文行为")
+    func defaultFooterTextsStayChinese() throws {
+        let style = DefaultFooterStyle()
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .idle, progress: 0)
+        #expect(label.text == "上拉加载更多")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "释放加载")
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(label.text == "正在加载...")
+
+        style.update(state: .ending, progress: 0)
+        #expect(label.text == "加载完成")
+
+        style.update(state: .noMoreData, progress: 0)
+        #expect(label.text == "没有更多数据")
+    }
+
+    @Test("自定义 footer 文案和 VoiceOver 值随状态更新")
+    func customFooterTextsAndAccessibilityValues() throws {
+        let texts = DefaultFooterRefreshTexts(
+            idle: "Pull up",
+            pulling: "Keep pulling",
+            triggered: "Release to load",
+            refreshing: "Loading next page",
+            ending: "Loaded",
+            noMoreData: "All caught up",
+            accessibilityLabel: "Timeline load more",
+            idleAccessibilityValue: "Idle",
+            pullingAccessibilityValue: "Pulling",
+            triggeredAccessibilityValue: "Ready",
+            refreshingAccessibilityValue: "Loading",
+            endingAccessibilityValue: "Done",
+            noMoreDataAccessibilityValue: "No more items"
+        )
+        let style = DefaultFooterStyle(texts: texts)
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(label.text == "Loading next page")
+        #expect(style.view.isAccessibilityElement)
+        #expect(style.view.accessibilityLabel == "Timeline load more")
+        #expect(style.view.accessibilityValue == "Loading")
+
+        style.update(state: .noMoreData, progress: 0)
+        #expect(label.text == "All caught up")
+        #expect(style.view.accessibilityValue == "No more items")
+    }
+
+    @Test("Reduce Transparency 开启时 footer 使用高对比文字颜色")
+    func footerHonorsReduceTransparency() throws {
+        let style = DefaultFooterStyle(
+            configuration: DefaultRefreshStyleConfiguration(
+                textColor: .red,
+                reducedTransparencyTextColor: .blue,
+                honorsReduceTransparency: true
+            ),
+            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+                isReduceMotionEnabled: false,
+                isReduceTransparencyEnabled: true
+            )
+        )
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .idle, progress: 0)
+
+        #expect(label.textColor == .blue)
+    }
 }
 
 extension Tag {
     @Tag static var ui: Self
+}
+
+private extension UIView {
+    func firstSubview<T: UIView>(ofType type: T.Type) -> T? {
+        if let view = self as? T {
+            return view
+        }
+
+        for subview in subviews {
+            if let found = subview.firstSubview(ofType: type) {
+                return found
+            }
+        }
+
+        return nil
+    }
 }

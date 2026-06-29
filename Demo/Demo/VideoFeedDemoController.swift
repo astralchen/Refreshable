@@ -87,6 +87,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
             await MainActor.run {
                 let nextPage = self.page + 1
                 guard nextPage < self.maxPage else {
+                    self.collectionView.noMoreData(edge: .bottom)
                     return
                 }
 
