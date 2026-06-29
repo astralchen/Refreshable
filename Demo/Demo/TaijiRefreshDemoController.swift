@@ -11,10 +11,15 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
     private var selectedTheme: TaijiDemoTheme = .system
     private var items: [TaijiDemoItem] = []
     private var refreshSerial = 0
+    private var didStartUITestRefresh = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "太极刷新"
+
+        if ProcessInfo.processInfo.arguments.contains("-taiji-ui-screenshots") {
+            selectedTheme = .nebula
+        }
 
         configureThemeControl()
         configureTableView()
@@ -22,7 +27,13 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
         applyTheme(animated: false)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        beginRefreshingForUITestIfNeeded()
+    }
+
     private func configureThemeControl() {
+        themeControl.accessibilityIdentifier = "taiji.themeControl"
         themeControl.selectedSegmentIndex = selectedTheme.rawValue
         themeControl.addTarget(self, action: #selector(themeChanged(_:)), for: .valueChanged)
         themeControl.translatesAutoresizingMaskIntoConstraints = false
@@ -37,6 +48,7 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
 
         tableView.frame = view.bounds
         tableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        tableView.accessibilityIdentifier = "taiji.tableView"
         tableView.backgroundColor = .clear
         tableView.dataSource = self
         tableView.rowHeight = 84
@@ -50,14 +62,36 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
             style: taijiStyle,
             options: RefreshableOptions(triggerOffset: 88, animationDuration: 0.24)
         ) {
-            try? await Task.sleep(nanoseconds: 1_180_000_000)
+            try? await Task.sleep(nanoseconds: Self.refreshDelayNanoseconds)
             await MainActor.run {
                 self.refreshSerial += 1
                 self.items = self.makeItems(seed: self.refreshSerial)
                 self.tableView.reloadData()
             }
         }
+        taijiStyle.view.accessibilityIdentifier = "taiji.refreshControl"
     }
+
+    private func beginRefreshingForUITestIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-taiji-auto-refresh") else { return }
+        guard !didStartUITestRefresh else { return }
+        didStartUITestRefresh = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self else { return }
+            self.view.layoutIfNeeded()
+            self.tableView.contentInset.top = Self.uiTestRefreshTopInset
+            self.tableView.beginRefreshing()
+        }
+    }
+
+    private static var refreshDelayNanoseconds: UInt64 {
+        ProcessInfo.processInfo.arguments.contains("-taiji-auto-refresh")
+            ? 6_000_000_000
+            : 1_180_000_000
+    }
+
+    private static let uiTestRefreshTopInset: CGFloat = 260
 
     private func loadInitialData() {
         items = makeItems(seed: 0)
@@ -93,23 +127,30 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
     }
 
     private func makeItems(seed: Int) -> [TaijiDemoItem] {
-        let titles = [
+        let titles: [String] = [
             "星轨校准", "玻璃层折射", "紫气流场", "深空回声",
             "月白光晕", "引力纹理", "暗核呼吸", "青蓝粒子",
         ]
-        let subtitles = [
+        let subtitles: [String] = [
             "刷新后重组列表节奏",
             "下拉时观察太极体积感",
             "主题切换会保留当前状态",
             "结束态只释放一圈涟漪",
         ]
+        let colors = selectedTheme.itemColors
 
         return (0..<24).map { index in
-            TaijiDemoItem(
-                title: titles[(index + seed) % titles.count],
-                subtitle: subtitles[(index + seed) % subtitles.count],
-                accentColor: selectedTheme.itemColors[(index + seed) % selectedTheme.itemColors.count],
-                badge: String(format: "%02d", index + 1)
+            let shiftedIndex = index + seed
+            let title = titles[shiftedIndex % titles.count]
+            let subtitle = subtitles[shiftedIndex % subtitles.count]
+            let accentColor = colors[shiftedIndex % colors.count]
+            let badge = String(format: "%02d", index + 1)
+
+            return TaijiDemoItem(
+                title: title,
+                subtitle: subtitle,
+                accentColor: accentColor,
+                badge: badge
             )
         }
     }

@@ -66,6 +66,34 @@ struct TaijiRefreshRenderStateTests {
         #expect(triggered.arcSweep > pulled.arcSweep)
     }
 
+    @Test("pulling and triggered arcs stay partial instead of becoming ceremonial rings")
+    func arcsStayPartial() {
+        let pulled = TaijiRefreshRenderState.make(state: .pulling(1), progress: 1, reduceMotion: false, reduceTransparency: false)
+        let triggered = TaijiRefreshRenderState.make(state: .triggered, progress: 1, reduceMotion: false, reduceTransparency: false)
+
+        #expect(pulled.arcSweep <= Self.degrees(180))
+        #expect(triggered.arcSweep <= Self.degrees(210))
+        #expect(triggered.arcSweep > pulled.arcSweep)
+    }
+
+    @Test("fully pulled state has legible local cosmic charge")
+    func fullyPulledStateHasLocalCharge() {
+        let pulled = TaijiRefreshRenderState.make(state: .pulling(1), progress: 1, reduceMotion: false, reduceTransparency: false)
+
+        #expect(pulled.glowIntensity >= 0.82)
+        #expect(pulled.mistAlpha >= 0.62)
+        #expect(pulled.particleIntensity >= 0.90)
+    }
+
+    @Test("particle counts fit the pooled particle layer budget")
+    func particleCountsFitPoolBudget() {
+        let triggered = TaijiRefreshRenderState.make(state: .triggered, progress: 1, reduceMotion: false, reduceTransparency: false)
+        let refreshing = TaijiRefreshRenderState.make(state: .refreshing, progress: 0, reduceMotion: false, reduceTransparency: false)
+
+        #expect(triggered.particleCount <= 18)
+        #expect(refreshing.particleCount <= 18)
+    }
+
     @Test("refreshing enables continuous rotation unless reduce motion is enabled")
     func refreshingAnimationModes() {
         let fullMotion = TaijiRefreshRenderState.make(state: .refreshing, progress: 0, reduceMotion: false, reduceTransparency: false)
@@ -95,5 +123,9 @@ struct TaijiRefreshRenderStateTests {
         #expect(normal.glassOpacity < reduced.glassOpacity)
         #expect(normal.usesTransparentGlass == true)
         #expect(reduced.usesTransparentGlass == false)
+    }
+
+    private static func degrees(_ value: CGFloat) -> CGFloat {
+        value * .pi / 180
     }
 }

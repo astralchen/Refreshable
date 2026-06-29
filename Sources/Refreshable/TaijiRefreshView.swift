@@ -230,16 +230,16 @@ final class TaijiRefreshView: UIView {
         backArcLayer.strokeStart = 0.08
         backArcLayer.strokeEnd = min(0.08 + renderState.arcSweep / (2 * .pi), 0.86)
         frontArcLayer.strokeStart = 0.52
-        frontArcLayer.strokeEnd = min(0.52 + renderState.arcSweep / (2 * .pi) * 0.72, 0.98)
+        frontArcLayer.strokeEnd = min(0.52 + renderState.arcSweep / (2 * .pi) * 0.64, 0.94)
 
         mistLayer.colors = [
-            palette.primaryGlow.withAlphaComponent(0.30).cgColor,
-            palette.secondaryGlow.withAlphaComponent(0.22).cgColor,
+            palette.primaryGlow.withAlphaComponent(0.42).cgColor,
+            palette.secondaryGlow.withAlphaComponent(0.30).cgColor,
             palette.backgroundTint.withAlphaComponent(0.0).cgColor,
         ]
         glowLayer.colors = [
-            palette.primaryGlow.withAlphaComponent(0.46).cgColor,
-            palette.secondaryGlow.withAlphaComponent(0.20).cgColor,
+            palette.primaryGlow.withAlphaComponent(0.56).cgColor,
+            palette.secondaryGlow.withAlphaComponent(0.28).cgColor,
             UIColor.clear.cgColor,
         ]
         rippleLayer.strokeColor = palette.primaryGlow.withAlphaComponent(0.38).cgColor
@@ -288,14 +288,22 @@ final class TaijiRefreshView: UIView {
 
         for (index, particle) in particleLayers.enumerated() {
             let isVisible = index < visibleCount
-            let phase = CGFloat(index) / CGFloat(max(particleLayers.count, 1)) * 2 * .pi
-            let radius = baseRadius + CGFloat(index % 5) * 2.1
+            let radiusJitter = CGFloat((index * 37 + 13) % 17) / 16
+            let phaseJitter = CGFloat((index * 29 + 7) % 23) / 23
+            let sizeJitter = CGFloat((index * 11 + 5) % 7) / 6
+            let phase = CGFloat(index) * 2.399963 + phaseJitter * 0.42
+            let radius = baseRadius * (0.72 + radiusJitter * 0.44)
+            let diameter = 1.15 + sizeJitter * 1.45
+            let opacity = renderState.particleIntensity * (0.34 + radiusJitter * 0.66)
+
+            particle.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+            particle.cornerRadius = diameter / 2
             particle.position = CGPoint(
                 x: center.x + cos(phase + renderState.rotation * 0.28) * radius,
-                y: center.y + sin(phase + renderState.rotation * 0.28) * radius * 0.52
+                y: center.y + sin(phase + renderState.rotation * 0.28) * radius * 0.48
             )
             particle.backgroundColor = palette.particle.cgColor
-            particle.opacity = isVisible ? Float(renderState.particleIntensity) : 0
+            particle.opacity = isVisible ? Float(opacity) : 0
         }
     }
 
@@ -475,73 +483,215 @@ private final class TaijiBodyLayer: CALayer {
     var glassOpacity: CGFloat = 0.62
 
     override func draw(in context: CGContext) {
-        let rect = bounds.insetBy(dx: 1, dy: 1)
+        let rect = bounds.insetBy(dx: 1.2, dy: 1.2)
         guard rect.width > 1, rect.height > 1 else { return }
+
+        let circlePath = UIBezierPath(ovalIn: rect)
 
         context.saveGState()
         context.setShadow(
-            offset: CGSize(width: 0, height: 2),
-            blur: 8,
-            color: palette.primaryGlow.withAlphaComponent(0.35).cgColor
+            offset: CGSize(width: 0, height: 2.4),
+            blur: 10,
+            color: palette.primaryGlow.withAlphaComponent(0.42).cgColor
+        )
+        context.addPath(circlePath.cgPath)
+        context.setFillColor(palette.shadowCore.withAlphaComponent(0.18).cgColor)
+        context.fillPath()
+        context.restoreGState()
+
+        drawClippedRadialGradient(
+            in: context,
+            path: circlePath,
+            colors: [
+                palette.glassHighlight.withAlphaComponent(glassOpacity * 0.86),
+                palette.primaryGlow.withAlphaComponent(0.34),
+                palette.shadowCore.withAlphaComponent(0.64),
+            ],
+            locations: [0, 0.48, 1],
+            startCenter: CGPoint(x: rect.minX + rect.width * 0.32, y: rect.minY + rect.height * 0.28),
+            endCenter: CGPoint(x: rect.midX, y: rect.midY),
+            endRadius: rect.width * 0.78
         )
 
-        let circlePath = UIBezierPath(ovalIn: rect)
-        context.addPath(circlePath.cgPath)
-        context.clip()
+        drawClippedRadialGradient(
+            in: context,
+            path: circlePath,
+            colors: [
+                palette.primaryGlow.withAlphaComponent(0.34),
+                UIColor.clear,
+            ],
+            locations: [0, 1],
+            startCenter: CGPoint(x: rect.minX + rect.width * 0.18, y: rect.minY + rect.height * 0.32),
+            endCenter: CGPoint(x: rect.minX + rect.width * 0.18, y: rect.minY + rect.height * 0.32),
+            endRadius: rect.width * 0.54
+        )
 
-        context.setFillColor(palette.glassHighlight.withAlphaComponent(glassOpacity).cgColor)
-        context.fill(rect)
+        drawClippedRadialGradient(
+            in: context,
+            path: circlePath,
+            colors: [
+                palette.secondaryGlow.withAlphaComponent(0.40),
+                UIColor.clear,
+            ],
+            locations: [0, 1],
+            startCenter: CGPoint(x: rect.maxX - rect.width * 0.20, y: rect.maxY - rect.height * 0.22),
+            endCenter: CGPoint(x: rect.maxX - rect.width * 0.20, y: rect.maxY - rect.height * 0.22),
+            endRadius: rect.width * 0.58
+        )
 
-        let lowerPath = UIBezierPath()
-        lowerPath.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        lowerPath.addArc(
+        let shadowPath = makeShadowLobePath(in: rect)
+        drawClippedLinearGradient(
+            in: context,
+            path: shadowPath,
+            colors: [
+                palette.shadowCore.withAlphaComponent(0.96),
+                palette.secondaryGlow.withAlphaComponent(0.58),
+                palette.shadowCore.withAlphaComponent(0.84),
+            ],
+            locations: [0, 0.54, 1],
+            start: CGPoint(x: rect.minX, y: rect.minY),
+            end: CGPoint(x: rect.maxX, y: rect.maxY)
+        )
+
+        let topCore = CGRect(
+            x: rect.midX - rect.width * 0.105,
+            y: rect.minY + rect.height * 0.24,
+            width: rect.width * 0.21,
+            height: rect.height * 0.21
+        )
+        let bottomCore = CGRect(
+            x: rect.midX - rect.width * 0.105,
+            y: rect.maxY - rect.height * 0.44,
+            width: rect.width * 0.21,
+            height: rect.height * 0.21
+        )
+
+        drawClippedRadialGradient(
+            in: context,
+            path: UIBezierPath(ovalIn: topCore),
+            colors: [
+                palette.secondaryGlow.withAlphaComponent(0.58),
+                palette.shadowCore.withAlphaComponent(0.96),
+            ],
+            locations: [0, 1],
+            startCenter: CGPoint(x: topCore.midX - topCore.width * 0.18, y: topCore.midY - topCore.height * 0.18),
+            endCenter: CGPoint(x: topCore.midX, y: topCore.midY),
+            endRadius: topCore.width * 0.72
+        )
+
+        drawClippedRadialGradient(
+            in: context,
+            path: UIBezierPath(ovalIn: bottomCore),
+            colors: [
+                palette.glassHighlight.withAlphaComponent(0.98),
+                palette.primaryGlow.withAlphaComponent(0.54),
+            ],
+            locations: [0, 1],
+            startCenter: CGPoint(x: bottomCore.midX - bottomCore.width * 0.18, y: bottomCore.midY - bottomCore.height * 0.20),
+            endCenter: CGPoint(x: bottomCore.midX, y: bottomCore.midY),
+            endRadius: bottomCore.width * 0.72
+        )
+
+        let sheenRect = rect.insetBy(dx: rect.width * 0.14, dy: rect.height * 0.10)
+        let sheenPath = UIBezierPath()
+        sheenPath.move(to: CGPoint(x: sheenRect.minX + sheenRect.width * 0.08, y: sheenRect.minY + sheenRect.height * 0.24))
+        sheenPath.addCurve(
+            to: CGPoint(x: sheenRect.maxX - sheenRect.width * 0.10, y: sheenRect.minY + sheenRect.height * 0.38),
+            controlPoint1: CGPoint(x: sheenRect.midX - sheenRect.width * 0.10, y: sheenRect.minY - sheenRect.height * 0.02),
+            controlPoint2: CGPoint(x: sheenRect.midX + sheenRect.width * 0.22, y: sheenRect.minY + sheenRect.height * 0.16)
+        )
+        context.addPath(sheenPath.cgPath)
+        context.setStrokeColor(palette.glassHighlight.withAlphaComponent(0.62).cgColor)
+        context.setLineWidth(3.2)
+        context.setLineCap(.round)
+        context.strokePath()
+
+        context.setStrokeColor(palette.shadowCore.withAlphaComponent(0.46).cgColor)
+        context.setLineWidth(4.6)
+        context.strokeEllipse(in: rect.insetBy(dx: 0.4, dy: 0.4))
+        context.setStrokeColor(palette.primaryGlow.withAlphaComponent(0.72).cgColor)
+        context.setLineWidth(2.1)
+        context.strokeEllipse(in: rect.insetBy(dx: 1.0, dy: 1.0))
+        context.setStrokeColor(palette.glassHighlight.withAlphaComponent(0.86).cgColor)
+        context.setLineWidth(1.1)
+        context.strokeEllipse(in: rect.insetBy(dx: 2.1, dy: 2.1))
+    }
+
+    private func makeShadowLobePath(in rect: CGRect) -> UIBezierPath {
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addArc(
             withCenter: CGPoint(x: rect.midX, y: rect.midY - rect.height * 0.25),
             radius: rect.width * 0.25,
             startAngle: -.pi / 2,
             endAngle: .pi / 2,
             clockwise: true
         )
-        lowerPath.addArc(
+        path.addArc(
             withCenter: CGPoint(x: rect.midX, y: rect.midY + rect.height * 0.25),
             radius: rect.width * 0.25,
             startAngle: -.pi / 2,
             endAngle: .pi / 2,
             clockwise: false
         )
-        lowerPath.addArc(
+        path.addArc(
             withCenter: CGPoint(x: rect.midX, y: rect.midY),
             radius: rect.width * 0.5,
             startAngle: .pi / 2,
             endAngle: -.pi / 2,
             clockwise: false
         )
-        lowerPath.close()
+        path.close()
+        return path
+    }
 
-        context.addPath(lowerPath.cgPath)
-        context.setFillColor(palette.shadowCore.withAlphaComponent(0.88).cgColor)
-        context.fillPath()
+    private func drawClippedLinearGradient(
+        in context: CGContext,
+        path: UIBezierPath,
+        colors: [UIColor],
+        locations: [CGFloat],
+        start: CGPoint,
+        end: CGPoint
+    ) {
+        guard let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: colors.map(\.cgColor) as CFArray,
+            locations: locations
+        ) else { return }
 
-        let topCore = CGRect(
-            x: rect.midX - rect.width * 0.10,
-            y: rect.minY + rect.height * 0.24,
-            width: rect.width * 0.20,
-            height: rect.height * 0.20
-        )
-        let bottomCore = CGRect(
-            x: rect.midX - rect.width * 0.10,
-            y: rect.maxY - rect.height * 0.44,
-            width: rect.width * 0.20,
-            height: rect.height * 0.20
-        )
-        context.setFillColor(palette.shadowCore.withAlphaComponent(0.88).cgColor)
-        context.fillEllipse(in: topCore)
-        context.setFillColor(palette.glassHighlight.withAlphaComponent(0.82).cgColor)
-        context.fillEllipse(in: bottomCore)
-
+        context.saveGState()
+        context.addPath(path.cgPath)
+        context.clip()
+        context.drawLinearGradient(gradient, start: start, end: end, options: [])
         context.restoreGState()
+    }
 
-        context.setStrokeColor(palette.glassHighlight.withAlphaComponent(0.86).cgColor)
-        context.setLineWidth(1.2)
-        context.strokeEllipse(in: rect)
+    private func drawClippedRadialGradient(
+        in context: CGContext,
+        path: UIBezierPath,
+        colors: [UIColor],
+        locations: [CGFloat],
+        startCenter: CGPoint,
+        endCenter: CGPoint,
+        endRadius: CGFloat
+    ) {
+        guard let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: colors.map(\.cgColor) as CFArray,
+            locations: locations
+        ) else { return }
+
+        context.saveGState()
+        context.addPath(path.cgPath)
+        context.clip()
+        context.drawRadialGradient(
+            gradient,
+            startCenter: startCenter,
+            startRadius: 0,
+            endCenter: endCenter,
+            endRadius: endRadius,
+            options: []
+        )
+        context.restoreGState()
     }
 }

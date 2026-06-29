@@ -33,6 +33,10 @@ final class DemoTabBarController: UITabBarController {
                 imageName: "play.rectangle.fill"
             ),
         ]
+
+        if ProcessInfo.processInfo.arguments.contains("-taiji-ui-screenshots") {
+            selectedIndex = 1
+        }
     }
 
     private func configureAppearance() {
