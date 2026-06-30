@@ -162,6 +162,29 @@ tableView.refreshable(style: MyHeaderStyle()) {
 
 > 无需管理 `view.alpha`，组件会自动处理（idle 透明，拖拽渐显，刷新时完全显示）。
 
+### 内置自定义样式
+
+库内提供三套可直接使用的自定义刷新样式：
+
+```swift
+// 原生系统感：箭头 + 进度环 + 菊花 + 文案
+tableView.refreshable(style: SystemNativeRefreshStyle()) {
+    await viewModel.fetchLatest()
+}
+
+// 高级玻璃太极：无可见文案，用旋转、辉光和粒子表达状态
+tableView.refreshable(style: TaijiRefreshStyle()) {
+    await viewModel.fetchLatest()
+}
+
+// 动感彩带：弹性路径 + 彩色 tick + 状态胶囊
+tableView.refreshable(style: KineticRefreshStyle()) {
+    await viewModel.fetchLatest()
+}
+```
+
+Demo App 的“样式”页可以在真实 `UITableView` 中切换和试用这三套刷新控件。
+
 ## 兼容性
 
 - iOS 13+
