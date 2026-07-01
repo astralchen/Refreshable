@@ -3,6 +3,7 @@ import UIKit
 struct TaijiRefreshRenderState: Equatable {
     var bodyAlpha: CGFloat
     var bodyScale: CGFloat
+    var bodyVerticalOffsetRatio: CGFloat
     var rotation: CGFloat
     var preservesCurrentRotation: Bool
     var glowIntensity: CGFloat
@@ -33,6 +34,7 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: 0,
                 bodyScale: 0.86,
+                bodyVerticalOffsetRatio: 0,
                 rotation: 0,
                 preservesCurrentRotation: true,
                 glowIntensity: 0,
@@ -54,7 +56,8 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: lerp(0.15, 1.0, p),
                 bodyScale: lerp(0.86, 1.0, eased),
-                rotation: degrees(140) * eased,
+                bodyVerticalOffsetRatio: 0,
+                rotation: 0,
                 preservesCurrentRotation: false,
                 glowIntensity: lerp(0.20, 0.86, p),
                 mistAlpha: lerp(0.0, 0.66, p),
@@ -74,7 +77,8 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: 1,
                 bodyScale: 1.04,
-                rotation: degrees(158),
+                bodyVerticalOffsetRatio: 0,
+                rotation: 0,
                 preservesCurrentRotation: false,
                 glowIntensity: 0.98,
                 mistAlpha: 0.70,
@@ -94,6 +98,7 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: 1,
                 bodyScale: 1,
+                bodyVerticalOffsetRatio: 0.18,
                 rotation: 0,
                 preservesCurrentRotation: true,
                 glowIntensity: 0.86,
@@ -114,6 +119,7 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: 0.64,
                 bodyScale: 0.92,
+                bodyVerticalOffsetRatio: 0.16,
                 rotation: 0,
                 preservesCurrentRotation: true,
                 glowIntensity: 0.30,
@@ -134,6 +140,7 @@ struct TaijiRefreshRenderState: Equatable {
             return TaijiRefreshRenderState(
                 bodyAlpha: 0.55,
                 bodyScale: 0.96,
+                bodyVerticalOffsetRatio: 0,
                 rotation: 0,
                 preservesCurrentRotation: true,
                 glowIntensity: 0.24,

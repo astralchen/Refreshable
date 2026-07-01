@@ -1,5 +1,6 @@
 import UIKit
 import QuartzCore
+import CoreImage
 
 final class TaijiRefreshView: UIView {
     var onTraitCollectionChange: ((UITraitCollection) -> Void)?
@@ -8,26 +9,49 @@ final class TaijiRefreshView: UIView {
     private(set) var isContinuousAnimationActive = false
 
     private let mistLayer = CAGradientLayer()
+    private let mistMaskLayer = CAShapeLayer()
     private let orbitContainerLayer = CALayer()
     private let backArcLayer = CAShapeLayer()
     private let frontArcLayer = CAShapeLayer()
     private let bodyContainerLayer = CALayer()
     private let glowLayer = CAGradientLayer()
     private let bodyLayer = TaijiBodyLayer()
+    private let refractionLayer = TaijiRefractionLayer()
     private let highlightLayer = CAShapeLayer()
     private let rippleLayer = CAShapeLayer()
-    private let particleLayers: [CALayer] = (0..<18).map { _ in CALayer() }
+    private let particleEmitterLayer = CAEmitterLayer()
 
     var debugLayerNames: [String] {
-        [mistLayer, backArcLayer, frontArcLayer, bodyLayer, rippleLayer].compactMap(\.name)
+        [
+            mistLayer,
+            backArcLayer,
+            frontArcLayer,
+            bodyLayer,
+            refractionLayer,
+            particleEmitterLayer,
+            rippleLayer,
+        ].compactMap(\.name)
     }
 
     var debugParticleCount: Int {
-        particleLayers.count
+        particleEmitterLayer.emitterCells?.count ?? 0
     }
 
     var debugBodyFrame: CGRect {
         bodyContainerLayer.frame
+    }
+
+    var debugBodyBounds: CGRect {
+        bodyContainerLayer.bounds
+    }
+
+    var debugOrbitFrame: CGRect {
+        let frames = [backArcLayer.path?.boundingBox, frontArcLayer.path?.boundingBox].compactMap { $0 }
+        return frames.reduce(CGRect.null) { $0.union($1) }
+    }
+
+    var debugRippleFrame: CGRect {
+        rippleLayer.path?.boundingBox ?? .zero
     }
 
     var debugAnimationKeys: [String] {
@@ -39,9 +63,7 @@ final class TaijiRefreshView: UIView {
         keys.append(contentsOf: backArcLayer.animationKeys() ?? [])
         keys.append(contentsOf: frontArcLayer.animationKeys() ?? [])
         keys.append(contentsOf: mistLayer.animationKeys() ?? [])
-        for particle in particleLayers {
-            keys.append(contentsOf: particle.animationKeys() ?? [])
-        }
+        keys.append(contentsOf: particleEmitterLayer.animationKeys() ?? [])
         return keys
     }
 
@@ -66,32 +88,35 @@ final class TaijiRefreshView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
 
-        let diameter = min(56, max(44, bounds.height * 0.58))
+        let diameter = min(52, max(42, bounds.height * 0.54))
+        let bodyCenterY = bounds.midY + bodyVerticalOffset(diameter: diameter)
         let bodyFrame = CGRect(
             x: bounds.midX - diameter / 2,
-            y: bounds.midY - diameter / 2,
+            y: bodyCenterY - diameter / 2,
             width: diameter,
             height: diameter
         ).integral
-        let mistInset = -diameter * 0.92
-        let mistFrame = bodyFrame.insetBy(dx: mistInset, dy: mistInset * 0.62)
+        let mistFrame = bodyFrame.insetBy(dx: -diameter * 0.36, dy: -diameter * 0.22)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
 
         mistLayer.frame = mistFrame
+        mistMaskLayer.frame = mistLayer.bounds
+        mistMaskLayer.path = UIBezierPath(ovalIn: mistLayer.bounds).cgPath
         orbitContainerLayer.frame = bounds
         bodyContainerLayer.frame = bodyFrame
         glowLayer.frame = bodyContainerLayer.bounds.insetBy(dx: -diameter * 0.32, dy: -diameter * 0.32)
         glowLayer.position = CGPoint(x: bodyContainerLayer.bounds.midX, y: bodyContainerLayer.bounds.midY)
         bodyLayer.frame = bodyContainerLayer.bounds
+        refractionLayer.frame = bodyContainerLayer.bounds
         highlightLayer.frame = bodyContainerLayer.bounds
         rippleLayer.frame = bounds
 
         updateArcPaths(in: bodyFrame)
         updateHighlightPath()
         updateRipplePath(progress: lastRenderState?.rippleProgress ?? 0)
-        updateParticleFrames()
+        updateParticleEmitterFrame()
 
         CATransaction.commit()
     }
@@ -103,11 +128,22 @@ final class TaijiRefreshView: UIView {
         reduceTransparency: Bool
     ) {
         let previousPalette = lastPalette
+        let previousRenderState = lastRenderState
         lastRenderState = renderState
         lastPalette = palette
+        if previousRenderState?.bodyVerticalOffsetRatio != renderState.bodyVerticalOffsetRatio {
+            setNeedsLayout()
+            layoutIfNeeded()
+        }
         bodyLayer.palette = palette
         bodyLayer.glassOpacity = renderState.glassOpacity
         bodyLayer.setNeedsDisplay()
+        refractionLayer.palette = palette
+        refractionLayer.intensity = renderState.usesTransparentGlass
+            ? min(1.0, max(0.24, renderState.glowIntensity))
+            : 0.32
+        refractionLayer.glassOpacity = renderState.glassOpacity
+        refractionLayer.setNeedsDisplay()
 
         let updates = {
             self.mistLayer.opacity = Float(renderState.mistAlpha)
@@ -119,7 +155,7 @@ final class TaijiRefreshView: UIView {
             self.rippleLayer.opacity = Float(1 - renderState.rippleProgress)
             self.updateArcStroke(renderState: renderState, palette: palette)
             self.updateRipplePath(progress: renderState.rippleProgress)
-            self.updateParticles(renderState: renderState, palette: palette)
+            self.updateParticleEmitter(renderState: renderState, palette: palette)
         }
 
         CATransaction.begin()
@@ -137,12 +173,23 @@ final class TaijiRefreshView: UIView {
         updateRefreshingAnimations(for: renderState)
     }
 
+    private func bodyVerticalOffset(diameter: CGFloat) -> CGFloat {
+        let ratio = lastRenderState?.bodyVerticalOffsetRatio ?? 0
+        guard ratio != 0, bounds.height > 0 else { return 0 }
+
+        let requestedOffset = bounds.height * ratio
+        let bottomLimit = bounds.maxY - diameter / 2 - bounds.midY - 2
+        let topLimit = bounds.minY + diameter / 2 - bounds.midY + 2
+        return min(max(requestedOffset, topLimit), bottomLimit)
+    }
+
     private func configureLayers() {
         mistLayer.name = "mist"
         mistLayer.type = .radial
         mistLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         mistLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
         mistLayer.locations = [0, 0.38, 1]
+        mistLayer.mask = mistMaskLayer
 
         var perspective = CATransform3DIdentity
         perspective.m34 = -1 / 460
@@ -162,6 +209,10 @@ final class TaijiRefreshView: UIView {
         bodyLayer.contentsScale = UIScreen.main.scale
         bodyLayer.needsDisplayOnBoundsChange = true
 
+        refractionLayer.name = "coreImageRefraction"
+        refractionLayer.contentsScale = UIScreen.main.scale
+        refractionLayer.needsDisplayOnBoundsChange = true
+
         glowLayer.type = .radial
         glowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         glowLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
@@ -175,6 +226,12 @@ final class TaijiRefreshView: UIView {
         rippleLayer.fillColor = UIColor.clear.cgColor
         rippleLayer.lineWidth = 1
 
+        particleEmitterLayer.name = "particleEmitter"
+        particleEmitterLayer.emitterShape = .circle
+        particleEmitterLayer.emitterMode = .outline
+        particleEmitterLayer.renderMode = .additive
+        particleEmitterLayer.birthRate = 0
+
         layer.addSublayer(mistLayer)
         layer.addSublayer(orbitContainerLayer)
         orbitContainerLayer.addSublayer(backArcLayer)
@@ -182,16 +239,10 @@ final class TaijiRefreshView: UIView {
         layer.addSublayer(bodyContainerLayer)
         bodyContainerLayer.addSublayer(glowLayer)
         bodyContainerLayer.addSublayer(bodyLayer)
+        bodyContainerLayer.addSublayer(refractionLayer)
         bodyContainerLayer.addSublayer(highlightLayer)
+        layer.addSublayer(particleEmitterLayer)
         layer.addSublayer(rippleLayer)
-
-        for (index, particle) in particleLayers.enumerated() {
-            particle.name = "particle-\(index)"
-            particle.bounds = CGRect(x: 0, y: 0, width: 2, height: 2)
-            particle.cornerRadius = 1
-            particle.opacity = 0
-            layer.addSublayer(particle)
-        }
     }
 
     private func bodyTransform(for state: TaijiRefreshRenderState) -> CATransform3D {
@@ -203,19 +254,19 @@ final class TaijiRefreshView: UIView {
     }
 
     private func updateArcPaths(in bodyFrame: CGRect) {
-        let radius = bodyFrame.width * 0.74
+        let radius = bodyFrame.width * 0.66
         let center = CGPoint(x: bodyFrame.midX, y: bodyFrame.midY)
         let backRect = CGRect(
             x: center.x - radius,
-            y: center.y - radius * 0.46,
+            y: center.y - radius * 0.59,
             width: radius * 2,
-            height: radius * 0.92
+            height: radius * 1.18
         )
         let frontRect = CGRect(
-            x: center.x - radius * 0.86,
-            y: center.y - radius * 0.40,
-            width: radius * 1.72,
-            height: radius * 0.80
+            x: center.x - radius * 0.82,
+            y: center.y - radius * 0.50,
+            width: radius * 1.64,
+            height: radius * 1.00
         )
 
         backArcLayer.path = UIBezierPath(ovalIn: backRect).cgPath
@@ -242,7 +293,7 @@ final class TaijiRefreshView: UIView {
             palette.secondaryGlow.withAlphaComponent(0.28).cgColor,
             UIColor.clear.cgColor,
         ]
-        rippleLayer.strokeColor = palette.primaryGlow.withAlphaComponent(0.38).cgColor
+        rippleLayer.strokeColor = palette.primaryGlow.withAlphaComponent(0.30).cgColor
     }
 
     private func updateHighlightPath() {
@@ -261,7 +312,7 @@ final class TaijiRefreshView: UIView {
 
     private func updateRipplePath(progress: CGFloat) {
         let diameter = bodyContainerLayer.bounds.width
-        let radius = diameter * (0.52 + progress * 0.90)
+        let radius = diameter * (0.44 + progress * 0.34)
         let rect = CGRect(
             x: bodyContainerLayer.frame.midX - radius,
             y: bodyContainerLayer.frame.midY - radius,
@@ -271,40 +322,32 @@ final class TaijiRefreshView: UIView {
         rippleLayer.path = UIBezierPath(ovalIn: rect).cgPath
     }
 
-    private func updateParticleFrames() {
-        for particle in particleLayers {
-            particle.bounds = CGRect(x: 0, y: 0, width: 2, height: 2)
-            particle.cornerRadius = 1
-        }
-        if let state = lastRenderState, let palette = lastPalette {
-            updateParticles(renderState: state, palette: palette)
-        }
+    private func updateParticleEmitterFrame() {
+        particleEmitterLayer.frame = bounds
+        particleEmitterLayer.emitterPosition = CGPoint(
+            x: bodyContainerLayer.frame.midX,
+            y: bodyContainerLayer.frame.midY
+        )
+        particleEmitterLayer.emitterSize = CGSize(
+            width: max(bodyContainerLayer.bounds.width * 1.36, 1),
+            height: max(bodyContainerLayer.bounds.height * 0.82, 1)
+        )
     }
 
-    private func updateParticles(renderState: TaijiRefreshRenderState, palette: TaijiRefreshPalette) {
-        let center = CGPoint(x: bodyContainerLayer.frame.midX, y: bodyContainerLayer.frame.midY)
-        let baseRadius = max(bodyContainerLayer.bounds.width * 0.62, 1)
-        let visibleCount = min(renderState.particleCount, particleLayers.count)
+    private func updateParticleEmitter(renderState: TaijiRefreshRenderState, palette: TaijiRefreshPalette) {
+        updateParticleEmitterFrame()
 
-        for (index, particle) in particleLayers.enumerated() {
-            let isVisible = index < visibleCount
-            let radiusJitter = CGFloat((index * 37 + 13) % 17) / 16
-            let phaseJitter = CGFloat((index * 29 + 7) % 23) / 23
-            let sizeJitter = CGFloat((index * 11 + 5) % 7) / 6
-            let phase = CGFloat(index) * 2.399963 + phaseJitter * 0.42
-            let radius = baseRadius * (0.72 + radiusJitter * 0.44)
-            let diameter = 1.15 + sizeJitter * 1.45
-            let opacity = renderState.particleIntensity * (0.34 + radiusJitter * 0.66)
-
-            particle.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-            particle.cornerRadius = diameter / 2
-            particle.position = CGPoint(
-                x: center.x + cos(phase + renderState.rotation * 0.28) * radius,
-                y: center.y + sin(phase + renderState.rotation * 0.28) * radius * 0.48
-            )
-            particle.backgroundColor = palette.particle.cgColor
-            particle.opacity = isVisible ? Float(opacity) : 0
+        let visibleCount = min(max(renderState.particleCount, 0), 18)
+        guard visibleCount > 0, renderState.particleIntensity > 0 else {
+            particleEmitterLayer.birthRate = 0
+            return
         }
+
+        particleEmitterLayer.birthRate = Float(renderState.particleIntensity)
+        particleEmitterLayer.emitterCells = Self.particleEmitterCells(
+            visibleCount: visibleCount,
+            palette: palette
+        )
     }
 
     private func updateRefreshingAnimations(for state: TaijiRefreshRenderState) {
@@ -319,12 +362,23 @@ final class TaijiRefreshView: UIView {
                 animation.timingFunction = CAMediaTimingFunction(name: .linear)
                 bodyContainerLayer.add(animation, forKey: "taiji.rotation")
             }
+            if orbitContainerLayer.animation(forKey: "taiji.refreshOrbit") == nil {
+                let animation = CABasicAnimation(keyPath: "transform.rotation.z")
+                animation.fromValue = 0
+                animation.toValue = 2 * CGFloat.pi
+                animation.duration = 1 / TimeInterval(state.continuousRotationSpeed)
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .linear)
+                orbitContainerLayer.add(animation, forKey: "taiji.refreshOrbit")
+            }
         } else {
             isContinuousAnimationActive = false
-            if let presentation = bodyContainerLayer.presentation() {
+            if bodyContainerLayer.animation(forKey: "taiji.rotation") != nil,
+               let presentation = bodyContainerLayer.presentation() {
                 bodyContainerLayer.transform = presentation.transform
             }
             bodyContainerLayer.removeAnimation(forKey: "taiji.rotation")
+            orbitContainerLayer.removeAnimation(forKey: "taiji.refreshOrbit")
         }
 
         if state.usesGlowPulse {
@@ -346,7 +400,7 @@ final class TaijiRefreshView: UIView {
             && state.rippleProgress == 0
             && state.continuousRotationSpeed == 0
             && !state.usesGlowPulse
-        updatePullMotion(isActive: usesPullMotion, particleCount: state.particleCount)
+        updatePullMotion(isActive: usesPullMotion)
 
         if state.rippleProgress > 0 {
             let animation = CABasicAnimation(keyPath: "opacity")
@@ -364,10 +418,9 @@ final class TaijiRefreshView: UIView {
         }
     }
 
-    private func updatePullMotion(isActive: Bool, particleCount: Int) {
+    private func updatePullMotion(isActive: Bool) {
         guard isActive else {
             orbitContainerLayer.removeAnimation(forKey: "taiji.pullOrbit")
-            particleLayers.forEach { $0.removeAnimation(forKey: "taiji.pullTwinkle") }
             return
         }
 
@@ -380,25 +433,6 @@ final class TaijiRefreshView: UIView {
             animation.repeatCount = .infinity
             animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             orbitContainerLayer.add(animation, forKey: "taiji.pullOrbit")
-        }
-
-        for (index, particle) in particleLayers.enumerated() {
-            guard index < min(particleCount, particleLayers.count) else {
-                particle.removeAnimation(forKey: "taiji.pullTwinkle")
-                continue
-            }
-
-            if particle.animation(forKey: "taiji.pullTwinkle") == nil {
-                let animation = CABasicAnimation(keyPath: "opacity")
-                animation.fromValue = 0.28
-                animation.toValue = 1.0
-                animation.duration = 0.62 + TimeInterval(index % 5) * 0.07
-                animation.beginTime = CACurrentMediaTime() + TimeInterval(index % 6) * 0.04
-                animation.autoreverses = true
-                animation.repeatCount = .infinity
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                particle.add(animation, forKey: "taiji.pullTwinkle")
-            }
         }
     }
 
@@ -475,6 +509,167 @@ final class TaijiRefreshView: UIView {
         animation.duration = 0.22
         animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         layer.add(animation, forKey: "taiji.palette.\(keyPath)")
+    }
+
+    private static func particleEmitterCells(
+        visibleCount: Int,
+        palette: TaijiRefreshPalette
+    ) -> [CAEmitterCell] {
+        let spark = CAEmitterCell()
+        spark.name = "spark"
+        spark.contents = particleImage
+        spark.birthRate = Float(visibleCount) * 1.12
+        spark.lifetime = 1.12
+        spark.lifetimeRange = 0.42
+        spark.velocity = 13
+        spark.velocityRange = 9
+        spark.emissionRange = .pi * 2
+        spark.scale = 0.058
+        spark.scaleRange = 0.032
+        spark.scaleSpeed = -0.014
+        spark.alphaSpeed = -0.50
+        spark.spin = 0.8
+        spark.spinRange = 1.6
+        spark.color = palette.particle.withAlphaComponent(0.96).cgColor
+
+        let dust = CAEmitterCell()
+        dust.name = "dust"
+        dust.contents = particleImage
+        dust.birthRate = Float(visibleCount) * 0.72
+        dust.lifetime = 1.80
+        dust.lifetimeRange = 0.56
+        dust.velocity = 5
+        dust.velocityRange = 5
+        dust.emissionRange = .pi * 2
+        dust.scale = 0.044
+        dust.scaleRange = 0.024
+        dust.scaleSpeed = -0.008
+        dust.alphaSpeed = -0.28
+        dust.spin = 0.3
+        dust.spinRange = 1.1
+        dust.color = palette.primaryGlow.withAlphaComponent(0.58).cgColor
+
+        return [spark, dust]
+    }
+
+    private static let particleImage: CGImage? = {
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        format.scale = 2
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 10, height: 10), format: format)
+        return renderer.image { context in
+            let cgContext = context.cgContext
+            let rect = CGRect(x: 1, y: 1, width: 8, height: 8)
+            let colors = [
+                UIColor.white.withAlphaComponent(0.95).cgColor,
+                UIColor.white.withAlphaComponent(0.18).cgColor,
+                UIColor.white.withAlphaComponent(0.0).cgColor,
+            ] as CFArray
+            let locations: [CGFloat] = [0, 0.42, 1]
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: colors,
+                locations: locations
+            ) else { return }
+
+            cgContext.drawRadialGradient(
+                gradient,
+                startCenter: CGPoint(x: rect.midX, y: rect.midY),
+                startRadius: 0,
+                endCenter: CGPoint(x: rect.midX, y: rect.midY),
+                endRadius: rect.width / 2,
+                options: []
+            )
+        }.cgImage
+    }()
+}
+
+private final class TaijiRefractionLayer: CALayer {
+    private static let ciContext = CIContext(options: [
+        .workingColorSpace: CGColorSpaceCreateDeviceRGB(),
+        .outputColorSpace: CGColorSpaceCreateDeviceRGB(),
+    ])
+
+    var palette: TaijiRefreshPalette = .dark
+    var intensity: CGFloat = 0.24
+    var glassOpacity: CGFloat = 0.62
+
+    override func draw(in context: CGContext) {
+        let rect = bounds.insetBy(dx: 1.6, dy: 1.6)
+        guard rect.width > 1, rect.height > 1, intensity > 0.01 else { return }
+        guard let image = makeRefractionImage(size: rect.size) else { return }
+
+        context.saveGState()
+        context.addEllipse(in: rect)
+        context.clip()
+        context.setBlendMode(.screen)
+        context.setAlpha(min(0.50, 0.16 + intensity * 0.34))
+        context.draw(image, in: rect)
+        context.restoreGState()
+    }
+
+    private func makeRefractionImage(size: CGSize) -> CGImage? {
+        let scale = max(contentsScale, 1)
+        let pixelSize = CGSize(
+            width: max(size.width * scale, 1),
+            height: max(size.height * scale, 1)
+        )
+        let extent = CGRect(origin: .zero, size: pixelSize)
+
+        guard let highlight = radialImage(
+            extent: extent,
+            center: CGPoint(x: extent.width * 0.34, y: extent.height * 0.70),
+            innerColor: palette.glassHighlight.withAlphaComponent(glassOpacity * 0.74),
+            outerColor: palette.primaryGlow.withAlphaComponent(0.0),
+            radius: extent.width * 0.68
+        ),
+        let glow = radialImage(
+            extent: extent,
+            center: CGPoint(x: extent.width * 0.70, y: extent.height * 0.28),
+            innerColor: palette.secondaryGlow.withAlphaComponent(0.34 * intensity),
+            outerColor: palette.shadowCore.withAlphaComponent(0.0),
+            radius: extent.width * 0.58
+        ) else {
+            return nil
+        }
+
+        let composited = highlight.applyingFilter(
+            "CIScreenBlendMode",
+            parameters: ["inputBackgroundImage": glow]
+        )
+        let bumped = composited.applyingFilter(
+            "CIBumpDistortion",
+            parameters: [
+                kCIInputCenterKey: CIVector(x: extent.midX, y: extent.midY),
+                kCIInputRadiusKey: extent.width * 0.62,
+                kCIInputScaleKey: 0.24 + intensity * 0.36,
+            ]
+        )
+        let softened = bumped
+            .cropped(to: extent)
+            .applyingFilter(
+                "CIGaussianBlur",
+                parameters: [kCIInputRadiusKey: max(0.4, extent.width * 0.010)]
+            )
+            .cropped(to: extent)
+
+        return Self.ciContext.createCGImage(softened, from: extent)
+    }
+
+    private func radialImage(
+        extent: CGRect,
+        center: CGPoint,
+        innerColor: UIColor,
+        outerColor: UIColor,
+        radius: CGFloat
+    ) -> CIImage? {
+        let filter = CIFilter(name: "CIRadialGradient")
+        filter?.setValue(CIVector(x: center.x, y: center.y), forKey: kCIInputCenterKey)
+        filter?.setValue(radius * 0.04, forKey: "inputRadius0")
+        filter?.setValue(radius, forKey: "inputRadius1")
+        filter?.setValue(CIColor(color: innerColor), forKey: "inputColor0")
+        filter?.setValue(CIColor(color: outerColor), forKey: "inputColor1")
+        return filter?.outputImage?.cropped(to: extent)
     }
 }
 

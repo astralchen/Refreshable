@@ -25,13 +25,46 @@ final class DemoUITests: XCTestCase {
         app.terminate()
 
         app = XCUIApplication()
+        app.launchArguments = ["-taiji-ui-screenshots", "-taiji-pulling-snapshot"]
+        app.launch()
+
+        let pullingTable = app.tables["taiji.tableView"]
+        XCTAssertTrue(pullingTable.waitForExistence(timeout: 5))
+        waitForAnimations()
+        attachScreenshot(named: "02-taiji-nebula-pulling")
+
+        app.terminate()
+
+        app = XCUIApplication()
         app.launchArguments = ["-taiji-ui-screenshots", "-taiji-auto-refresh"]
         app.launch()
 
         let refreshedTable = app.tables["taiji.tableView"]
         XCTAssertTrue(refreshedTable.waitForExistence(timeout: 5))
         waitForAnimations()
-        attachScreenshot(named: "02-taiji-nebula-refreshing")
+        attachScreenshot(named: "03-taiji-nebula-refreshing")
+
+        app.terminate()
+
+        app = XCUIApplication()
+        app.launchArguments = ["-taiji-ui-screenshots", "-taiji-dark-screenshots", "-taiji-auto-refresh"]
+        app.launch()
+
+        let darkRefreshedTable = app.tables["taiji.tableView"]
+        XCTAssertTrue(darkRefreshedTable.waitForExistence(timeout: 5))
+        waitForAnimations()
+        attachScreenshot(named: "04-taiji-dark-refreshing-after-release")
+
+        app.terminate()
+
+        app = XCUIApplication()
+        app.launchArguments = ["-taiji-ui-screenshots", "-taiji-ending-snapshot"]
+        app.launch()
+
+        let endingTable = app.tables["taiji.tableView"]
+        XCTAssertTrue(endingTable.waitForExistence(timeout: 5))
+        waitForAnimations()
+        attachScreenshot(named: "05-taiji-nebula-ending-after-release")
     }
 
     private func attachScreenshot(named name: String) {

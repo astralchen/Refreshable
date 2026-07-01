@@ -34,7 +34,9 @@ final class DemoTabBarController: UITabBarController {
             ),
         ]
 
-        if ProcessInfo.processInfo.arguments.contains("-taiji-ui-screenshots") {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-taiji-ui-screenshots")
+            || arguments.contains("-taiji-dark-screenshots") {
             selectedIndex = 1
         }
     }

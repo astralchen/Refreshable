@@ -72,8 +72,10 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.debugLayerNames.contains("backArc"))
         #expect(taijiView.debugLayerNames.contains("frontArc"))
         #expect(taijiView.debugLayerNames.contains("body"))
+        #expect(taijiView.debugLayerNames.contains("coreImageRefraction"))
+        #expect(taijiView.debugLayerNames.contains("particleEmitter"))
         #expect(taijiView.debugLayerNames.contains("ripple"))
-        #expect(taijiView.debugParticleCount == 18)
+        #expect(taijiView.debugParticleCount <= 3)
     }
 
     @Test("taiji visual diameter stays compact inside refresh header")
@@ -89,6 +91,71 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.debugBodyFrame.height == taijiView.debugBodyFrame.width)
     }
 
+    @Test("demo header keeps taiji clear of top chrome while pulling")
+    func demoHeaderKeepsTaijiClearOfTopChrome() throws {
+        let style = TaijiRefreshStyle(extent: 88)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 88)
+        style.view.layoutIfNeeded()
+        style.update(state: .pulling(1), progress: 1)
+
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+        let bodyBounds = taijiView.debugBodyBounds
+        let orbitFrame = taijiView.debugOrbitFrame
+
+        #expect(bodyBounds.width <= 49)
+        #expect(bodyBounds.height == bodyBounds.width)
+        #expect(orbitFrame.width <= bodyBounds.width * 1.36)
+        #expect(orbitFrame.height >= bodyBounds.height * 0.74)
+    }
+
+    @Test("pulling ambient mist stays local and clipped to an oval")
+    func pullingAmbientMistAvoidsRectangularPlate() throws {
+        let style = TaijiRefreshStyle(extent: 88, theme: .dark)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 88)
+        style.view.layoutIfNeeded()
+        style.update(state: .pulling(1), progress: 1)
+
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+        let mistLayer = try #require(taijiView.layer.sublayers?.first { $0.name == "mist" })
+
+        #expect(mistLayer.frame.width <= taijiView.debugBodyFrame.width * 1.82)
+        #expect(mistLayer.frame.height <= taijiView.debugBodyFrame.height * 1.50)
+        #expect(mistLayer.mask != nil)
+    }
+
+    @Test("pulling and triggered keep body silhouette stable")
+    func pullingAndTriggeredKeepBodyRotationReadable() {
+        let pullingState = TaijiRefreshRenderState.make(
+            state: .pulling(1),
+            progress: 1,
+            reduceMotion: false,
+            reduceTransparency: false
+        )
+        let triggeredState = TaijiRefreshRenderState.make(
+            state: .triggered,
+            progress: 1,
+            reduceMotion: false,
+            reduceTransparency: false
+        )
+        let readableLimit = degrees(8)
+
+        #expect(abs(pullingState.rotation) <= readableLimit)
+        #expect(abs(triggeredState.rotation) <= readableLimit)
+    }
+
+    @Test("ending ripple remains local to taiji body")
+    func endingRippleRemainsLocalToBody() throws {
+        let style = TaijiRefreshStyle(extent: 88, theme: .dark)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 88)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: RefreshState.ending, progress: 0)
+
+        #expect(taijiView.debugRippleFrame.width <= taijiView.debugBodyBounds.width * 1.70)
+        #expect(taijiView.debugRippleFrame.height <= style.view.bounds.height * 0.96)
+    }
+
     @Test("refreshing starts and ending stops continuous animation")
     func refreshingAnimationLifecycle() throws {
         let style = TaijiRefreshStyle()
@@ -101,6 +168,48 @@ struct TaijiRefreshStyleTests {
         #expect(taijiView.isContinuousAnimationActive == false)
     }
 
+    @Test("refreshing rotates taiji body while pulling keeps body stable")
+    func refreshingRotatesBodyWhilePullingKeepsBodyStable() throws {
+        let style = TaijiRefreshStyle(theme: .dark)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 88)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: .pulling(1), progress: 1)
+
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.rotation"))
+
+        style.update(state: .refreshing, progress: 0)
+
+        #expect(taijiView.isContinuousAnimationActive == true)
+        #expect(taijiView.debugAnimationKeys.contains("taiji.refreshOrbit"))
+        #expect(taijiView.debugAnimationKeys.contains("taiji.rotation"))
+
+        style.update(state: .ending, progress: 0)
+
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.refreshOrbit"))
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.rotation"))
+    }
+
+    @Test("released refresh keeps taiji below top chrome in compact header")
+    func releasedRefreshKeepsTaijiBelowTopChromeInCompactHeader() throws {
+        let style = TaijiRefreshStyle(extent: 88, theme: .dark)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: 88)
+        style.view.layoutIfNeeded()
+        let taijiView = try #require(style.view as? TaijiRefreshView)
+
+        style.update(state: .pulling(1), progress: 1)
+        #expect(taijiView.debugBodyFrame.midY <= 48)
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(taijiView.debugBodyFrame.midY >= 58)
+        #expect(taijiView.debugBodyFrame.maxY <= style.view.bounds.maxY - 2)
+
+        style.update(state: .ending, progress: 0)
+        #expect(taijiView.debugBodyFrame.midY >= 56)
+        #expect(taijiView.debugBodyFrame.maxY <= style.view.bounds.maxY - 2)
+    }
+
     @Test("pulling starts visible ambient motion")
     func pullingStartsAmbientMotion() throws {
         let style = TaijiRefreshStyle()
@@ -111,12 +220,11 @@ struct TaijiRefreshStyleTests {
         style.update(state: .pulling(0.62), progress: 0.62)
 
         #expect(taijiView.debugAnimationKeys.contains("taiji.pullOrbit"))
-        #expect(taijiView.debugAnimationKeys.contains("taiji.pullTwinkle"))
+        #expect(!taijiView.debugAnimationKeys.contains("taiji.pullTwinkle"))
 
         style.update(state: .idle, progress: 0)
 
         #expect(!taijiView.debugAnimationKeys.contains("taiji.pullOrbit"))
-        #expect(!taijiView.debugAnimationKeys.contains("taiji.pullTwinkle"))
     }
 
     @Test("theme switch records palette without resetting render state")
@@ -223,5 +331,9 @@ struct TaijiRefreshStyleTests {
             labels.append(contentsOf: findLabels(in: subview))
         }
         return labels
+    }
+
+    private func degrees(_ value: CGFloat) -> CGFloat {
+        value * .pi / 180
     }
 }

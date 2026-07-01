@@ -12,6 +12,8 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
     private var items: [TaijiDemoItem] = []
     private var refreshSerial = 0
     private var didStartUITestRefresh = false
+    private var didApplyUITestPullingSnapshot = false
+    private var didApplyUITestEndingSnapshot = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +21,9 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
 
         if ProcessInfo.processInfo.arguments.contains("-taiji-ui-screenshots") {
             selectedTheme = .nebula
+        }
+        if ProcessInfo.processInfo.arguments.contains("-taiji-dark-screenshots") {
+            selectedTheme = .dark
         }
 
         configureThemeControl()
@@ -29,6 +34,8 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        applyPullingSnapshotForUITestIfNeeded()
+        applyEndingSnapshotForUITestIfNeeded()
         beginRefreshingForUITestIfNeeded()
     }
 
@@ -82,6 +89,36 @@ final class TaijiRefreshDemoController: UIViewController, UITableViewDataSource 
             self.view.layoutIfNeeded()
             self.tableView.contentInset.top = Self.uiTestRefreshTopInset
             self.tableView.beginRefreshing()
+        }
+    }
+
+    private func applyPullingSnapshotForUITestIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-taiji-pulling-snapshot") else { return }
+        guard !didApplyUITestPullingSnapshot else { return }
+        didApplyUITestPullingSnapshot = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self else { return }
+            self.view.layoutIfNeeded()
+            let visibleTopInset = max(self.tableView.adjustedContentInset.top, 0)
+            self.tableView.contentOffset = CGPoint(x: 0, y: -visibleTopInset - 112)
+            self.taijiStyle.view.alpha = 1
+            self.taijiStyle.update(state: .pulling(1), progress: 1)
+        }
+    }
+
+    private func applyEndingSnapshotForUITestIfNeeded() {
+        guard ProcessInfo.processInfo.arguments.contains("-taiji-ending-snapshot") else { return }
+        guard !didApplyUITestEndingSnapshot else { return }
+        didApplyUITestEndingSnapshot = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self else { return }
+            self.view.layoutIfNeeded()
+            let visibleTopInset = max(self.tableView.adjustedContentInset.top, 0)
+            self.tableView.contentOffset = CGPoint(x: 0, y: -visibleTopInset - 112)
+            self.taijiStyle.view.alpha = 1
+            self.taijiStyle.update(state: .ending, progress: 0)
         }
     }
 
