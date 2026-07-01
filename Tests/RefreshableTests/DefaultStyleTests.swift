@@ -213,6 +213,18 @@ struct DefaultEdgeStyleTests {
         #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
     }
 
+    @Test("horizontal edge visual content follows layout margins")
+    func horizontalEdgeVisualContentFollowsLayoutMargins() throws {
+        let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        style.view.frame = CGRect(x: 0, y: 0, width: 750, height: 390)
+        style.view.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 696)
+        let progressHost = try #require(style.view.firstSubview(ofType: CAShapeLayerHostView.self))
+
+        style.view.layoutIfNeeded()
+
+        #expect(progressHost.center.x == 27)
+    }
+
     @Test("horizontal edge pulling text stays generic")
     func horizontalEdgePullingTextStaysGeneric() throws {
         let leading = DefaultEdgeStyle(edge: .leading, role: .refresh)

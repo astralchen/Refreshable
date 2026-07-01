@@ -174,6 +174,7 @@ final class DefaultEdgeStyle: RefreshableStyle {
 
     private func setupUI() {
         view.backgroundColor = .clear
+        view.insetsLayoutMarginsFromSafeArea = false
         view.isAccessibilityElement = true
         view.accessibilityLabel = role == .refresh ? "刷新" : "加载更多"
 
@@ -217,7 +218,7 @@ final class DefaultEdgeStyle: RefreshableStyle {
         setupLabel(numberOfLines: 1)
 
         NSLayoutConstraint.activate([
-            progressHost.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            progressHost.centerXAnchor.constraint(equalTo: view.layoutMarginsGuide.centerXAnchor),
             progressHost.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -13),
             progressHost.widthAnchor.constraint(equalToConstant: 48),
             progressHost.heightAnchor.constraint(equalTo: progressHost.widthAnchor),
@@ -228,10 +229,10 @@ final class DefaultEdgeStyle: RefreshableStyle {
             arrowView.heightAnchor.constraint(equalTo: arrowView.widthAnchor),
 
             label.topAnchor.constraint(equalTo: progressHost.bottomAnchor, constant: 8),
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -4),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 2),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -2),
+            label.centerXAnchor.constraint(equalTo: view.layoutMarginsGuide.centerXAnchor),
+            label.widthAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.widthAnchor, constant: -4),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor, constant: 2),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor, constant: -2),
         ])
     }
 
