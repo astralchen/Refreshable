@@ -170,6 +170,30 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(style.records.isEmpty)
     }
 
+    @Test("refreshing 转 noMoreData 时保留 bottom inset 让提示停在安全区域内")
+    func noMoreDataRetainsBottomInsetUntilReset() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.automaticInsetAdjustment.bottom = 83
+        let style = MockStyle(extent: 54)
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        )
+        component.scrollView = scrollView
+
+        component.beginLoadingMore()
+        component.setNoMoreData()
+
+        #expect(component.state == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 66)
+
+        component.resetNoMoreData()
+
+        #expect(scrollView.contentInset.bottom == 12)
+    }
+
     @Test("resetNoMoreData 从 noMoreData → idle")
     func resetNoMoreData() {
         let (_, component, _) = makeSUT()
@@ -376,10 +400,23 @@ struct EdgeBottomLoadMoreComponentTests {
     }
 }
 
-private final class DraggingScrollView: UIScrollView {
+private class DraggingScrollView: UIScrollView {
     var isDraggingOverride = false
 
     override var isDragging: Bool {
         isDraggingOverride
+    }
+}
+
+private final class AdjustedInsetScrollView: DraggingScrollView {
+    var automaticInsetAdjustment: UIEdgeInsets = .zero
+
+    override var adjustedContentInset: UIEdgeInsets {
+        UIEdgeInsets(
+            top: contentInset.top + automaticInsetAdjustment.top,
+            left: contentInset.left + automaticInsetAdjustment.left,
+            bottom: contentInset.bottom + automaticInsetAdjustment.bottom,
+            right: contentInset.right + automaticInsetAdjustment.right
+        )
     }
 }

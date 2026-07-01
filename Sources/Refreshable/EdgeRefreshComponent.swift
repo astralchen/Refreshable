@@ -125,21 +125,28 @@ class EdgeRefreshComponent: RefreshComponent {
         guard role == .loadMore else { return }
         guard state != .noMoreData else { return }
 
-        if state.isRefreshing {
-            if let scrollView {
-                UIView.animate(withDuration: options.animationDuration) {
-                    self.resetInset(for: scrollView)
-                }
+        if options.presentation.usesContentInset, let scrollView {
+            if !state.isRefreshing {
+                captureOriginalInset()
             }
-            setState(.noMoreData)
-        } else {
-            setState(.noMoreData)
+            UIView.animate(withDuration: options.animationDuration) {
+                self.applyRefreshingInset(to: scrollView)
+            }
         }
+
+        setState(.noMoreData)
     }
 
     func resetNoMoreData() {
         guard role == .loadMore else { return }
         guard state == .noMoreData else { return }
+
+        if options.presentation.usesContentInset, let scrollView {
+            UIView.animate(withDuration: options.animationDuration) {
+                self.resetInset(for: scrollView)
+            }
+        }
+
         setState(.idle)
     }
 

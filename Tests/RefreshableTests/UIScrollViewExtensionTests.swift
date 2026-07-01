@@ -160,6 +160,31 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.footerComponent?.originalInset.bottom == 12)
     }
 
+    @Test("noMoreData 状态替换 footer 会恢复 bottom inset")
+    func replacingNoMoreDataFooterRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        let style1 = MockStyle()
+        scrollView.loadMoreable(
+            style: style1,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginLoadingMore()
+        scrollView.noMoreData()
+        #expect(scrollView.contentInset.bottom == 66)
+
+        let style2 = MockStyle()
+        scrollView.loadMoreable(
+            style: style2,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        #expect(style1.view.superview == nil)
+        #expect(scrollView.contentInset.bottom == 12)
+        #expect(scrollView.footerComponent?.originalInset.bottom == 12)
+    }
+
     @Test("beginLoadingMore 转发到 footerComponent")
     func beginLoadingMore() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
@@ -375,6 +400,27 @@ struct UIScrollViewExtensionTests {
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
         ) {}
         scrollView.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 66)
+
+        scrollView.removeLoadMoreable()
+
+        #expect(scrollView.footerComponent == nil)
+        #expect(style.view.superview == nil)
+        #expect(scrollView.contentInset.bottom == 12)
+    }
+
+    @Test("noMoreData 状态移除 footer 会恢复 bottom inset")
+    func removeLoadMoreableWhileNoMoreDataRestoresInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        let style = MockStyle()
+        scrollView.loadMoreable(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.beginLoadingMore()
+        scrollView.noMoreData()
         #expect(scrollView.contentInset.bottom == 66)
 
         scrollView.removeLoadMoreable()

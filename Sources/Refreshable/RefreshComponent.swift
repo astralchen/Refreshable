@@ -224,7 +224,7 @@ public class RefreshComponent: NSObject {
     }
 
     private func restoreInsetIfNeeded() {
-        guard state.isRefreshing || state == .ending else { return }
+        guard state.isRefreshing || state == .ending || state == .noMoreData else { return }
         guard let scrollView else { return }
 
         UIView.performWithoutAnimation {

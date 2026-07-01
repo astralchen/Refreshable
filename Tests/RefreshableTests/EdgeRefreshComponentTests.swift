@@ -71,8 +71,13 @@ struct EdgeRefreshComponentTests {
 
         scrollView.noMoreData(edge: .trailing)
 
-        #expect(scrollView.contentInset.right == 10)
+        #expect(scrollView.contentInset.right == 58)
         #expect(scrollView.loadMoreState(edge: .trailing) == .noMoreData)
+
+        scrollView.resetNoMoreData(edge: .trailing)
+
+        #expect(scrollView.contentInset.right == 10)
+        #expect(scrollView.loadMoreState(edge: .trailing) == .idle)
     }
 
     @Test("bottom loadMore 露出位置避开自动安全区 inset")
