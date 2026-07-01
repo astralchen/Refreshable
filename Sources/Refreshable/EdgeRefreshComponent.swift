@@ -409,11 +409,19 @@ class EdgeRefreshComponent: RefreshComponent {
     }
 
     private func automaticInsetAdjustment(in scrollView: UIScrollView) -> UIEdgeInsets {
-        UIEdgeInsets(
+        let adjustedDelta = UIEdgeInsets(
             top: scrollView.adjustedContentInset.top - scrollView.contentInset.top,
             left: scrollView.adjustedContentInset.left - scrollView.contentInset.left,
             bottom: scrollView.adjustedContentInset.bottom - scrollView.contentInset.bottom,
             right: scrollView.adjustedContentInset.right - scrollView.contentInset.right
+        )
+        let safeAreaInsets = scrollView.safeAreaInsets
+
+        return UIEdgeInsets(
+            top: max(adjustedDelta.top, safeAreaInsets.top),
+            left: max(adjustedDelta.left, safeAreaInsets.left),
+            bottom: max(adjustedDelta.bottom, safeAreaInsets.bottom),
+            right: max(adjustedDelta.right, safeAreaInsets.right)
         )
     }
 

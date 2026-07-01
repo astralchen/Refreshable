@@ -10,6 +10,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
     private var items: [HorizontalDemoItem] = []
     private var page = 0
     private var layoutDirection: HorizontalLayoutDirection = .leftToRight
+    private var safeAreaMarginContainers: [UIView] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,6 +24,11 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
         setupCollectionView()
         setupStatusSection()
         loadInitialData()
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateSafeAreaSectionMargins()
     }
 
     private func configureNavigationItem() {
@@ -148,7 +154,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
 
         headerStack.addArrangedSubview(topRow)
         headerStack.addArrangedSubview(segmentedControl)
-        contentStack.addArrangedSubview(headerStack)
+        contentStack.addArrangedSubview(makeSafeAreaMarginContainer(containing: headerStack))
     }
 
     private func setupCollectionView() {
@@ -199,7 +205,38 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
 
         sectionStack.addArrangedSubview(titleLabel)
         sectionStack.addArrangedSubview(rowsStack)
-        contentStack.addArrangedSubview(sectionStack)
+        contentStack.addArrangedSubview(makeSafeAreaMarginContainer(containing: sectionStack))
+    }
+
+    private func makeSafeAreaMarginContainer(containing contentView: UIView) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(contentView)
+        safeAreaMarginContainers.append(container)
+        updateSafeAreaSectionMargins()
+
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: container.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: container.layoutMarginsGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: container.layoutMarginsGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
+    }
+
+    private func updateSafeAreaSectionMargins() {
+        let baseInset: CGFloat = 20
+        let margins = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: baseInset + view.safeAreaInsets.left,
+            bottom: 0,
+            trailing: baseInset + view.safeAreaInsets.right
+        )
+        safeAreaMarginContainers.forEach { container in
+            container.directionalLayoutMargins = margins
+        }
     }
 
     @objc private func segmentChanged() {

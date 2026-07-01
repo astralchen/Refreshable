@@ -137,6 +137,38 @@ struct EdgeRefreshComponentTests {
         #expect(trailingStyle.view.frame == CGRect(x: 810, y: 0, width: 844, height: 390))
     }
 
+    @Test("横向 edge 在关闭自动 inset 调整时仍避开 safe area")
+    func horizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() {
+        let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
+        let leadingStyle = MockStyle(extent: 54)
+        let trailingStyle = MockStyle(extent: 54)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: leadingStyle,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.loadMoreable(
+            edge: .trailing,
+            style: trailingStyle,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 750, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
+
+        scrollView.beginRefreshing(edge: .leading)
+        #expect(scrollView.contentOffset.x == -101)
+
+        scrollView.endRefreshing(edge: .leading)
+        scrollView.contentOffset.x = 1600 - 844 + 47
+        scrollView.beginLoadingMore(edge: .trailing)
+        #expect(scrollView.contentOffset.x == 857)
+    }
+
     @Test("overlay loadMore 在 action 执行期间保持可见但不占位")
     func overlayLoadMoreStaysVisibleWithoutPersistentInsetWhileActionRuns() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -375,5 +407,17 @@ private final class AdjustedInsetScrollView: EdgeDraggingScrollView {
             bottom: contentInset.bottom + automaticInsetAdjustment.bottom,
             right: contentInset.right + automaticInsetAdjustment.right
         )
+    }
+}
+
+private final class SafeAreaInsetScrollView: EdgeDraggingScrollView {
+    var safeAreaInsetOverride: UIEdgeInsets = .zero
+
+    override var safeAreaInsets: UIEdgeInsets {
+        safeAreaInsetOverride
+    }
+
+    override var adjustedContentInset: UIEdgeInsets {
+        contentInset
     }
 }
