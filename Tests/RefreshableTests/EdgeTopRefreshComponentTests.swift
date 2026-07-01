@@ -2,17 +2,17 @@ import Testing
 @testable import Refreshable
 import UIKit
 
-@Suite("HeaderRefreshComponent")
+@Suite("EdgeRefreshComponent .top refresh")
 @MainActor
-struct HeaderRefreshComponentTests {
+struct EdgeTopRefreshComponentTests {
 
-    private func makeSUT() -> (UIScrollView, HeaderRefreshComponent, MockStyle) {
+    private func makeSUT() -> (UIScrollView, EdgeRefreshComponent, MockStyle) {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
         return (scrollView, component, style)
     }
@@ -104,7 +104,7 @@ struct HeaderRefreshComponentTests {
         let counter = ActionCallCounter()
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
         ) {
@@ -200,13 +200,13 @@ struct HeaderRefreshComponentTests {
     }
 
     @Test("开始刷新时重新捕获当前 top inset")
-    func recapturesHeaderInsetAtStart() {
+    func recapturesTopInsetAtStart() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         scrollView.contentInset.top = 40
@@ -223,7 +223,7 @@ struct HeaderRefreshComponentTests {
         await confirmation(expectedCount: 1) { confirm in
             let sv = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
             let s = MockStyle()
-            let c = HeaderRefreshComponent(style: s) {
+            let c = makeTopRefreshComponent(style: s) {
                 confirm()
             }
             c.scrollView = sv
@@ -238,7 +238,7 @@ struct HeaderRefreshComponentTests {
     @Test("scrollView 为 nil 时 endRefreshing 直接回到 idle")
     func endRefreshingWithoutScrollView() {
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
         // 不设置 scrollView
         component.setState(.refreshing)
         component.endRefreshing()
@@ -247,15 +247,15 @@ struct HeaderRefreshComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 header inset")
-    func customHeaderTriggerOffset() {
+    @Test("自定义 triggerOffset 用于 top inset")
+    func customTopTriggerOffset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(triggerOffset: 80, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.beginRefreshing()
@@ -263,15 +263,15 @@ struct HeaderRefreshComponentTests {
         #expect(scrollView.contentInset.top == 92)
     }
 
-    @Test("非正 triggerOffset 使用最小 header 触发距离")
-    func nonPositiveHeaderTriggerOffsetUsesMinimumThreshold() {
+    @Test("非正 triggerOffset 使用最小 top 触发距离")
+    func nonPositiveTopTriggerOffsetUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(triggerOffset: 0, animationDuration: 0, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.beginRefreshing()
@@ -280,15 +280,15 @@ struct HeaderRefreshComponentTests {
         #expect(scrollView.contentInset.top == 13)
     }
 
-    @Test("非正 style.extent 使用最小 header 触发距离")
-    func nonPositiveHeaderStyleExtentUsesMinimumThreshold() {
+    @Test("非正 style.extent 使用最小 top 触发距离")
+    func nonPositiveTopStyleExtentUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle(extent: 0)
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.beginRefreshing()
@@ -298,13 +298,13 @@ struct HeaderRefreshComponentTests {
     }
 
     @Test("automaticallyEndRefreshing 为 false 时 action 完成后保持 refreshing")
-    func headerManualEndOption() async {
+    func topManualEndOption() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.trigger()
@@ -313,12 +313,12 @@ struct HeaderRefreshComponentTests {
         #expect(component.state == .refreshing)
     }
 
-    @Test("取消 header 当前任务会结束刷新")
-    func cancelHeaderTask() async {
+    @Test("取消 top edge 当前任务会结束刷新")
+    func cancelTopTask() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         let cancellationProbe = CancellationProbe()
-        let component = HeaderRefreshComponent(style: style) {
+        let component = makeTopRefreshComponent(style: style) {
             do {
                 try await Task.sleep(nanoseconds: 1_000_000_000)
             } catch {
@@ -334,6 +334,14 @@ struct HeaderRefreshComponentTests {
 
         #expect(await cancellationProbe.waitUntilObserved() == true)
         #expect([RefreshState.ending, .idle].contains(component.state))
+    }
+
+    private func makeTopRefreshComponent(
+        style: MockStyle,
+        options: RefreshableOptions = RefreshableOptions(),
+        action: @escaping @Sendable () async -> Void = {}
+    ) -> EdgeRefreshComponent {
+        EdgeRefreshComponent(edge: .top, role: .refresh, style: style, options: options, action: action)
     }
 }
 

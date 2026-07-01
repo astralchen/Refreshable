@@ -22,8 +22,8 @@ struct EdgeRefreshComponentTests {
         let component = scrollView.component(for: .leading)
         #expect(component?.edge == .leading)
         #expect(component?.role == .refresh)
-        #expect(style.view.frame == CGRect(x: -44, y: 0, width: 44, height: 480))
-        #expect(style.view.autoresizingMask == [.flexibleHeight])
+        #expect(style.view.frame == CGRect(x: -44, y: 0, width: 320, height: 480))
+        #expect(style.view.autoresizingMask == [.flexibleWidth, .flexibleHeight])
     }
 
     @Test("beginRefreshing(edge: .leading) 只调整 left inset 和 x offset")
@@ -73,6 +73,63 @@ struct EdgeRefreshComponentTests {
 
         #expect(scrollView.contentInset.right == 10)
         #expect(scrollView.loadMoreState(edge: .trailing) == .noMoreData)
+    }
+
+    @Test("bottom loadMore 露出位置避开自动安全区 inset")
+    func bottomLoadMoreRevealOffsetIncludesAdjustedInset() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.automaticInsetAdjustment.bottom = 83
+        scrollView.contentOffset.y = 2000 - 667 + 12 + 83
+        let style = MockStyle(extent: 54)
+        let expectedOffsetY = CGFloat(2000 - 667 + 12 + 83 + 54)
+
+        scrollView.loadMoreable(
+            edge: .bottom,
+            style: style,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        scrollView.beginLoadingMore(edge: .bottom)
+
+        #expect(scrollView.contentInset.bottom == 66)
+        #expect(scrollView.contentOffset.y == expectedOffsetY)
+    }
+
+    @Test("停在 adjusted bottom 边界时不误判为上拉加载")
+    func adjustedBottomBoundaryDoesNotStartPulling() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.automaticInsetAdjustment.bottom = 83
+        scrollView.contentOffset.y = 2000 - 667 + 12 + 83
+        scrollView.isDraggingOverride = true
+
+        scrollView.loadMoreable(
+            edge: .bottom,
+            style: MockStyle(extent: 54),
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        scrollView.component(for: .bottom)?.scrollViewDidScroll(contentOffset: scrollView.contentOffset)
+
+        #expect(scrollView.loadMoreState(edge: .bottom) == .idle)
+    }
+
+    @Test("横向 edge 控件使用完整可见宽度以支持横屏布局")
+    func horizontalEdgeFrameUsesViewportWidth() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        let leadingStyle = MockStyle(extent: 54)
+        let trailingStyle = MockStyle(extent: 54)
+
+        scrollView.refreshable(edge: .leading, style: leadingStyle) {}
+        scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
+
+        #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 844, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 810, y: 0, width: 844, height: 390))
     }
 
     @Test("overlay loadMore 在 action 执行期间保持可见但不占位")
@@ -207,10 +264,10 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(edge: .leading, style: leadingStyle) {}
         scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
 
-        #expect(leadingStyle.view.frame.origin.x == 1000)
-        #expect(leadingStyle.view.frame.width == 40)
+        #expect(leadingStyle.view.frame.origin.x == 720)
+        #expect(leadingStyle.view.frame.width == 320)
         #expect(trailingStyle.view.frame.origin.x == -50)
-        #expect(trailingStyle.view.frame.width == 50)
+        #expect(trailingStyle.view.frame.width == 320)
     }
 
     @Test("刷新中切换布局方向后仍恢复原本占用的物理 inset")
@@ -295,10 +352,23 @@ struct EdgeRefreshComponentTests {
     }
 }
 
-private final class EdgeDraggingScrollView: UIScrollView {
+private class EdgeDraggingScrollView: UIScrollView {
     var isDraggingOverride = false
 
     override var isDragging: Bool {
         isDraggingOverride
+    }
+}
+
+private final class AdjustedInsetScrollView: EdgeDraggingScrollView {
+    var automaticInsetAdjustment: UIEdgeInsets = .zero
+
+    override var adjustedContentInset: UIEdgeInsets {
+        UIEdgeInsets(
+            top: contentInset.top + automaticInsetAdjustment.top,
+            left: contentInset.left + automaticInsetAdjustment.left,
+            bottom: contentInset.bottom + automaticInsetAdjustment.bottom,
+            right: contentInset.right + automaticInsetAdjustment.right
+        )
     }
 }

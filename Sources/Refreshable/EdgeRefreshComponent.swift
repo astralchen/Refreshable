@@ -84,6 +84,7 @@ class EdgeRefreshComponent: RefreshComponent {
 
     override func stateDidChange(from oldState: RefreshState, to newState: RefreshState) {
         guard let scrollView else { return }
+        style.view.frame = frame(in: scrollView)
         guard newState == .refreshing else { return }
         guard options.presentation.usesContentInset else { return }
 
@@ -169,9 +170,25 @@ class EdgeRefreshComponent: RefreshComponent {
         case .bottom:
             return CGRect(x: 0, y: contentSize.height, width: scrollView.bounds.width, height: extent)
         case .left:
-            return CGRect(x: -extent, y: 0, width: extent, height: scrollView.bounds.height)
+            return CGRect(
+                x: -originalInset.left - extent,
+                y: 0,
+                width: horizontalViewportWidth(in: scrollView),
+                height: scrollView.bounds.height
+            )
         case .right:
-            return CGRect(x: contentSize.width, y: 0, width: extent, height: scrollView.bounds.height)
+            let adjustment = automaticInsetAdjustment(in: scrollView)
+            return CGRect(
+                x: contentSize.width
+                    - scrollView.bounds.width
+                    + originalInset.right
+                    + adjustment.left
+                    + adjustment.right
+                    + extent,
+                y: 0,
+                width: horizontalViewportWidth(in: scrollView),
+                height: scrollView.bounds.height
+            )
         }
     }
 
@@ -217,23 +234,31 @@ class EdgeRefreshComponent: RefreshComponent {
         case .vertical:
             [.flexibleWidth]
         case .horizontal:
-            [.flexibleHeight]
+            [.flexibleWidth, .flexibleHeight]
         }
     }
 
     private func pullDistance(in scrollView: UIScrollView, contentOffset: CGPoint) -> CGFloat {
+        let adjustedOriginalInset = adjustedOriginalInset(in: scrollView)
+
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            let offset = contentOffset.y + originalInset.top
+            let offset = contentOffset.y + adjustedOriginalInset.top
             return max(-offset, 0)
         case .bottom:
-            let offset = contentOffset.y + scrollView.bounds.height - scrollView.contentSize.height - originalInset.bottom
+            let offset = contentOffset.y
+                + scrollView.bounds.height
+                - scrollView.contentSize.height
+                - adjustedOriginalInset.bottom
             return max(offset, 0)
         case .left:
-            let offset = contentOffset.x + originalInset.left
+            let offset = contentOffset.x + adjustedOriginalInset.left
             return max(-offset, 0)
         case .right:
-            let offset = contentOffset.x + scrollView.bounds.width - scrollView.contentSize.width - originalInset.right
+            let offset = contentOffset.x
+                + scrollView.bounds.width
+                - scrollView.contentSize.width
+                - adjustedOriginalInset.right
             return max(offset, 0)
         }
     }
@@ -248,12 +273,23 @@ class EdgeRefreshComponent: RefreshComponent {
     }
 
     private func viewportLength(in scrollView: UIScrollView) -> CGFloat {
-        switch edge.physicalEdge(in: scrollView).axis {
+        let adjustedInset = scrollView.adjustedContentInset
+
+        let rawLength = switch edge.physicalEdge(in: scrollView).axis {
         case .vertical:
             scrollView.bounds.height
         case .horizontal:
             scrollView.bounds.width
         }
+
+        let insetLength = switch edge.physicalEdge(in: scrollView).axis {
+        case .vertical:
+            adjustedInset.top + adjustedInset.bottom
+        case .horizontal:
+            adjustedInset.left + adjustedInset.right
+        }
+
+        return max(rawLength - insetLength, 0)
     }
 
     private func updateOverlayFrameIfNeeded(in scrollView: UIScrollView) {
@@ -275,22 +311,23 @@ class EdgeRefreshComponent: RefreshComponent {
 
     private func lockedOverlayContentOffset(in scrollView: UIScrollView) -> CGPoint {
         var lockedOffset = scrollView.contentOffset
+        let adjustedOriginalInset = adjustedOriginalInset(in: scrollView)
 
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            lockedOffset.y = -originalInset.top
+            lockedOffset.y = -adjustedOriginalInset.top
         case .bottom:
-            let minimumY = -originalInset.top
+            let minimumY = -adjustedOriginalInset.top
             lockedOffset.y = max(
-                scrollView.contentSize.height - scrollView.bounds.height + originalInset.bottom,
+                scrollView.contentSize.height - scrollView.bounds.height + adjustedOriginalInset.bottom,
                 minimumY
             )
         case .left:
-            lockedOffset.x = -originalInset.left
+            lockedOffset.x = -adjustedOriginalInset.left
         case .right:
-            let minimumX = -originalInset.left
+            let minimumX = -adjustedOriginalInset.left
             lockedOffset.x = max(
-                scrollView.contentSize.width - scrollView.bounds.width + originalInset.right,
+                scrollView.contentSize.width - scrollView.bounds.width + adjustedOriginalInset.right,
                 minimumX
             )
         }
@@ -326,23 +363,55 @@ class EdgeRefreshComponent: RefreshComponent {
     }
 
     private func adjustContentOffsetForStartEdgeIfNeeded(in scrollView: UIScrollView) {
+        let adjustedOriginalInset = adjustedOriginalInset(in: scrollView)
+
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            scrollView.contentOffset.y = -originalInset.top - triggerThreshold
+            scrollView.contentOffset.y = -adjustedOriginalInset.top - triggerThreshold
         case .left:
-            scrollView.contentOffset.x = -originalInset.left - triggerThreshold
+            scrollView.contentOffset.x = -adjustedOriginalInset.left - triggerThreshold
         case .bottom:
-            let minimumY = -originalInset.top
+            let minimumY = -adjustedOriginalInset.top
             scrollView.contentOffset.y = max(
-                scrollView.contentSize.height - scrollView.bounds.height + originalInset.bottom + triggerThreshold,
+                scrollView.contentSize.height
+                    - scrollView.bounds.height
+                    + adjustedOriginalInset.bottom
+                    + triggerThreshold,
                 minimumY
             )
         case .right:
-            let minimumX = -originalInset.left
+            let minimumX = -adjustedOriginalInset.left
             scrollView.contentOffset.x = max(
-                scrollView.contentSize.width - scrollView.bounds.width + originalInset.right + triggerThreshold,
+                scrollView.contentSize.width
+                    - scrollView.bounds.width
+                    + adjustedOriginalInset.right
+                    + triggerThreshold,
                 minimumX
             )
         }
+    }
+
+    private func adjustedOriginalInset(in scrollView: UIScrollView) -> UIEdgeInsets {
+        let adjustment = automaticInsetAdjustment(in: scrollView)
+        return UIEdgeInsets(
+            top: originalInset.top + adjustment.top,
+            left: originalInset.left + adjustment.left,
+            bottom: originalInset.bottom + adjustment.bottom,
+            right: originalInset.right + adjustment.right
+        )
+    }
+
+    private func automaticInsetAdjustment(in scrollView: UIScrollView) -> UIEdgeInsets {
+        UIEdgeInsets(
+            top: scrollView.adjustedContentInset.top - scrollView.contentInset.top,
+            left: scrollView.adjustedContentInset.left - scrollView.contentInset.left,
+            bottom: scrollView.adjustedContentInset.bottom - scrollView.contentInset.bottom,
+            right: scrollView.adjustedContentInset.right - scrollView.contentInset.right
+        )
+    }
+
+    private func horizontalViewportWidth(in scrollView: UIScrollView) -> CGFloat {
+        let adjustment = automaticInsetAdjustment(in: scrollView)
+        return max(scrollView.bounds.width - adjustment.left - adjustment.right, displayExtent)
     }
 }

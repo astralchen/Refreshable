@@ -13,7 +13,7 @@ struct RefreshComponentTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset = UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
         component.scrollView = scrollView
         #expect(component.originalInset == UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0))
     }
@@ -23,7 +23,7 @@ struct RefreshComponentTests {
     @Test("相同状态不触发 style.update")
     func deduplicateState() {
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         component.scrollView = scrollView
 
@@ -35,7 +35,7 @@ struct RefreshComponentTests {
     @Test("不同状态触发 style.update")
     func differentStateTriggersUpdate() {
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         component.scrollView = scrollView
 
@@ -52,7 +52,7 @@ struct RefreshComponentTests {
         let sv1 = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let sv2 = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
 
         component.scrollView = sv1
         #expect(style.view.superview === sv1)
@@ -65,7 +65,7 @@ struct RefreshComponentTests {
     func sameScrollViewNoReinstall() {
         let sv = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
 
         component.scrollView = sv
         let initialRecordCount = style.records.count
@@ -79,7 +79,7 @@ struct RefreshComponentTests {
     @Test("完整状态流转: idle → pulling → triggered → refreshing → ending → idle")
     func fullStateFlow() {
         let style = MockStyle()
-        let component = HeaderRefreshComponent(style: style) {}
+        let component = makeTopRefreshComponent(style: style)
         component.scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         style.reset()
 
@@ -109,12 +109,12 @@ struct RefreshComponentTests {
     func stateChangeCallback() {
         var states: [RefreshState] = []
         let style = MockStyle()
-        let component = HeaderRefreshComponent(
+        let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(onStateChange: { state in
                 states.append(state)
             })
-        ) {}
+        )
         component.scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
 
         component.setState(.pulling(0.5))
@@ -126,7 +126,7 @@ struct RefreshComponentTests {
     @Test("组件以 Sendable action 存储异步操作")
     func storesSendableAction() {
         let action: @Sendable () async -> Void = {}
-        let component = HeaderRefreshComponent(style: MockStyle(), action: action)
+        let component = makeTopRefreshComponent(style: MockStyle(), action: action)
 
         expectSendableAction(component.action)
     }
@@ -136,14 +136,14 @@ struct RefreshComponentTests {
         await confirmation(expectedCount: 1) { confirm in
             var didConfirm = false
             let style = MockStyle()
-            let component = HeaderRefreshComponent(
+            let component = makeTopRefreshComponent(
                 style: style,
                 options: RefreshableOptions(onStateChange: { state in
                     guard !didConfirm, state == .ending || state == .idle else { return }
                     didConfirm = true
                     confirm()
                 })
-            ) {}
+            )
             let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
             component.scrollView = scrollView
             #expect(component.scrollView === scrollView)
@@ -151,6 +151,14 @@ struct RefreshComponentTests {
             component.trigger()
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
+    }
+
+    private func makeTopRefreshComponent(
+        style: MockStyle,
+        options: RefreshableOptions = RefreshableOptions(),
+        action: @escaping @Sendable () async -> Void = {}
+    ) -> EdgeRefreshComponent {
+        EdgeRefreshComponent(edge: .top, role: .refresh, style: style, options: options, action: action)
     }
 }
 

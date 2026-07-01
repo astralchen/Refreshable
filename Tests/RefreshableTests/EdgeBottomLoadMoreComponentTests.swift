@@ -2,18 +2,18 @@ import Testing
 @testable import Refreshable
 import UIKit
 
-@Suite("FooterRefreshComponent")
+@Suite("EdgeRefreshComponent .bottom loadMore")
 @MainActor
-struct FooterRefreshComponentTests {
+struct EdgeBottomLoadMoreComponentTests {
 
-    private func makeSUT() -> (UIScrollView, FooterRefreshComponent, MockStyle) {
+    private func makeSUT() -> (UIScrollView, EdgeRefreshComponent, MockStyle) {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
         return (scrollView, component, style)
     }
@@ -189,7 +189,7 @@ struct FooterRefreshComponentTests {
 
     // MARK: - contentSize 变化
 
-    @Test("contentSize 变化时 footer view 位置更新")
+    @Test("contentSize 变化时 bottom view 位置更新")
     func contentSizeChange() {
         let (scrollView, component, style) = makeSUT()
         let newSize = CGSize(width: 375, height: 3000)
@@ -217,14 +217,14 @@ struct FooterRefreshComponentTests {
     }
 
     @Test("开始加载时重新捕获当前 bottom inset")
-    func recapturesFooterInsetAtStart() {
+    func recapturesBottomInsetAtStart() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         scrollView.contentInset.bottom = 30
@@ -235,16 +235,16 @@ struct FooterRefreshComponentTests {
     }
 
     @Test("开始加载时滚动到刚好露出底部刷新视图的位置")
-    func beginLoadingMoreScrollsToRevealFooterView() {
+    func beginLoadingMoreScrollsToRevealBottomView() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 30
         scrollView.contentOffset.y = 2000 - 667 + 30
         let style = MockStyle(extent: 54)
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
         let expectedOffsetY = CGFloat(2000 - 667 + 30 + 54)
 
@@ -258,7 +258,7 @@ struct FooterRefreshComponentTests {
     @Test("scrollView 为 nil 时 endRefreshing 回到 idle")
     func endRefreshingWithoutScrollView() {
         let style = MockStyle()
-        let component = FooterRefreshComponent(style: style) {}
+        let component = makeBottomLoadMoreComponent(style: style)
         component.setState(.refreshing)
         component.endRefreshing()
         #expect(component.state == .idle)
@@ -271,7 +271,7 @@ struct FooterRefreshComponentTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 100) // 小于 frame
         let style = MockStyle()
-        let component = FooterRefreshComponent(style: style) {}
+        let component = makeBottomLoadMoreComponent(style: style)
         component.scrollView = scrollView
 
         component.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: 50))
@@ -284,10 +284,10 @@ struct FooterRefreshComponentTests {
         scrollView.contentSize = CGSize(width: 375, height: 100)
         scrollView.isDraggingOverride = true
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.scrollViewDidScroll(contentOffset: .zero)
@@ -303,7 +303,7 @@ struct FooterRefreshComponentTests {
             let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
             scrollView.contentSize = CGSize(width: 375, height: 2000)
             let style = MockStyle()
-            let component = FooterRefreshComponent(style: style) {
+            let component = makeBottomLoadMoreComponent(style: style) {
                 confirm()
             }
             component.scrollView = scrollView
@@ -315,16 +315,16 @@ struct FooterRefreshComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 footer inset")
-    func customFooterTriggerOffset() {
+    @Test("自定义 triggerOffset 用于 bottom inset")
+    func customBottomTriggerOffset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(triggerOffset: 90, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.beginLoadingMore()
@@ -332,16 +332,16 @@ struct FooterRefreshComponentTests {
         #expect(scrollView.contentInset.bottom == 106)
     }
 
-    @Test("非正 triggerOffset 使用最小 footer 触发距离")
-    func nonPositiveFooterTriggerOffsetUsesMinimumThreshold() {
+    @Test("非正 triggerOffset 使用最小 bottom 触发距离")
+    func nonPositiveBottomTriggerOffsetUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(triggerOffset: -10, animationDuration: 0, automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.beginLoadingMore()
@@ -350,21 +350,29 @@ struct FooterRefreshComponentTests {
         #expect(scrollView.contentInset.bottom == 17)
     }
 
-    @Test("automaticallyEndRefreshing 为 false 时 footer action 完成后保持 refreshing")
-    func footerManualEndOption() async {
+    @Test("automaticallyEndRefreshing 为 false 时 bottom edge action 完成后保持 refreshing")
+    func bottomManualEndOption() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
-        let component = FooterRefreshComponent(
+        let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
-        ) {}
+        )
         component.scrollView = scrollView
 
         component.trigger()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
         #expect(component.state == .refreshing)
+    }
+
+    private func makeBottomLoadMoreComponent(
+        style: MockStyle,
+        options: RefreshableOptions = RefreshableOptions(),
+        action: @escaping @Sendable () async -> Void = {}
+    ) -> EdgeRefreshComponent {
+        EdgeRefreshComponent(edge: .bottom, role: .loadMore, style: style, options: options, action: action)
     }
 }
 
