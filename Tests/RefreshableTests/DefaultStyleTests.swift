@@ -201,6 +201,72 @@ struct DefaultFooterStyleTests {
     }
 }
 
+@Suite("DefaultEdgeStyle", .tags(.ui))
+@MainActor
+struct DefaultEdgeStyleTests {
+
+    @Test("horizontal edge style uses circular progress and no activity indicator")
+    func horizontalEdgeStyleUsesCircularProgressWithoutSpinner() {
+        let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
+
+        #expect(style.view.firstSubview(ofType: UIActivityIndicatorView.self) == nil)
+        #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
+    }
+
+    @Test("horizontal edge pulling text stays generic")
+    func horizontalEdgePullingTextStaysGeneric() throws {
+        let leading = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        let trailing = DefaultEdgeStyle(edge: .trailing, role: .refresh)
+        let leadingLabel = try #require(leading.view.firstSubview(ofType: UILabel.self))
+        let trailingLabel = try #require(trailing.view.firstSubview(ofType: UILabel.self))
+
+        leading.update(state: .pulling(0.4), progress: 0.4)
+        trailing.update(state: .pulling(0.4), progress: 0.4)
+
+        #expect(leadingLabel.text == "拖动刷新")
+        #expect(trailingLabel.text == "拖动刷新")
+    }
+
+    @Test("horizontal edge label follows refresh state")
+    func horizontalEdgeLabelFollowsRefreshState() throws {
+        let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "释放刷新")
+
+        style.update(state: .refreshing, progress: 1)
+        #expect(label.text == "正在刷新...")
+
+        style.update(state: .ending, progress: 0)
+        #expect(label.text == "刷新完成")
+    }
+
+    @Test("horizontal edge render state resolves physical arrow directions")
+    func horizontalEdgeRenderStateResolvesPhysicalArrowDirections() {
+        let ltrContainer = UIView()
+        ltrContainer.semanticContentAttribute = .forceLeftToRight
+        let rtlContainer = UIView()
+        rtlContainer.semanticContentAttribute = .forceRightToLeft
+
+        #expect(DefaultEdgeStyle.RenderState(edge: .leading, role: .refresh, state: .pulling(0.5), progress: 0.5, in: ltrContainer).arrowSystemName == "arrow.right")
+        #expect(DefaultEdgeStyle.RenderState(edge: .trailing, role: .refresh, state: .pulling(0.5), progress: 0.5, in: ltrContainer).arrowSystemName == "arrow.left")
+        #expect(DefaultEdgeStyle.RenderState(edge: .leading, role: .refresh, state: .pulling(0.5), progress: 0.5, in: rtlContainer).arrowSystemName == "arrow.left")
+        #expect(DefaultEdgeStyle.RenderState(edge: .trailing, role: .refresh, state: .pulling(0.5), progress: 0.5, in: rtlContainer).arrowSystemName == "arrow.right")
+    }
+
+    @Test("horizontal progress clamps to zero and one")
+    func horizontalProgressClamps() {
+        let container = UIView()
+
+        let negative = DefaultEdgeStyle.RenderState(edge: .leading, role: .refresh, state: .pulling(-0.5), progress: -0.5, in: container)
+        let overflow = DefaultEdgeStyle.RenderState(edge: .leading, role: .refresh, state: .pulling(1.4), progress: 1.4, in: container)
+
+        #expect(negative.progress == 0)
+        #expect(overflow.progress == 1)
+    }
+}
+
 extension Tag {
     @Tag static var ui: Self
 }
@@ -218,5 +284,18 @@ private extension UIView {
         }
 
         return nil
+    }
+
+    func allSubviews<T: UIView>(ofType type: T.Type) -> [T] {
+        var results: [T] = []
+        if let view = self as? T {
+            results.append(view)
+        }
+
+        for subview in subviews {
+            results.append(contentsOf: subview.allSubviews(ofType: type))
+        }
+
+        return results
     }
 }
