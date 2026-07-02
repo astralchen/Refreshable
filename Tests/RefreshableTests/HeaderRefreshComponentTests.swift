@@ -70,6 +70,30 @@ struct HeaderRefreshComponentTests {
         #expect(style.lastState == .triggered)
     }
 
+    @Test("triggered 后继续下拉仍传递进度")
+    func triggeredStateContinuesForwardingPullProgress() {
+        let scrollView = HeaderDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 1200)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 60)
+        let component = HeaderRefreshComponent(
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 60,
+                automaticallyEndRefreshing: false
+            )
+        ) {}
+        component.scrollView = scrollView
+        style.reset()
+
+        component.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -60))
+        component.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -102))
+
+        #expect(component.state == .triggered)
+        #expect(style.lastState == .triggered)
+        #expect(style.lastProgress == 1.7)
+    }
+
     @Test("scrollViewDidEndDragging: triggered 状态下触发 refreshing")
     func endDraggingTriggersRefresh() {
         let (_, component, _) = makeSUT()
@@ -247,7 +271,7 @@ struct HeaderRefreshComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 header inset")
+    @Test("自定义 triggerOffset 只影响 header 触发距离")
     func customHeaderTriggerOffset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
@@ -260,10 +284,12 @@ struct HeaderRefreshComponentTests {
 
         component.beginRefreshing()
 
-        #expect(scrollView.contentInset.top == 92)
+        #expect(component.triggerThreshold == 80)
+        #expect(scrollView.contentInset.top == 66)
+        #expect(scrollView.contentOffset.y == -66)
     }
 
-    @Test("非正 triggerOffset 使用最小 header 触发距离")
+    @Test("非正 triggerOffset 使用最小 header 触发距离但保留样式高度")
     func nonPositiveHeaderTriggerOffsetUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
@@ -277,7 +303,9 @@ struct HeaderRefreshComponentTests {
         component.beginRefreshing()
 
         #expect(component.originalInset.top == 12)
-        #expect(scrollView.contentInset.top == 13)
+        #expect(component.triggerThreshold == 1)
+        #expect(scrollView.contentInset.top == 66)
+        #expect(scrollView.contentOffset.y == -66)
     }
 
     @Test("非正 style.extent 使用最小 header 触发距离")
@@ -350,6 +378,14 @@ private actor ActionCallCounter {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return count
+    }
+}
+
+private final class HeaderDraggingScrollView: UIScrollView {
+    var isDraggingOverride = false
+
+    override var isDragging: Bool {
+        isDraggingOverride
     }
 }
 

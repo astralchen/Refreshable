@@ -53,18 +53,25 @@ class EdgeRefreshComponent: RefreshComponent {
         lockOverlayContentOffsetIfNeeded(in: scrollView, distance: distance)
         updateOverlayFrameIfNeeded(in: scrollView)
 
+        let rawProgress = distance / triggerThreshold
+
         switch state {
         case .idle, .pulling:
             guard scrollView.isDragging, distance > 0 else { return }
-            let progress = min(distance / triggerThreshold, 1.0)
+            let progress = min(rawProgress, 1.0)
             if distance >= triggerThreshold {
                 setState(.triggered)
+                updateTriggeredPullProgress(rawProgress)
             } else {
                 setState(.pulling(progress))
             }
 
         case .triggered:
-            guard scrollView.isDragging, distance < triggerThreshold else { return }
+            guard scrollView.isDragging else { return }
+            guard distance < triggerThreshold else {
+                updateTriggeredPullProgress(rawProgress)
+                return
+            }
             if distance > 0 {
                 setState(.pulling(min(distance / triggerThreshold, 1.0)))
             } else {
@@ -74,6 +81,10 @@ class EdgeRefreshComponent: RefreshComponent {
         case .refreshing, .ending, .noMoreData:
             break
         }
+    }
+
+    private func updateTriggeredPullProgress(_ progress: CGFloat) {
+        style.update(state: .triggered, progress: min(max(progress, 1), 2))
     }
 
     override func scrollViewDidEndDragging() {
@@ -321,26 +332,28 @@ class EdgeRefreshComponent: RefreshComponent {
         let physicalEdge = edge.physicalEdge(in: scrollView)
         activeInsetEdge = physicalEdge
         var inset = scrollView.contentInset
-        inset.setValue(originalInset.value(for: physicalEdge) + triggerThreshold, for: physicalEdge)
+        inset.setValue(originalInset.value(for: physicalEdge) + displayExtent, for: physicalEdge)
         scrollView.contentInset = inset
     }
 
     private func adjustContentOffsetForStartEdgeIfNeeded(in scrollView: UIScrollView) {
+        let extent = displayExtent
+
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            scrollView.contentOffset.y = -originalInset.top - triggerThreshold
+            scrollView.contentOffset.y = -originalInset.top - extent
         case .left:
-            scrollView.contentOffset.x = -originalInset.left - triggerThreshold
+            scrollView.contentOffset.x = -originalInset.left - extent
         case .bottom:
             let minimumY = -originalInset.top
             scrollView.contentOffset.y = max(
-                scrollView.contentSize.height - scrollView.bounds.height + originalInset.bottom + triggerThreshold,
+                scrollView.contentSize.height - scrollView.bounds.height + originalInset.bottom + extent,
                 minimumY
             )
         case .right:
             let minimumX = -originalInset.left
             scrollView.contentOffset.x = max(
-                scrollView.contentSize.width - scrollView.bounds.width + originalInset.right + triggerThreshold,
+                scrollView.contentSize.width - scrollView.bounds.width + originalInset.right + extent,
                 minimumX
             )
         }

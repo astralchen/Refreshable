@@ -139,7 +139,7 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
         case .taiji:
             tableView.refreshable(
-                style: TaijiRefreshStyle(theme: traitCollection.userInterfaceStyle == .dark ? .dark : .system),
+                style: TaijiRefreshStyle(theme: .dark),
                 options: options
             ) { [weak self] in
                 await self?.performRefresh()
@@ -161,9 +161,9 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
     private var triggerOffset: CGFloat {
         switch selectedStyle {
-        case .system: 64
+        case .system: 132
         case .taiji: 92
-        case .kinetic: 112
+        case .kinetic: 82
         }
     }
 

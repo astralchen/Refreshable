@@ -91,7 +91,7 @@ public final class KineticRefreshStyle: RefreshableStyle {
 
     /// Creates a kinetic refresh style.
     public init(
-        extent: CGFloat = 112,
+        extent: CGFloat = 82,
         texts: KineticRefreshTexts = KineticRefreshTexts(),
         palette: KineticRefreshPalette = KineticRefreshPalette()
     ) {
@@ -159,13 +159,14 @@ public final class KineticRefreshStyle: RefreshableStyle {
 private final class KineticRefreshView: UIView {
 
     private let pathLayer = CAShapeLayer()
+    private let ribbonGradientLayer = CAGradientLayer()
     private let progressLayer = CAShapeLayer()
     private let glyphContainer = UIView()
     private let glyphView = UIImageView()
     private let pillView = UIView()
     private let statusDot = UIView()
     private let label = UILabel()
-    private let tickLayers: [CAShapeLayer] = (0..<7).map { _ in CAShapeLayer() }
+    private let tickLayers: [CAShapeLayer] = (0..<11).map { _ in CAShapeLayer() }
     private var currentPalette = KineticRefreshPalette()
 
     override init(frame: CGRect) {
@@ -180,8 +181,10 @@ private final class KineticRefreshView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        ribbonGradientLayer.frame = bounds
+        progressLayer.frame = bounds
         let centerY = glyphContainer.center.y
-        let pathRect = CGRect(x: bounds.minX + 34, y: centerY - 16, width: max(bounds.width - 68, 120), height: 36)
+        let pathRect = ribbonPathRect(centerY: centerY)
         pathLayer.path = elasticPath(in: pathRect, progress: 1).cgPath
         progressLayer.path = pathLayer.path
         layoutTickLayers(progress: 1)
@@ -189,22 +192,38 @@ private final class KineticRefreshView: UIView {
 
     func apply(palette: KineticRefreshPalette) {
         currentPalette = palette
-        pathLayer.strokeColor = palette.teal.withAlphaComponent(0.24).cgColor
-        progressLayer.strokeColor = palette.teal.cgColor
-        glyphContainer.backgroundColor = .white
+        pathLayer.strokeColor = palette.teal.withAlphaComponent(0.16).cgColor
+        progressLayer.strokeColor = UIColor.black.cgColor
+        ribbonGradientLayer.colors = [
+            palette.coral.withAlphaComponent(0).cgColor,
+            palette.coral.withAlphaComponent(0.75).cgColor,
+            palette.indigo.withAlphaComponent(0.95).cgColor,
+            palette.teal.withAlphaComponent(0.95).cgColor,
+            UIColor(red: 0.08, green: 0.68, blue: 0.92, alpha: 0.95).cgColor,
+            palette.lime.withAlphaComponent(0.9).cgColor,
+            palette.lime.withAlphaComponent(0).cgColor,
+        ]
+        ribbonGradientLayer.locations = [0, 0.12, 0.34, 0.5, 0.66, 0.86, 1]
+        ribbonGradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        ribbonGradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        glyphContainer.backgroundColor = UIColor.white.withAlphaComponent(0.96)
         glyphView.tintColor = palette.teal
-        pillView.backgroundColor = palette.surface
+        pillView.backgroundColor = palette.surface.withAlphaComponent(0.94)
         label.textColor = palette.ink
         statusDot.backgroundColor = palette.teal
 
         let colors = [
             palette.coral,
+            palette.coral,
+            UIColor(red: 1.0, green: 0.62, blue: 0.16, alpha: 1),
             UIColor(red: 1.0, green: 0.62, blue: 0.16, alpha: 1),
             palette.indigo,
+            UIColor(red: 0.56, green: 0.39, blue: 0.96, alpha: 1),
             palette.teal,
             UIColor(red: 0.12, green: 0.68, blue: 0.92, alpha: 1),
             palette.lime,
             UIColor(red: 0.42, green: 0.78, blue: 0.22, alpha: 1),
+            UIColor(red: 0.50, green: 0.82, blue: 0.16, alpha: 1),
         ]
         for (index, layer) in tickLayers.enumerated() {
             layer.fillColor = colors[index % colors.count].cgColor
@@ -223,10 +242,7 @@ private final class KineticRefreshView: UIView {
         label.text = text
         progressLayer.strokeEnd = p
         let pathCenterY = glyphContainer.center.y
-        pathLayer.path = elasticPath(
-            in: CGRect(x: bounds.minX + 34, y: pathCenterY - 16, width: max(bounds.width - 68, 120), height: 36),
-            progress: max(p, 0.08)
-        ).cgPath
+        pathLayer.path = elasticPath(in: ribbonPathRect(centerY: pathCenterY), progress: max(p, 0.08)).cgPath
         progressLayer.path = pathLayer.path
         layoutTickLayers(progress: p)
         tickLayers.enumerated().forEach { index, layer in
@@ -280,39 +296,58 @@ private final class KineticRefreshView: UIView {
         backgroundColor = .clear
         isUserInteractionEnabled = false
 
-        [pathLayer, progressLayer].forEach { layer in
-            layer.fillColor = UIColor.clear.cgColor
-            layer.lineCap = .round
-            layer.lineJoin = .round
-            layer.lineWidth = 5
-            self.layer.addSublayer(layer)
-        }
+        pathLayer.fillColor = nil
+        pathLayer.lineCap = .round
+        pathLayer.lineJoin = .round
+        pathLayer.lineWidth = 3.5
+        pathLayer.zPosition = 0
+        layer.addSublayer(pathLayer)
+
+        progressLayer.fillColor = nil
+        progressLayer.lineCap = .round
+        progressLayer.lineJoin = .round
+        progressLayer.lineWidth = 3.5
         progressLayer.strokeEnd = 0
+
+        ribbonGradientLayer.mask = progressLayer
+        ribbonGradientLayer.zPosition = 1
+        layer.addSublayer(ribbonGradientLayer)
+
+        tickLayers.enumerated().forEach { index, tick in
+            let size = tickSize(at: index)
+            tick.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: min(size.width, size.height) / 2).cgPath
+            tick.bounds = CGRect(origin: .zero, size: size)
+            tick.opacity = 0.25
+            tick.zPosition = 2
+            layer.addSublayer(tick)
+        }
 
         glyphContainer.translatesAutoresizingMaskIntoConstraints = false
         glyphContainer.layer.cornerRadius = 22
         glyphContainer.layer.cornerCurve = .continuous
         glyphContainer.layer.shadowColor = UIColor.black.cgColor
-        glyphContainer.layer.shadowOpacity = 0.12
-        glyphContainer.layer.shadowRadius = 14
-        glyphContainer.layer.shadowOffset = CGSize(width: 0, height: 8)
+        glyphContainer.layer.shadowOpacity = 0.11
+        glyphContainer.layer.shadowRadius = 12
+        glyphContainer.layer.shadowOffset = CGSize(width: 0, height: 6)
+        glyphContainer.layer.zPosition = 4
         addSubview(glyphContainer)
 
-        let imageConfiguration = UIImage.SymbolConfiguration(pointSize: 19, weight: .bold)
-        glyphView.image = UIImage(systemName: "arrow.triangle.2.circlepath", withConfiguration: imageConfiguration)
+        let imageConfiguration = UIImage.SymbolConfiguration(pointSize: 18, weight: .bold)
+        glyphView.image = UIImage(systemName: "arrow.clockwise", withConfiguration: imageConfiguration)
         glyphView.contentMode = .center
         glyphView.translatesAutoresizingMaskIntoConstraints = false
         glyphContainer.addSubview(glyphView)
 
         pillView.translatesAutoresizingMaskIntoConstraints = false
-        pillView.layer.cornerRadius = 17
+        pillView.layer.cornerRadius = 15
         pillView.layer.cornerCurve = .continuous
-        pillView.layer.borderWidth = 0.5
-        pillView.layer.borderColor = UIColor.separator.withAlphaComponent(0.45).cgColor
+        pillView.layer.borderWidth = 0
+        pillView.layer.borderColor = UIColor.clear.cgColor
         pillView.layer.shadowColor = UIColor.black.cgColor
-        pillView.layer.shadowOpacity = 0.08
-        pillView.layer.shadowRadius = 10
+        pillView.layer.shadowOpacity = 0.1
+        pillView.layer.shadowRadius = 12
         pillView.layer.shadowOffset = CGSize(width: 0, height: 5)
+        pillView.layer.zPosition = 4
         addSubview(pillView)
 
         statusDot.translatesAutoresizingMaskIntoConstraints = false
@@ -324,17 +359,9 @@ private final class KineticRefreshView: UIView {
         label.translatesAutoresizingMaskIntoConstraints = false
         pillView.addSubview(label)
 
-        tickLayers.enumerated().forEach { index, tick in
-            let size = tickSize(at: index)
-            tick.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: min(size.width, size.height) / 2).cgPath
-            tick.bounds = CGRect(origin: .zero, size: size)
-            tick.opacity = 0.25
-            layer.addSublayer(tick)
-        }
-
         NSLayoutConstraint.activate([
             glyphContainer.centerXAnchor.constraint(equalTo: centerXAnchor),
-            glyphContainer.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -18),
+            glyphContainer.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -7),
             glyphContainer.widthAnchor.constraint(equalToConstant: 44),
             glyphContainer.heightAnchor.constraint(equalToConstant: 44),
 
@@ -343,9 +370,9 @@ private final class KineticRefreshView: UIView {
             glyphView.widthAnchor.constraint(equalTo: glyphContainer.widthAnchor),
             glyphView.heightAnchor.constraint(equalTo: glyphContainer.heightAnchor),
 
-            pillView.topAnchor.constraint(equalTo: glyphContainer.bottomAnchor, constant: 9),
+            pillView.topAnchor.constraint(equalTo: glyphContainer.bottomAnchor, constant: 5),
             pillView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            pillView.heightAnchor.constraint(equalToConstant: 34),
+            pillView.heightAnchor.constraint(equalToConstant: 30),
 
             statusDot.leadingAnchor.constraint(equalTo: pillView.leadingAnchor, constant: 16),
             statusDot.centerYAnchor.constraint(equalTo: pillView.centerYAnchor),
@@ -358,14 +385,23 @@ private final class KineticRefreshView: UIView {
         ])
     }
 
+    private func ribbonPathRect(centerY: CGFloat) -> CGRect {
+        CGRect(x: bounds.minX + 22, y: centerY - 14, width: max(bounds.width - 44, 120), height: 32)
+    }
+
     private func elasticPath(in rect: CGRect, progress: CGFloat) -> UIBezierPath {
-        let stretch = min(max(progress, 0), 1) * 12
+        let stretch = min(max(progress, 0), 1) * 11
         let path = UIBezierPath()
         path.move(to: CGPoint(x: rect.minX, y: rect.midY))
         path.addCurve(
+            to: CGPoint(x: rect.midX, y: rect.midY),
+            controlPoint1: CGPoint(x: rect.minX + rect.width * 0.20, y: rect.midY + stretch * 0.55),
+            controlPoint2: CGPoint(x: rect.minX + rect.width * 0.32, y: rect.maxY + stretch)
+        )
+        path.addCurve(
             to: CGPoint(x: rect.maxX, y: rect.midY),
-            controlPoint1: CGPoint(x: rect.minX + rect.width * 0.32, y: rect.minY - stretch),
-            controlPoint2: CGPoint(x: rect.minX + rect.width * 0.68, y: rect.maxY + stretch)
+            controlPoint1: CGPoint(x: rect.minX + rect.width * 0.68, y: rect.minY - stretch),
+            controlPoint2: CGPoint(x: rect.minX + rect.width * 0.78, y: rect.midY - stretch * 0.45)
         )
         return path
     }
@@ -373,32 +409,54 @@ private final class KineticRefreshView: UIView {
     private func layoutTickLayers(progress: CGFloat) {
         guard bounds.width > 0, bounds.height > 0 else { return }
         let centerY = glyphContainer.center.y
-        let availableWidth = max(bounds.width - 92, 160)
+        let availableWidth = max(bounds.width - 70, 180)
         let startX = bounds.midX - availableWidth / 2
         for (index, layer) in tickLayers.enumerated() {
             let size = tickSize(at: index)
             layer.bounds = CGRect(origin: .zero, size: size)
             layer.path = UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: min(size.width, size.height) / 2).cgPath
-            let fraction = CGFloat(index) / CGFloat(max(tickLayers.count - 1, 1))
-            let waveOffset = sin((fraction + progress * 0.18) * .pi * 2) * 15
-            let x = startX + availableWidth * fraction
-            layer.position = CGPoint(x: x, y: centerY - 2 + waveOffset)
+            let layout = tickLayout(at: index)
+            let x = startX + availableWidth * layout.fraction
+            layer.position = CGPoint(x: x, y: centerY - 2 + layout.yOffset)
         }
     }
 
     private func tickSize(at index: Int) -> CGSize {
         switch index {
+        case 0, 6, 10:
+            CGSize(width: 4, height: 4)
         case 1:
-            CGSize(width: 8, height: 24)
-        case 2:
-            CGSize(width: 9, height: 36)
-        case 4:
-            CGSize(width: 10, height: 42)
+            CGSize(width: 8, height: 8)
+        case 2, 4, 9:
+            CGSize(width: 5, height: 5)
+        case 3:
+            CGSize(width: 8, height: 22)
         case 5:
-            CGSize(width: 11, height: 48)
+            CGSize(width: 9, height: 34)
+        case 7:
+            CGSize(width: 9, height: 32)
+        case 8:
+            CGSize(width: 9, height: 28)
         default:
-            CGSize(width: 7, height: 7)
+            CGSize(width: 6, height: 6)
         }
+    }
+
+    private func tickLayout(at index: Int) -> (fraction: CGFloat, yOffset: CGFloat) {
+        let layouts: [(CGFloat, CGFloat)] = [
+            (0.03, 7),
+            (0.12, 10),
+            (0.21, -23),
+            (0.22, 0),
+            (0.32, -25),
+            (0.35, -8),
+            (0.59, -24),
+            (0.63, 0),
+            (0.75, -16),
+            (0.84, 19),
+            (0.96, -21),
+        ]
+        return layouts[index % layouts.count]
     }
 
     private func startSpin() {

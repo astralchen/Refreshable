@@ -315,7 +315,7 @@ struct FooterRefreshComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 footer inset")
+    @Test("自定义 triggerOffset 只影响 footer 触发距离")
     func customFooterTriggerOffset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
@@ -329,10 +329,12 @@ struct FooterRefreshComponentTests {
 
         component.beginLoadingMore()
 
-        #expect(scrollView.contentInset.bottom == 106)
+        #expect(component.triggerThreshold == 90)
+        #expect(scrollView.contentInset.bottom == 70)
+        #expect(abs(scrollView.contentOffset.y - CGFloat(2000 - 667 + 16 + 54)) < 0.001)
     }
 
-    @Test("非正 triggerOffset 使用最小 footer 触发距离")
+    @Test("非正 triggerOffset 使用最小 footer 触发距离但保留样式高度")
     func nonPositiveFooterTriggerOffsetUsesMinimumThreshold() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
@@ -347,7 +349,9 @@ struct FooterRefreshComponentTests {
         component.beginLoadingMore()
 
         #expect(component.originalInset.bottom == 16)
-        #expect(scrollView.contentInset.bottom == 17)
+        #expect(component.triggerThreshold == 1)
+        #expect(scrollView.contentInset.bottom == 70)
+        #expect(abs(scrollView.contentOffset.y - CGFloat(2000 - 667 + 16 + 54)) < 0.001)
     }
 
     @Test("automaticallyEndRefreshing 为 false 时 footer action 完成后保持 refreshing")
