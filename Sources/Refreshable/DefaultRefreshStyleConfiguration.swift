@@ -43,8 +43,8 @@ public struct DefaultRefreshStyleConfiguration {
     }
 }
 
-/// 默认下拉刷新样式的可见文案和 VoiceOver 文案。
-public struct DefaultHeaderRefreshTexts {
+/// 默认顶部下拉刷新样式的可见文案和 VoiceOver 文案。
+public struct DefaultTopRefreshTexts {
     public var idle: String
     public var pulling: String
     public var triggered: String
@@ -57,7 +57,7 @@ public struct DefaultHeaderRefreshTexts {
     public var refreshingAccessibilityValue: String
     public var endingAccessibilityValue: String
 
-    /// 创建下拉刷新默认文案。
+    /// 创建顶部下拉刷新默认文案。
     public init(
         idle: String = "下拉刷新",
         pulling: String = "下拉刷新",
@@ -85,8 +85,8 @@ public struct DefaultHeaderRefreshTexts {
     }
 }
 
-/// 默认上拉加载样式的可见文案和 VoiceOver 文案。
-public struct DefaultFooterRefreshTexts {
+/// 默认底部上拉加载更多样式的可见文案和 VoiceOver 文案。
+public struct DefaultBottomLoadMoreTexts {
     public var idle: String
     public var pulling: String
     public var triggered: String
@@ -101,7 +101,7 @@ public struct DefaultFooterRefreshTexts {
     public var endingAccessibilityValue: String
     public var noMoreDataAccessibilityValue: String
 
-    /// 创建上拉加载默认文案。
+    /// 创建底部上拉加载更多默认文案。
     public init(
         idle: String = "上拉加载更多",
         pulling: String = "上拉加载更多",

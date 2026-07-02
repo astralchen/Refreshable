@@ -50,8 +50,11 @@ final class DemoUITests: XCTestCase {
         XCTAssertTrue(styleButton.waitForExistence(timeout: 3), "\(styleTitle) segment should exist")
         styleButton.tap()
 
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
-        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.56))
+        let table = app.tables.firstMatch
+        XCTAssertTrue(table.waitForExistence(timeout: 3), "feed table should exist")
+
+        let start = table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        let end = table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.76))
         start.press(forDuration: 0.08, thenDragTo: end)
 
         let refreshResult = app.staticTexts[expectedBody]

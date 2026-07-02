@@ -424,9 +424,9 @@ extension UIScrollView {
     private func defaultStyle(for edge: RefreshableEdge, role: RefreshableRole) -> any RefreshableStyle {
         switch (edge, role) {
         case (.top, .refresh):
-            DefaultHeaderStyle()
+            DefaultTopRefreshStyle()
         case (.bottom, .loadMore):
-            DefaultFooterStyle()
+            DefaultBottomLoadMoreStyle()
         default:
             DefaultEdgeStyle(edge: edge, role: role)
         }

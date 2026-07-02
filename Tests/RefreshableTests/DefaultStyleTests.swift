@@ -2,25 +2,25 @@ import Testing
 @testable import Refreshable
 import UIKit
 
-@Suite("DefaultHeaderStyle", .tags(.ui))
+@Suite("DefaultTopRefreshStyle", .tags(.ui))
 @MainActor
-struct DefaultHeaderStyleTests {
+struct DefaultTopRefreshStyleTests {
 
     @Test("初始化后 extent 为 54")
     func extent() {
-        let style = DefaultHeaderStyle()
+        let style = DefaultTopRefreshStyle()
         #expect(style.extent == 54)
     }
 
     @Test("view 不为 nil 且有子视图")
     func viewHasSubviews() {
-        let style = DefaultHeaderStyle()
+        let style = DefaultTopRefreshStyle()
         #expect(style.view.subviews.count >= 2)
     }
 
     @Test("update 不 crash，各状态均可调用")
     func updateAllStates() {
-        let style = DefaultHeaderStyle()
+        let style = DefaultTopRefreshStyle()
         style.update(state: .idle, progress: 0)
         style.update(state: .pulling(0.5), progress: 0.5)
         style.update(state: .triggered, progress: 1.0)
@@ -29,9 +29,9 @@ struct DefaultHeaderStyleTests {
         style.update(state: .noMoreData, progress: 0)
     }
 
-    @Test("默认 header 文案保持现有中文行为")
-    func defaultHeaderTextsStayChinese() throws {
-        let style = DefaultHeaderStyle()
+    @Test("默认 top refresh 文案保持现有中文行为")
+    func defaultTopRefreshTextsStayChinese() throws {
+        let style = DefaultTopRefreshStyle()
         let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
         style.update(state: .idle, progress: 0)
@@ -47,9 +47,9 @@ struct DefaultHeaderStyleTests {
         #expect(label.text == "刷新完成")
     }
 
-    @Test("自定义 header 文案和 VoiceOver 值随状态更新")
-    func customHeaderTextsAndAccessibilityValues() throws {
-        let texts = DefaultHeaderRefreshTexts(
+    @Test("自定义 top refresh 文案和 VoiceOver 值随状态更新")
+    func customTopRefreshTextsAndAccessibilityValues() throws {
+        let texts = DefaultTopRefreshTexts(
             idle: "Pull down",
             pulling: "Keep pulling",
             triggered: "Release now",
@@ -62,7 +62,7 @@ struct DefaultHeaderStyleTests {
             refreshingAccessibilityValue: "Loading",
             endingAccessibilityValue: "Done"
         )
-        let style = DefaultHeaderStyle(texts: texts)
+        let style = DefaultTopRefreshStyle(texts: texts)
         let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
         style.update(state: .pulling(0.5), progress: 0.5)
@@ -76,9 +76,9 @@ struct DefaultHeaderStyleTests {
         #expect(style.view.accessibilityValue == "Ready")
     }
 
-    @Test("header 支持 Dynamic Type 配置")
-    func headerSupportsDynamicTypeConfiguration() throws {
-        let style = DefaultHeaderStyle(
+    @Test("top refresh 支持 Dynamic Type 配置")
+    func topRefreshSupportsDynamicTypeConfiguration() throws {
+        let style = DefaultTopRefreshStyle(
             configuration: DefaultRefreshStyleConfiguration(
                 font: .systemFont(ofSize: 17, weight: .semibold),
                 fontTextStyle: .headline,
@@ -91,9 +91,9 @@ struct DefaultHeaderStyleTests {
         #expect(label.font.pointSize >= 17)
     }
 
-    @Test("Reduce Motion 开启时 header 不使用渐进旋转")
-    func headerHonorsReduceMotion() throws {
-        let style = DefaultHeaderStyle(
+    @Test("Reduce Motion 开启时 top refresh 不使用渐进旋转")
+    func topRefreshHonorsReduceMotion() throws {
+        let style = DefaultTopRefreshStyle(
             accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: true,
                 isReduceTransparencyEnabled: false
@@ -107,19 +107,19 @@ struct DefaultHeaderStyleTests {
     }
 }
 
-@Suite("DefaultFooterStyle", .tags(.ui))
+@Suite("DefaultBottomLoadMoreStyle", .tags(.ui))
 @MainActor
-struct DefaultFooterStyleTests {
+struct DefaultBottomLoadMoreStyleTests {
 
     @Test("初始化后 extent 为 54")
     func extent() {
-        let style = DefaultFooterStyle()
+        let style = DefaultBottomLoadMoreStyle()
         #expect(style.extent == 54)
     }
 
     @Test("update 不 crash，各状态均可调用")
     func updateAllStates() {
-        let style = DefaultFooterStyle()
+        let style = DefaultBottomLoadMoreStyle()
         style.update(state: .idle, progress: 0)
         style.update(state: .pulling(0.3), progress: 0.3)
         style.update(state: .triggered, progress: 1.0)
@@ -128,9 +128,9 @@ struct DefaultFooterStyleTests {
         style.update(state: .noMoreData, progress: 0)
     }
 
-    @Test("默认 footer 文案保持现有中文行为")
-    func defaultFooterTextsStayChinese() throws {
-        let style = DefaultFooterStyle()
+    @Test("默认 bottom load-more 文案保持现有中文行为")
+    func defaultBottomLoadMoreTextsStayChinese() throws {
+        let style = DefaultBottomLoadMoreStyle()
         let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
         style.update(state: .idle, progress: 0)
@@ -149,9 +149,9 @@ struct DefaultFooterStyleTests {
         #expect(label.text == "没有更多数据")
     }
 
-    @Test("自定义 footer 文案和 VoiceOver 值随状态更新")
-    func customFooterTextsAndAccessibilityValues() throws {
-        let texts = DefaultFooterRefreshTexts(
+    @Test("自定义 bottom load-more 文案和 VoiceOver 值随状态更新")
+    func customBottomLoadMoreTextsAndAccessibilityValues() throws {
+        let texts = DefaultBottomLoadMoreTexts(
             idle: "Pull up",
             pulling: "Keep pulling",
             triggered: "Release to load",
@@ -166,7 +166,7 @@ struct DefaultFooterStyleTests {
             endingAccessibilityValue: "Done",
             noMoreDataAccessibilityValue: "No more items"
         )
-        let style = DefaultFooterStyle(texts: texts)
+        let style = DefaultBottomLoadMoreStyle(texts: texts)
         let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
         style.update(state: .refreshing, progress: 0)
@@ -180,9 +180,9 @@ struct DefaultFooterStyleTests {
         #expect(style.view.accessibilityValue == "No more items")
     }
 
-    @Test("Reduce Transparency 开启时 footer 使用高对比文字颜色")
-    func footerHonorsReduceTransparency() throws {
-        let style = DefaultFooterStyle(
+    @Test("Reduce Transparency 开启时 bottom load-more 使用高对比文字颜色")
+    func bottomLoadMoreHonorsReduceTransparency() throws {
+        let style = DefaultBottomLoadMoreStyle(
             configuration: DefaultRefreshStyleConfiguration(
                 textColor: .red,
                 reducedTransparencyTextColor: .blue,

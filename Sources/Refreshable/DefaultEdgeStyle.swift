@@ -167,6 +167,7 @@ final class DefaultEdgeStyle: RefreshableStyle {
     private let label = UILabel()
     private let progressHost = CAShapeLayerHostView()
     private let arrowView = UIImageView()
+    private let horizontalLabelMinimumWidth: CGFloat = 72
 
     init(edge: RefreshableEdge, role: RefreshableRole) {
         self.edge = edge
@@ -218,6 +219,8 @@ final class DefaultEdgeStyle: RefreshableStyle {
         view.addSubview(arrowView)
 
         setupLabel(numberOfLines: 1)
+        let minimumLabelWidth = label.widthAnchor.constraint(greaterThanOrEqualToConstant: horizontalLabelMinimumWidth)
+        minimumLabelWidth.priority = .defaultHigh
 
         NSLayoutConstraint.activate([
             progressHost.centerXAnchor.constraint(equalTo: view.layoutMarginsGuide.centerXAnchor),
@@ -232,6 +235,7 @@ final class DefaultEdgeStyle: RefreshableStyle {
 
             label.topAnchor.constraint(equalTo: progressHost.bottomAnchor, constant: 8),
             label.centerXAnchor.constraint(equalTo: view.layoutMarginsGuide.centerXAnchor),
+            minimumLabelWidth,
             label.widthAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.widthAnchor, constant: -4),
             label.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor, constant: 2),
             label.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor, constant: -2),

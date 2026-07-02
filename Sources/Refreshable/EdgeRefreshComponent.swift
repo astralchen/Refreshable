@@ -88,8 +88,13 @@ class EdgeRefreshComponent: RefreshComponent {
     }
 
     override func scrollViewDidEndDragging() {
-        if state == .triggered {
+        switch state {
+        case .triggered:
             trigger()
+        case .pulling:
+            setState(.idle)
+        case .idle, .refreshing, .ending, .noMoreData:
+            break
         }
     }
 

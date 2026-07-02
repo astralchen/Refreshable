@@ -10,7 +10,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
     /// The default header height.
     public let extent: CGFloat
 
-    private let texts: DefaultHeaderRefreshTexts
+    private let texts: DefaultTopRefreshTexts
     private let configuration: DefaultRefreshStyleConfiguration
     private let lastUpdatedText: String
     private let hintContainer = UIView()
@@ -26,7 +26,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
     /// Creates a native-style refresh control.
     public init(
         extent: CGFloat = 64,
-        texts: DefaultHeaderRefreshTexts = DefaultHeaderRefreshTexts(),
+        texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
         configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(
             font: .systemFont(ofSize: 15, weight: .semibold),
             textColor: .label

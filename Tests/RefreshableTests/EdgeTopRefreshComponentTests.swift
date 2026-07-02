@@ -112,13 +112,25 @@ struct EdgeTopRefreshComponentTests {
         #expect(component.state == .idle)
     }
 
-    @Test("scrollViewDidEndDragging: pulling 状态下不触发")
-    func endDraggingPullingNoOp() {
+    @Test("scrollViewDidEndDragging: pulling 状态下回到 idle")
+    func endDraggingPullingResetsToIdle() {
         let (_, component, _) = makeSUT()
         component.setState(.pulling(0.3))
 
         component.scrollViewDidEndDragging()
-        #expect(component.state == .pulling(0.3))
+        #expect(component.state == .idle)
+    }
+
+    @Test("scrollViewDidEndDragging: pulling 状态下隐藏刷新视图")
+    func endDraggingPullingHidesRefreshView() {
+        let (_, component, style) = makeSUT()
+        component.setState(.pulling(0.3))
+        #expect(style.view.alpha > 0)
+
+        component.scrollViewDidEndDragging()
+
+        #expect(component.state == .idle)
+        #expect(style.view.alpha == 0)
     }
 
     // MARK: - 防重入
