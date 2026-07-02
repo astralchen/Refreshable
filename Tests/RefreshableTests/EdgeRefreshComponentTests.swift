@@ -160,8 +160,8 @@ struct EdgeRefreshComponentTests {
         #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 750, height: 390))
         #expect(trailingStyle.view.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
         #expect(leadingStyle.view.layoutMargins.left == 0)
-        #expect(leadingStyle.view.layoutMargins.right == 696)
-        #expect(trailingStyle.view.layoutMargins.left == 696)
+        #expect(leadingStyle.view.layoutMargins.right == 620)
+        #expect(trailingStyle.view.layoutMargins.left == 620)
         #expect(trailingStyle.view.layoutMargins.right == 0)
 
         scrollView.beginRefreshing(edge: .leading)

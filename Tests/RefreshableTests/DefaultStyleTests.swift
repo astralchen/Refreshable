@@ -213,16 +213,20 @@ struct DefaultEdgeStyleTests {
         #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
     }
 
-    @Test("horizontal edge visual content follows layout margins")
-    func horizontalEdgeVisualContentFollowsLayoutMargins() throws {
+    @Test("horizontal edge visual content uses the margin lane without clipping text")
+    func horizontalEdgeVisualContentUsesMarginLaneWithoutClippingText() throws {
         let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
         style.view.frame = CGRect(x: 0, y: 0, width: 750, height: 390)
-        style.view.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 696)
+        style.view.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 620)
         let progressHost = try #require(style.view.firstSubview(ofType: CAShapeLayerHostView.self))
+        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
+        style.update(state: .refreshing, progress: 1)
         style.view.layoutIfNeeded()
 
-        #expect(progressHost.center.x == 27)
+        #expect(progressHost.center.x == 65)
+        #expect(label.frame.minX >= 0)
+        #expect(label.frame.width > 70)
     }
 
     @Test("horizontal edge pulling text stays generic")

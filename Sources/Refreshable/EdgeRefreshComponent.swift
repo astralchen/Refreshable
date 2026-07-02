@@ -183,7 +183,8 @@ class EdgeRefreshComponent: RefreshComponent {
             return
         }
 
-        let insetWidth = max(refreshView.bounds.width - displayExtent, 0)
+        let visualWidth = min(max(displayExtent, 130), refreshView.bounds.width)
+        let insetWidth = max(refreshView.bounds.width - visualWidth, 0)
         switch edge.physicalEdge(in: scrollView) {
         case .left:
             refreshView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: insetWidth)
