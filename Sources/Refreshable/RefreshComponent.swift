@@ -77,6 +77,21 @@ public class RefreshComponent: NSObject {
         // override
     }
 
+    /// 当前组件安装到滚动视图上的外层视图。
+    var installedView: UIView {
+        style.view
+    }
+
+    /// 状态变化时用于控制可见性的视图。
+    var visibilityView: UIView {
+        style.view
+    }
+
+    /// 移除组件安装的视图。
+    func removeInstalledView() {
+        installedView.removeFromSuperview()
+    }
+
     /// 滚动视图的 `contentOffset` 变化时调用。
     func scrollViewDidScroll(contentOffset: CGPoint) {
         // override
@@ -103,18 +118,18 @@ public class RefreshComponent: NSObject {
     private func updateViewVisibility(state: RefreshState, progress: CGFloat) {
         switch state {
         case .idle:
-            style.view.alpha = 0
+            visibilityView.alpha = 0
         case .pulling(let p):
-            style.view.alpha = min(p, 1.0)
+            visibilityView.alpha = min(p, 1.0)
         case .triggered:
-            style.view.alpha = 1
+            visibilityView.alpha = 1
         case .refreshing:
-            style.view.alpha = 1
+            visibilityView.alpha = 1
         case .ending:
             // ending 期间保持可见，动画结束后回到 idle 时会置 0
             break
         case .noMoreData:
-            style.view.alpha = 1
+            visibilityView.alpha = 1
         }
     }
 
@@ -219,7 +234,7 @@ public class RefreshComponent: NSObject {
     func prepareForRemoval() {
         cancelCurrentTask(resetState: false)
         restoreInsetIfNeeded()
-        style.view.removeFromSuperview()
+        removeInstalledView()
         scrollView = nil
     }
 

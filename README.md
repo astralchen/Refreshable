@@ -89,6 +89,7 @@ let options = RefreshableOptions(
     animationDuration: 0.35,
     automaticallyEndRefreshing: false,
     allowsLoadMoreWhenContentFits: true,
+    placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
     presentation: .contentInset,
     onStateChange: { state in
         print(state)
@@ -112,11 +113,14 @@ tableView.loadMoreable(options: options) {
 
 选项默认值保持一行接入行为：
 
-- `triggerOffset: nil` 使用 `style.extent` 作为触发距离
+- `triggerOffset: nil` 使用 `style.extent` 作为触发距离；自定义 `triggerOffset` 只改变触发阈值，不改变刷新中保留的视觉占位
 - `animationDuration: 0.25`
 - `automaticallyEndRefreshing: true`，action 完成后自动收起
 - `allowsLoadMoreWhenContentFits: false`，内容未填满当前滚动轴时默认不触发加载更多
+- `placement: RefreshablePlacement()`，默认不增加额外间距；`outerSpacing` 沿刷新方向增加视觉控件与可见外侧边缘之间的距离，`contentSpacing` 增加视觉控件与内容之间的距离，`crossAxisInset` 在垂直于刷新方向的轴上收缩视觉控件
 - `presentation: .contentInset`，默认通过 inset 保持刷新视图；全屏视频流可使用 `.overlay(spacing:locksContentOffset:)` 浮在可见区域边缘，并可在边界拖动时保持视频画面不移动
+
+默认横向边缘样式会保留 8pt 外侧留白，让左右刷新控件不会贴住屏幕边缘；传入自定义 `placement` 时以调用方配置为准。
 
 ## 并发语义
 
@@ -161,6 +165,7 @@ tableView.refreshable(style: MyHeaderStyle()) {
 ```
 
 > 无需管理 `view.alpha`，组件会自动处理（idle 透明，拖拽渐显，刷新时完全显示）。
+> 自定义样式应按 `view.bounds` 布局。组件内部会处理滚动视图 host 几何、安全区和横向/纵向间距，不会改写样式视图的 `layoutMargins`。
 
 ### 内置自定义样式
 

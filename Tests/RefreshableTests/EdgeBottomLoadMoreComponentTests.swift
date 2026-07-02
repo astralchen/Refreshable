@@ -21,15 +21,18 @@ struct EdgeBottomLoadMoreComponentTests {
     // MARK: - 安装
 
     @Test("installView 将 style.view 添加到 scrollView")
-    func installView() {
+    func installView() throws {
         let (scrollView, _, style) = makeSUT()
-        #expect(style.view.superview === scrollView)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.superview === scrollView)
     }
 
     @Test("style.view 放在 contentSize 底部")
-    func viewPosition() {
+    func viewPosition() throws {
         let (scrollView, _, style) = makeSUT()
-        #expect(style.view.frame.origin.y == scrollView.contentSize.height)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame.origin.y == scrollView.contentSize.height)
+        #expect(style.view.frame.origin.y == 0)
     }
 
     @Test("安装后 style 收到 idle 状态")
@@ -214,12 +217,13 @@ struct EdgeBottomLoadMoreComponentTests {
     // MARK: - contentSize 变化
 
     @Test("contentSize 变化时 bottom view 位置更新")
-    func contentSizeChange() {
+    func contentSizeChange() throws {
         let (scrollView, component, style) = makeSUT()
         let newSize = CGSize(width: 375, height: 3000)
         scrollView.contentSize = newSize
         component.scrollViewContentSizeDidChange(contentSize: newSize)
-        #expect(style.view.frame.origin.y == 3000)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame.origin.y == 3000)
     }
 
     // MARK: - inset
@@ -339,8 +343,8 @@ struct EdgeBottomLoadMoreComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 bottom inset")
-    func customBottomTriggerOffset() {
+    @Test("自定义 triggerOffset 不改变 bottom 加载占位")
+    func customBottomTriggerOffsetDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
@@ -353,11 +357,11 @@ struct EdgeBottomLoadMoreComponentTests {
 
         component.beginLoadingMore()
 
-        #expect(scrollView.contentInset.bottom == 106)
+        #expect(scrollView.contentInset.bottom == 70)
     }
 
-    @Test("非正 triggerOffset 使用最小 bottom 触发距离")
-    func nonPositiveBottomTriggerOffsetUsesMinimumThreshold() {
+    @Test("非正 triggerOffset 不改变 bottom 加载占位")
+    func nonPositiveBottomTriggerOffsetDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
@@ -371,7 +375,7 @@ struct EdgeBottomLoadMoreComponentTests {
         component.beginLoadingMore()
 
         #expect(component.originalInset.bottom == 16)
-        #expect(scrollView.contentInset.bottom == 17)
+        #expect(scrollView.contentInset.bottom == 70)
     }
 
     @Test("automaticallyEndRefreshing 为 false 时 bottom edge action 完成后保持 refreshing")

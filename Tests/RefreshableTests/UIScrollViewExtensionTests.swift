@@ -90,8 +90,8 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.refreshState == .idle)
     }
 
-    @Test("默认横向刷新保留 54pt 触发距离并预留 130pt 显示空间")
-    func defaultHorizontalRefreshUsesWideDisplayExtentWithDefaultTriggerOffset() {
+    @Test("默认横向刷新保留 54pt 触发距离并预留 130pt 显示空间和外侧留白")
+    func defaultHorizontalRefreshUsesWideDisplayExtentWithDefaultTriggerOffset() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1600, height: 390)
@@ -103,13 +103,17 @@ struct UIScrollViewExtensionTests {
 
         let component = scrollView.component(for: .leading)
         #expect(component?.options.triggerOffset == 54)
+        #expect(component?.options.placement.outerSpacing == 8)
         #expect(component?.style.extent == 130)
-        #expect(component?.style.view.frame == CGRect(x: -130, y: 0, width: 844, height: 390))
+        let styleView = try #require(component?.style.view)
+        let hostView = try #require(styleView.superview)
+        #expect(hostView.frame == CGRect(x: -138, y: 0, width: 844, height: 390))
+        #expect(styleView.frame == CGRect(x: 8, y: 0, width: 130, height: 390))
 
         scrollView.beginRefreshing(edge: .leading)
 
-        #expect(scrollView.contentInset.left == 130)
-        #expect(scrollView.contentOffset.x == -130)
+        #expect(scrollView.contentInset.left == 138)
+        #expect(scrollView.contentOffset.x == -138)
     }
 
     @Test("endRefreshing 转发到 headerComponent")

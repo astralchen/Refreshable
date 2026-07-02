@@ -34,12 +34,31 @@ extension RefreshablePresentation {
     }
 }
 
+/// 控制刷新样式视觉视图在组件布局区域内的位置。
+public struct RefreshablePlacement: Equatable {
+    /// 刷新轴方向上，视觉控件与内容边缘之间的间距。
+    public var contentSpacing: CGFloat
+
+    /// 刷新轴方向上，视觉控件与可见外侧边缘之间的间距。
+    public var outerSpacing: CGFloat
+
+    /// 垂直于刷新方向的对称 inset。
+    public var crossAxisInset: CGFloat
+
+    public init(contentSpacing: CGFloat = 0, outerSpacing: CGFloat = 0, crossAxisInset: CGFloat = 0) {
+        self.contentSpacing = contentSpacing
+        self.outerSpacing = outerSpacing
+        self.crossAxisInset = crossAxisInset
+    }
+}
+
 /// 一组用于配置刷新和加载更多行为的选项。
 public struct RefreshableOptions {
     /// 触发刷新动作所需的拖动距离。
     ///
     /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.extent` 作为触发距离。
-    /// 进入刷新中后，`contentInset` 保持的可见高度仍由样式的 `extent` 决定。
+    /// 进入刷新中后，`contentInset` 保持的可见范围由样式的 `extent`、
+    /// `placement.outerSpacing` 和 `placement.contentSpacing` 决定。
     public var triggerOffset: CGFloat?
 
     /// 展开和恢复 `contentInset` 时使用的动画时长。
@@ -56,6 +75,9 @@ public struct RefreshableOptions {
     /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
+    /// 组件 host 布局应用到样式视觉视图周围的位置配置。
+    public var placement: RefreshablePlacement
+
     /// 刷新视图的展示方式。
     ///
     /// 默认值为 `.contentInset`，保持传统列表刷新体验。设置为 `.overlay` 时，刷新视图
@@ -71,10 +93,12 @@ public struct RefreshableOptions {
     /// 创建一组刷新行为配置。
     ///
     /// - Parameters:
-    ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度；刷新中的停留高度仍使用样式高度。
+    ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度；刷新中的停留范围由样式高度、
+    ///     `placement.outerSpacing` 和 `placement.contentSpacing` 决定。
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
+    ///   - placement: 样式视觉视图在组件 host 内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
@@ -82,6 +106,7 @@ public struct RefreshableOptions {
         animationDuration: TimeInterval = 0.25,
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
+        placement: RefreshablePlacement = RefreshablePlacement(),
         presentation: RefreshablePresentation = .contentInset,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
@@ -89,6 +114,7 @@ public struct RefreshableOptions {
         self.animationDuration = animationDuration
         self.automaticallyEndRefreshing = automaticallyEndRefreshing
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
+        self.placement = placement
         self.presentation = presentation
         self.onStateChange = onStateChange
     }

@@ -8,6 +8,7 @@ private enum AssociatedKeys {
 }
 
 private let defaultHorizontalEdgeTriggerOffset: CGFloat = 54
+private let defaultHorizontalEdgeOuterSpacing: CGFloat = 8
 
 @MainActor
 private final class RefreshableComponentStore {
@@ -433,9 +434,15 @@ extension UIScrollView {
     }
 
     private func defaultOptions(for edge: RefreshableEdge, options: RefreshableOptions) -> RefreshableOptions {
-        guard edge.axis == .horizontal, options.triggerOffset == nil else { return options }
+        guard edge.axis == .horizontal else { return options }
+
         var resolvedOptions = options
-        resolvedOptions.triggerOffset = defaultHorizontalEdgeTriggerOffset
+        if resolvedOptions.triggerOffset == nil {
+            resolvedOptions.triggerOffset = defaultHorizontalEdgeTriggerOffset
+        }
+        if resolvedOptions.placement == RefreshablePlacement() {
+            resolvedOptions.placement.outerSpacing = defaultHorizontalEdgeOuterSpacing
+        }
         return resolvedOptions
     }
 }

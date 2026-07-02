@@ -8,6 +8,7 @@ class EdgeRefreshComponent: RefreshComponent {
     let role: RefreshableRole
     private var activeInsetEdge: RefreshablePhysicalEdge?
     private var isLockingOverlayContentOffset = false
+    private let refreshHostView = UIView()
 
     init(
         edge: RefreshableEdge,
@@ -21,12 +22,29 @@ class EdgeRefreshComponent: RefreshComponent {
         super.init(style: style, options: options, action: action)
     }
 
+    override var installedView: UIView {
+        refreshHostView
+    }
+
+    override func removeInstalledView() {
+        style.view.removeFromSuperview()
+        refreshHostView.removeFromSuperview()
+    }
+
     override func installView(in scrollView: UIScrollView) {
+        refreshHostView.clipsToBounds = false
+        refreshHostView.isUserInteractionEnabled = false
+
         let refreshView = style.view
+        refreshView.isUserInteractionEnabled = false
         updateRefreshViewFrame(in: scrollView)
-        refreshView.autoresizingMask = autoresizingMask(in: scrollView)
         refreshView.alpha = 0
-        scrollView.addSubview(refreshView)
+        if refreshView.superview !== refreshHostView {
+            refreshHostView.addSubview(refreshView)
+        }
+        if refreshHostView.superview !== scrollView {
+            scrollView.addSubview(refreshHostView)
+        }
         style.update(state: .idle, progress: 0)
     }
 
@@ -105,7 +123,7 @@ class EdgeRefreshComponent: RefreshComponent {
         guard options.presentation.usesContentInset else { return }
 
         UIView.animate(withDuration: options.animationDuration) {
-            self.applyRefreshingInset(to: scrollView)
+            self.revealRefreshingInset(to: scrollView)
         }
     }
 
@@ -174,45 +192,49 @@ class EdgeRefreshComponent: RefreshComponent {
         return rawValue
     }
 
+    private var sanitizedContentSpacing: CGFloat {
+        let rawValue = options.placement.contentSpacing
+        guard rawValue.isFinite else { return 0 }
+        return max(rawValue, 0)
+    }
+
+    private var sanitizedOuterSpacing: CGFloat {
+        let rawValue = options.placement.outerSpacing
+        guard rawValue.isFinite else { return 0 }
+        return max(rawValue, 0)
+    }
+
+    private var sanitizedCrossAxisInset: CGFloat {
+        let rawValue = options.placement.crossAxisInset
+        guard rawValue.isFinite else { return 0 }
+        return max(rawValue, 0)
+    }
+
+    private var reservedExtent: CGFloat {
+        sanitizedOuterSpacing + displayExtent + sanitizedContentSpacing
+    }
+
     private func frame(in scrollView: UIScrollView, contentSize: CGSize? = nil) -> CGRect {
         switch options.presentation {
         case .contentInset:
-            contentInsetFrame(in: scrollView, contentSize: contentSize)
+            contentInsetHostFrame(in: scrollView, contentSize: contentSize)
         case .overlay(let spacing, _):
-            overlayFrame(in: scrollView, spacing: spacing)
+            overlayHostFrame(in: scrollView, spacing: spacing)
         }
     }
 
     private func updateRefreshViewFrame(in scrollView: UIScrollView, contentSize: CGSize? = nil) {
+        let physicalEdge = edge.physicalEdge(in: scrollView)
+        refreshHostView.frame = frame(in: scrollView, contentSize: contentSize)
+        refreshHostView.autoresizingMask = autoresizingMask(in: scrollView)
+
         let refreshView = style.view
-        refreshView.frame = frame(in: scrollView, contentSize: contentSize)
-        updateRefreshViewLayoutMargins(refreshView, in: scrollView)
+        refreshView.frame = visualFrame(in: refreshHostView.bounds, physicalEdge: physicalEdge)
+        refreshView.autoresizingMask = visualAutoresizingMask(for: physicalEdge)
     }
 
-    private func updateRefreshViewLayoutMargins(_ refreshView: UIView, in scrollView: UIScrollView) {
-        guard options.presentation.usesContentInset else {
-            refreshView.layoutMargins = .zero
-            return
-        }
-        guard edge.physicalEdge(in: scrollView).axis == .horizontal else {
-            refreshView.layoutMargins = .zero
-            return
-        }
-
-        let visualWidth = min(displayExtent, refreshView.bounds.width)
-        let insetWidth = max(refreshView.bounds.width - visualWidth, 0)
-        switch edge.physicalEdge(in: scrollView) {
-        case .left:
-            refreshView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: insetWidth)
-        case .right:
-            refreshView.layoutMargins = UIEdgeInsets(top: 0, left: insetWidth, bottom: 0, right: 0)
-        case .top, .bottom:
-            refreshView.layoutMargins = .zero
-        }
-    }
-
-    private func contentInsetFrame(in scrollView: UIScrollView, contentSize: CGSize? = nil) -> CGRect {
-        let extent = displayExtent
+    private func contentInsetHostFrame(in scrollView: UIScrollView, contentSize: CGSize? = nil) -> CGRect {
+        let extent = reservedExtent
         let contentSize = contentSize ?? scrollView.contentSize
 
         switch edge.physicalEdge(in: scrollView) {
@@ -243,8 +265,8 @@ class EdgeRefreshComponent: RefreshComponent {
         }
     }
 
-    private func overlayFrame(in scrollView: UIScrollView, spacing: CGFloat) -> CGRect {
-        let extent = displayExtent
+    private func overlayHostFrame(in scrollView: UIScrollView, spacing: CGFloat) -> CGRect {
+        let extent = reservedExtent
         let visibleBounds = CGRect(origin: scrollView.contentOffset, size: scrollView.bounds.size)
         let safeAreaInsets = scrollView.safeAreaInsets
 
@@ -280,12 +302,70 @@ class EdgeRefreshComponent: RefreshComponent {
         }
     }
 
+    private func visualFrame(in bounds: CGRect, physicalEdge: RefreshablePhysicalEdge) -> CGRect {
+        switch physicalEdge {
+        case .top:
+            let inset = clampedCrossAxisInset(for: bounds.width)
+            return CGRect(
+                x: inset,
+                y: clampedOuterSpacing(for: bounds.height),
+                width: max(bounds.width - inset * 2, 0),
+                height: displayExtent
+            )
+        case .bottom:
+            let inset = clampedCrossAxisInset(for: bounds.width)
+            let outerSpacing = clampedOuterSpacing(for: bounds.height)
+            return CGRect(
+                x: inset,
+                y: max(bounds.height - outerSpacing - displayExtent, 0),
+                width: max(bounds.width - inset * 2, 0),
+                height: displayExtent
+            )
+        case .left:
+            let inset = clampedCrossAxisInset(for: bounds.height)
+            return CGRect(
+                x: clampedOuterSpacing(for: bounds.width),
+                y: inset,
+                width: displayExtent,
+                height: max(bounds.height - inset * 2, 0)
+            )
+        case .right:
+            let inset = clampedCrossAxisInset(for: bounds.height)
+            let outerSpacing = clampedOuterSpacing(for: bounds.width)
+            return CGRect(
+                x: max(bounds.width - outerSpacing - displayExtent, 0),
+                y: inset,
+                width: displayExtent,
+                height: max(bounds.height - inset * 2, 0)
+            )
+        }
+    }
+
+    private func clampedOuterSpacing(for length: CGFloat) -> CGFloat {
+        min(sanitizedOuterSpacing, max(length - displayExtent, 0))
+    }
+
+    private func clampedCrossAxisInset(for length: CGFloat) -> CGFloat {
+        min(sanitizedCrossAxisInset, max(length, 0) / 2)
+    }
+
     private func autoresizingMask(in scrollView: UIScrollView) -> UIView.AutoresizingMask {
         switch edge.physicalEdge(in: scrollView).axis {
         case .vertical:
             [.flexibleWidth]
         case .horizontal:
             [.flexibleWidth, .flexibleHeight]
+        }
+    }
+
+    private func visualAutoresizingMask(for physicalEdge: RefreshablePhysicalEdge) -> UIView.AutoresizingMask {
+        switch physicalEdge {
+        case .top, .bottom:
+            [.flexibleWidth]
+        case .left:
+            [.flexibleHeight]
+        case .right:
+            [.flexibleLeftMargin, .flexibleHeight]
         }
     }
 
@@ -390,18 +470,10 @@ class EdgeRefreshComponent: RefreshComponent {
         guard isEnabled else { return }
         guard !state.isRefreshing else { return }
         guard state != .ending else { return }
-        guard let scrollView else { return }
+        guard scrollView != nil else { return }
 
         captureOriginalInset()
         setState(.refreshing)
-
-        if options.presentation.usesContentInset {
-            UIView.animate(withDuration: options.animationDuration) {
-                self.applyRefreshingInset(to: scrollView)
-                self.adjustContentOffsetForStartEdgeIfNeeded(in: scrollView)
-            }
-        }
-
         startActionTask()
     }
 
@@ -409,17 +481,17 @@ class EdgeRefreshComponent: RefreshComponent {
         let physicalEdge = edge.physicalEdge(in: scrollView)
         activeInsetEdge = physicalEdge
         var inset = scrollView.contentInset
-        inset.setValue(originalInset.value(for: physicalEdge) + refreshingInsetExtent(in: scrollView), for: physicalEdge)
+        inset.setValue(originalInset.value(for: physicalEdge) + refreshingInsetExtent, for: physicalEdge)
         scrollView.contentInset = inset
     }
 
-    private func refreshingInsetExtent(in scrollView: UIScrollView) -> CGFloat {
-        switch edge.physicalEdge(in: scrollView).axis {
-        case .vertical:
-            triggerThreshold
-        case .horizontal:
-            displayExtent
-        }
+    private func revealRefreshingInset(to scrollView: UIScrollView) {
+        applyRefreshingInset(to: scrollView)
+        adjustContentOffsetForStartEdgeIfNeeded(in: scrollView)
+    }
+
+    private var refreshingInsetExtent: CGFloat {
+        reservedExtent
     }
 
     private func adjustContentOffsetForStartEdgeIfNeeded(in scrollView: UIScrollView) {
@@ -427,16 +499,16 @@ class EdgeRefreshComponent: RefreshComponent {
 
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            scrollView.contentOffset.y = -adjustedOriginalInset.top - triggerThreshold
+            scrollView.contentOffset.y = -adjustedOriginalInset.top - reservedExtent
         case .left:
-            scrollView.contentOffset.x = -adjustedOriginalInset.left - displayExtent
+            scrollView.contentOffset.x = -adjustedOriginalInset.left - reservedExtent
         case .bottom:
             let minimumY = -adjustedOriginalInset.top
             scrollView.contentOffset.y = max(
                 scrollView.contentSize.height
                     - scrollView.bounds.height
                     + adjustedOriginalInset.bottom
-                    + triggerThreshold,
+                    + reservedExtent,
                 minimumY
             )
         case .right:
@@ -445,7 +517,7 @@ class EdgeRefreshComponent: RefreshComponent {
                 scrollView.contentSize.width
                     - scrollView.bounds.width
                     + adjustedOriginalInset.right
-                    + displayExtent,
+                    + reservedExtent,
                 minimumX
             )
         }
@@ -480,6 +552,6 @@ class EdgeRefreshComponent: RefreshComponent {
 
     private func horizontalViewportWidth(in scrollView: UIScrollView) -> CGFloat {
         let adjustment = automaticInsetAdjustment(in: scrollView)
-        return max(scrollView.bounds.width - adjustment.left - adjustment.right, displayExtent)
+        return max(scrollView.bounds.width - adjustment.left - adjustment.right, reservedExtent)
     }
 }

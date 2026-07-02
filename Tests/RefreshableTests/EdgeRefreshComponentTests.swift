@@ -7,7 +7,7 @@ import UIKit
 struct EdgeRefreshComponentTests {
 
     @Test("refreshable(edge: .leading) 在 LTR 下安装到左侧")
-    func leadingRefreshInstallsOnLeftInLTR() {
+    func leadingRefreshInstallsOnLeftInLTR() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1000, height: 480)
@@ -20,10 +20,14 @@ struct EdgeRefreshComponentTests {
         ) {}
 
         let component = scrollView.component(for: .leading)
+        let hostView = try #require(style.view.superview)
         #expect(component?.edge == .leading)
         #expect(component?.role == .refresh)
-        #expect(style.view.frame == CGRect(x: -44, y: 0, width: 320, height: 480))
-        #expect(style.view.autoresizingMask == [.flexibleWidth, .flexibleHeight])
+        #expect(hostView !== scrollView)
+        #expect(hostView.superview === scrollView)
+        #expect(hostView.frame == CGRect(x: -44, y: 0, width: 320, height: 480))
+        #expect(hostView.autoresizingMask == [.flexibleWidth, .flexibleHeight])
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 44, height: 480))
     }
 
     @Test("beginRefreshing(edge: .leading) 只调整 left inset 和 x offset")
@@ -123,7 +127,7 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("横向 edge 控件使用完整可见宽度以支持横屏布局")
-    func horizontalEdgeFrameUsesViewportWidth() {
+    func horizontalEdgeFrameUsesViewportWidth() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1600, height: 390)
@@ -133,18 +137,25 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(edge: .leading, style: leadingStyle) {}
         scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
 
-        #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 844, height: 390))
-        #expect(trailingStyle.view.frame == CGRect(x: 810, y: 0, width: 844, height: 390))
+        let leadingHost = try #require(leadingStyle.view.superview)
+        let trailingHost = try #require(trailingStyle.view.superview)
+
+        #expect(leadingHost.frame == CGRect(x: -54, y: 0, width: 844, height: 390))
+        #expect(trailingHost.frame == CGRect(x: 810, y: 0, width: 844, height: 390))
+        #expect(leadingStyle.view.frame == CGRect(x: 0, y: 0, width: 54, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 790, y: 0, width: 54, height: 390))
     }
 
     @Test("横向 edge 在关闭自动 inset 调整时仍避开 safe area")
-    func horizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() {
+    func horizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() throws {
         let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1600, height: 390)
         scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
         let leadingStyle = MockStyle(extent: 54)
         let trailingStyle = MockStyle(extent: 54)
+        let leadingMargins = leadingStyle.view.layoutMargins
+        let trailingMargins = trailingStyle.view.layoutMargins
 
         scrollView.refreshable(
             edge: .leading,
@@ -157,12 +168,15 @@ struct EdgeRefreshComponentTests {
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
         ) {}
 
-        #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 750, height: 390))
-        #expect(trailingStyle.view.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
-        #expect(leadingStyle.view.layoutMargins.left == 0)
-        #expect(leadingStyle.view.layoutMargins.right == 696)
-        #expect(trailingStyle.view.layoutMargins.left == 696)
-        #expect(trailingStyle.view.layoutMargins.right == 0)
+        let leadingHost = try #require(leadingStyle.view.superview)
+        let trailingHost = try #require(trailingStyle.view.superview)
+
+        #expect(leadingHost.frame == CGRect(x: -54, y: 0, width: 750, height: 390))
+        #expect(trailingHost.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
+        #expect(leadingStyle.view.frame == CGRect(x: 0, y: 0, width: 54, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 696, y: 0, width: 54, height: 390))
+        #expect(leadingStyle.view.layoutMargins == leadingMargins)
+        #expect(trailingStyle.view.layoutMargins == trailingMargins)
 
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 54)
@@ -176,13 +190,15 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("宽横向 edge 在关闭自动 inset 调整时仍将视觉区域限制在 safe area")
-    func wideHorizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() {
+    func wideHorizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() throws {
         let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1600, height: 390)
         scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
         let leadingStyle = MockStyle(extent: 130)
         let trailingStyle = MockStyle(extent: 130)
+        let leadingMargins = leadingStyle.view.layoutMargins
+        let trailingMargins = trailingStyle.view.layoutMargins
 
         scrollView.refreshable(
             edge: .leading,
@@ -195,12 +211,15 @@ struct EdgeRefreshComponentTests {
             options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
         ) {}
 
-        #expect(leadingStyle.view.frame == CGRect(x: -130, y: 0, width: 750, height: 390))
-        #expect(trailingStyle.view.frame == CGRect(x: 980, y: 0, width: 750, height: 390))
-        #expect(leadingStyle.view.layoutMargins.left == 0)
-        #expect(leadingStyle.view.layoutMargins.right == 620)
-        #expect(trailingStyle.view.layoutMargins.left == 620)
-        #expect(trailingStyle.view.layoutMargins.right == 0)
+        let leadingHost = try #require(leadingStyle.view.superview)
+        let trailingHost = try #require(trailingStyle.view.superview)
+
+        #expect(leadingHost.frame == CGRect(x: -130, y: 0, width: 750, height: 390))
+        #expect(trailingHost.frame == CGRect(x: 980, y: 0, width: 750, height: 390))
+        #expect(leadingStyle.view.frame == CGRect(x: 0, y: 0, width: 130, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 620, y: 0, width: 130, height: 390))
+        #expect(leadingStyle.view.layoutMargins == leadingMargins)
+        #expect(trailingStyle.view.layoutMargins == trailingMargins)
 
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 130)
@@ -211,6 +230,118 @@ struct EdgeRefreshComponentTests {
         scrollView.beginLoadingMore(edge: .trailing)
         #expect(scrollView.contentInset.right == 130)
         #expect(scrollView.contentOffset.x == 933)
+    }
+
+    @Test("leading refresh 使用 host view 且不改写 style margins")
+    func leadingRefreshUsesHostViewAndPreservesStyleMargins() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        let style = MockStyle(extent: 54)
+        let preservedMargins = UIEdgeInsets(top: 1, left: 2, bottom: 3, right: 4)
+        style.view.layoutMargins = preservedMargins
+
+        scrollView.refreshable(edge: .leading, style: style) {}
+
+        let hostView = try #require(style.view.superview)
+        #expect(hostView !== scrollView)
+        #expect(hostView.superview === scrollView)
+        #expect(hostView.frame == CGRect(x: -54, y: 0, width: 844, height: 390))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 54, height: 390))
+        #expect(style.view.layoutMargins == preservedMargins)
+    }
+
+    @Test("leading placement contentSpacing 在内容前保留间距")
+    func leadingPlacementContentSpacingReservesGapBeforeContent() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        let style = MockStyle(extent: 54)
+        let options = RefreshableOptions(
+            animationDuration: 0,
+            automaticallyEndRefreshing: false,
+            placement: RefreshablePlacement(contentSpacing: 12)
+        )
+
+        scrollView.refreshable(edge: .leading, style: style, options: options) {}
+        let hostView = try #require(style.view.superview)
+
+        #expect(hostView.frame == CGRect(x: -66, y: 0, width: 844, height: 390))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 54, height: 390))
+
+        scrollView.beginRefreshing(edge: .leading)
+
+        #expect(scrollView.contentInset.left == 66)
+        #expect(scrollView.contentOffset.x == -66)
+    }
+
+    @Test("leading placement outerSpacing 在外侧边缘保留间距")
+    func leadingPlacementOuterSpacingOffsetsVisualFromVisibleEdge() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        let style = MockStyle(extent: 54)
+        let options = RefreshableOptions(
+            animationDuration: 0,
+            automaticallyEndRefreshing: false,
+            placement: RefreshablePlacement(outerSpacing: 12)
+        )
+
+        scrollView.refreshable(edge: .leading, style: style, options: options) {}
+        let hostView = try #require(style.view.superview)
+
+        #expect(hostView.frame == CGRect(x: -66, y: 0, width: 844, height: 390))
+        #expect(style.view.frame == CGRect(x: 12, y: 0, width: 54, height: 390))
+
+        scrollView.beginRefreshing(edge: .leading)
+
+        #expect(scrollView.contentInset.left == 66)
+        #expect(scrollView.contentOffset.x == -66)
+    }
+
+    @Test("trailing placement 同时保留内容间距和外侧边缘间距")
+    func trailingPlacementSeparatesContentSpacingFromOuterSpacing() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        let style = MockStyle(extent: 54)
+        let options = RefreshableOptions(
+            animationDuration: 0,
+            automaticallyEndRefreshing: false,
+            placement: RefreshablePlacement(contentSpacing: 8, outerSpacing: 12)
+        )
+
+        scrollView.loadMoreable(edge: .trailing, style: style, options: options) {}
+        let hostView = try #require(style.view.superview)
+
+        #expect(hostView.frame == CGRect(x: 830, y: 0, width: 844, height: 390))
+        #expect(style.view.frame == CGRect(x: 778, y: 0, width: 54, height: 390))
+
+        scrollView.contentOffset.x = 1600 - 844
+        scrollView.beginLoadingMore(edge: .trailing)
+
+        #expect(scrollView.contentInset.right == 74)
+        #expect(scrollView.contentOffset.x == 830)
+    }
+
+    @Test("top placement crossAxisInset 只收缩视觉宽度")
+    func topPlacementCrossAxisInsetShrinksVisualWidthOnly() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 320, height: 1200)
+        let style = MockStyle(extent: 44)
+        let options = RefreshableOptions(
+            animationDuration: 0,
+            automaticallyEndRefreshing: false,
+            placement: RefreshablePlacement(contentSpacing: 12, crossAxisInset: 20)
+        )
+
+        scrollView.refreshable(edge: .top, style: style, options: options) {}
+        let hostView = try #require(style.view.superview)
+
+        #expect(hostView.frame == CGRect(x: 0, y: -56, width: 320, height: 56))
+        #expect(style.view.frame == CGRect(x: 20, y: 0, width: 280, height: 44))
+
+        scrollView.beginRefreshing(edge: .top)
+
+        #expect(scrollView.contentInset.top == 56)
+        #expect(scrollView.contentOffset.y == -56)
     }
 
     @Test("横向 edge 可以分离触发距离和刷新占位")
@@ -236,6 +367,37 @@ struct EdgeRefreshComponentTests {
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 130)
         #expect(scrollView.contentOffset.x == -130)
+    }
+
+    @Test("横向小幅触发后松手会完整露出刷新控件")
+    func horizontalSmallTriggeredDragRevealsFullRefreshExtentOnRelease() {
+        let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 130)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 54,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                placement: RefreshablePlacement(outerSpacing: 8)
+            )
+        ) {}
+
+        scrollView.contentOffset.x = -54
+        scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: scrollView.contentOffset)
+        #expect(scrollView.refreshState(edge: .leading) == .triggered)
+
+        scrollView.isDraggingOverride = false
+        scrollView.component(for: .leading)?.scrollViewDidEndDragging()
+
+        #expect(scrollView.refreshState(edge: .leading) == .refreshing)
+        #expect(scrollView.contentInset.left == 138)
+        #expect(scrollView.contentOffset.x == -138)
     }
 
     @Test("overlay loadMore 在 action 执行期间保持可见但不占位")
@@ -265,7 +427,7 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("overlay 展示模式将刷新视图固定在可见区域边缘且不调整 inset")
-    func overlayPresentationPinsViewInVisibleViewportWithoutInset() {
+    func overlayPresentationPinsViewInVisibleViewportWithoutInset() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1200)
         scrollView.contentOffset = CGPoint(x: 0, y: 120)
@@ -282,14 +444,17 @@ struct EdgeRefreshComponentTests {
             )
         ) {}
 
-        #expect(style.view.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
 
         scrollView.beginRefreshing(edge: .top)
 
         #expect(scrollView.refreshState(edge: .top) == .refreshing)
         #expect(scrollView.contentInset.top == 8)
         #expect(style.view.alpha == 1)
-        #expect(style.view.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+        #expect(hostView.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
     }
 
     @Test("overlay 展示模式默认保留系统弹性位移")
@@ -320,7 +485,7 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("overlay 锁定内容位移时下拉仍触发但 contentOffset 保持顶部边界")
-    func overlayPresentationCanLockTopContentOffsetWhilePulling() {
+    func overlayPresentationCanLockTopContentOffsetWhilePulling() throws {
         let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.contentSize = CGSize(width: 320, height: 1200)
         scrollView.contentInset.top = 8
@@ -344,7 +509,9 @@ struct EdgeRefreshComponentTests {
 
         #expect(scrollView.refreshState(edge: .top) == .triggered)
         #expect(scrollView.contentOffset.y == -8)
-        #expect(style.view.frame == CGRect(x: 0, y: 4, width: 320, height: 44))
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame == CGRect(x: 0, y: 4, width: 320, height: 44))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
     }
 
     @Test("noMoreData(edge:) 对 refresh 组件无副作用")
@@ -360,7 +527,7 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("leading 和 trailing 在 RTL 下映射到相反物理边")
-    func leadingAndTrailingResolveWithRTLLayoutDirection() {
+    func leadingAndTrailingResolveWithRTLLayoutDirection() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.semanticContentAttribute = .forceRightToLeft
         scrollView.contentSize = CGSize(width: 1000, height: 480)
@@ -370,10 +537,28 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(edge: .leading, style: leadingStyle) {}
         scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
 
-        #expect(leadingStyle.view.frame.origin.x == 720)
-        #expect(leadingStyle.view.frame.width == 320)
-        #expect(trailingStyle.view.frame.origin.x == -50)
-        #expect(trailingStyle.view.frame.width == 320)
+        let leadingHost = try #require(leadingStyle.view.superview)
+        let trailingHost = try #require(trailingStyle.view.superview)
+
+        #expect(leadingHost.frame == CGRect(x: 720, y: 0, width: 320, height: 480))
+        #expect(leadingStyle.view.frame == CGRect(x: 280, y: 0, width: 40, height: 480))
+        #expect(trailingHost.frame == CGRect(x: -50, y: 0, width: 320, height: 480))
+        #expect(trailingStyle.view.frame == CGRect(x: 0, y: 0, width: 50, height: 480))
+    }
+
+    @Test("移除 leading refresh 会同时移除 host 和 style view")
+    func removingLeadingRefreshDetachesStyleAndHostViews() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.contentSize = CGSize(width: 800, height: 480)
+        let style = MockStyle(extent: 54)
+
+        scrollView.refreshable(edge: .leading, style: style) {}
+        let hostView = try #require(style.view.superview)
+
+        scrollView.removeRefreshable(edge: .leading)
+
+        #expect(style.view.superview == nil)
+        #expect(hostView.superview == nil)
     }
 
     @Test("刷新中切换布局方向后仍恢复原本占用的物理 inset")

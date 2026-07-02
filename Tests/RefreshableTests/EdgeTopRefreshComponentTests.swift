@@ -20,15 +20,19 @@ struct EdgeTopRefreshComponentTests {
     // MARK: - 安装
 
     @Test("installView 将 style.view 添加为 scrollView 子视图")
-    func installView() {
+    func installView() throws {
         let (scrollView, _, style) = makeSUT()
-        #expect(style.view.superview === scrollView)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.superview === scrollView)
     }
 
     @Test("style.view frame 在 scrollView 上方")
-    func viewFrame() {
-        let (_, _, style) = makeSUT()
-        #expect(style.view.frame.origin.y == -style.extent)
+    func viewFrame() throws {
+        let (scrollView, component, style) = makeSUT()
+        #expect(component.scrollView === scrollView)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame.origin.y == -style.extent)
+        #expect(style.view.frame.origin.y == 0)
         #expect(style.view.frame.size.height == style.extent)
     }
 
@@ -283,8 +287,8 @@ struct EdgeTopRefreshComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 用于 top inset")
-    func customTopTriggerOffset() {
+    @Test("自定义 triggerOffset 不改变 top 刷新占位")
+    func customTopTriggerOffsetDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
@@ -296,11 +300,11 @@ struct EdgeTopRefreshComponentTests {
 
         component.beginRefreshing()
 
-        #expect(scrollView.contentInset.top == 92)
+        #expect(scrollView.contentInset.top == 66)
     }
 
-    @Test("非正 triggerOffset 使用最小 top 触发距离")
-    func nonPositiveTopTriggerOffsetUsesMinimumThreshold() {
+    @Test("非正 triggerOffset 不改变 top 刷新占位")
+    func nonPositiveTopTriggerOffsetDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
@@ -313,7 +317,7 @@ struct EdgeTopRefreshComponentTests {
         component.beginRefreshing()
 
         #expect(component.originalInset.top == 12)
-        #expect(scrollView.contentInset.top == 13)
+        #expect(scrollView.contentInset.top == 66)
     }
 
     @Test("非正 style.extent 使用最小 top 触发距离")

@@ -214,11 +214,10 @@ struct DefaultEdgeStyleTests {
         #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
     }
 
-    @Test("horizontal edge visual content uses the margin lane without clipping text")
-    func horizontalEdgeVisualContentUsesMarginLaneWithoutClippingText() throws {
+    @Test("horizontal edge visual content uses visual bounds without margin contract")
+    func horizontalEdgeVisualContentUsesVisualBoundsWithoutMarginContract() throws {
         let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
-        style.view.frame = CGRect(x: 0, y: 0, width: 750, height: 390)
-        style.view.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 620)
+        style.view.frame = CGRect(x: 0, y: 0, width: 130, height: 390)
         let progressHost = try #require(style.view.firstSubview(ofType: CAShapeLayerHostView.self))
         let label = try #require(style.view.firstSubview(ofType: UILabel.self))
 
@@ -257,6 +256,17 @@ struct DefaultEdgeStyleTests {
 
         style.update(state: .ending, progress: 0)
         #expect(label.text == "刷新完成")
+    }
+
+    @Test("horizontal refreshing progress uses visible rotating arc")
+    func horizontalRefreshingProgressUsesVisibleRotatingArc() throws {
+        let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        let progressHost = try #require(style.view.firstSubview(ofType: CAShapeLayerHostView.self))
+
+        style.update(state: .refreshing, progress: 1)
+
+        #expect(progressHost.progressLayer.strokeEnd > 0)
+        #expect(progressHost.progressLayer.strokeEnd < 1)
     }
 
     @Test("horizontal edge render state resolves physical arrow directions")

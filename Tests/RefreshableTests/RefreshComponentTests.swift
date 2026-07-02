@@ -48,17 +48,20 @@ struct RefreshComponentTests {
     // MARK: - scrollView 替换
 
     @Test("替换 scrollView 时移除旧观察并重新安装")
-    func replaceScrollView() {
+    func replaceScrollView() throws {
         let sv1 = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let sv2 = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         let component = makeTopRefreshComponent(style: style)
 
         component.scrollView = sv1
-        #expect(style.view.superview === sv1)
+        let firstHost = try #require(style.view.superview)
+        #expect(firstHost.superview === sv1)
 
         component.scrollView = sv2
-        #expect(style.view.superview === sv2)
+        let secondHost = try #require(style.view.superview)
+        #expect(secondHost === firstHost)
+        #expect(secondHost.superview === sv2)
     }
 
     @Test("设置相同 scrollView 不重复安装")

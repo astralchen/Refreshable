@@ -2,8 +2,8 @@ import UIKit
 
 /// 一个用于提供刷新组件外观和状态更新逻辑的协议。
 ///
-/// 实现此协议可以替换默认的边缘刷新视图。刷新组件会自动将 `view`
-/// 添加到滚动视图中，并在状态变化时调用 `update(state:progress:)`。
+/// 实现此协议可以替换默认的边缘刷新视图。刷新组件会自动安装 `view`，
+/// 并在状态变化时调用 `update(state:progress:)`。
 ///
 /// 下面的示例展示了如何提供自定义刷新样式：
 ///
@@ -21,9 +21,10 @@ import UIKit
 /// ```
 @MainActor
 public protocol RefreshableStyle: AnyObject {
-    /// 刷新组件显示的视图。
+    /// 渲染刷新控件视觉内容的视图。
     ///
-    /// 组件会自动将此视图添加到对应的 `UIScrollView` 中。
+    /// 组件可能会将此视图安装在内部 host view 中。样式应基于此视图自身的
+    /// `bounds` 布局，不应依赖 `superview` 或 `layoutMargins` 获取组件几何信息。
     var view: UIView { get }
 
     /// 刷新视图沿滚动轴占用的尺寸。
