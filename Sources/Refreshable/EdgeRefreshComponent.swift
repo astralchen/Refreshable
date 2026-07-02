@@ -183,7 +183,7 @@ class EdgeRefreshComponent: RefreshComponent {
             return
         }
 
-        let visualWidth = min(max(displayExtent, 130), refreshView.bounds.width)
+        let visualWidth = min(displayExtent, refreshView.bounds.width)
         let insetWidth = max(refreshView.bounds.width - visualWidth, 0)
         switch edge.physicalEdge(in: scrollView) {
         case .left:
@@ -393,8 +393,17 @@ class EdgeRefreshComponent: RefreshComponent {
         let physicalEdge = edge.physicalEdge(in: scrollView)
         activeInsetEdge = physicalEdge
         var inset = scrollView.contentInset
-        inset.setValue(originalInset.value(for: physicalEdge) + triggerThreshold, for: physicalEdge)
+        inset.setValue(originalInset.value(for: physicalEdge) + refreshingInsetExtent(in: scrollView), for: physicalEdge)
         scrollView.contentInset = inset
+    }
+
+    private func refreshingInsetExtent(in scrollView: UIScrollView) -> CGFloat {
+        switch edge.physicalEdge(in: scrollView).axis {
+        case .vertical:
+            triggerThreshold
+        case .horizontal:
+            displayExtent
+        }
     }
 
     private func adjustContentOffsetForStartEdgeIfNeeded(in scrollView: UIScrollView) {
@@ -404,7 +413,7 @@ class EdgeRefreshComponent: RefreshComponent {
         case .top:
             scrollView.contentOffset.y = -adjustedOriginalInset.top - triggerThreshold
         case .left:
-            scrollView.contentOffset.x = -adjustedOriginalInset.left - triggerThreshold
+            scrollView.contentOffset.x = -adjustedOriginalInset.left - displayExtent
         case .bottom:
             let minimumY = -adjustedOriginalInset.top
             scrollView.contentOffset.y = max(
@@ -420,7 +429,7 @@ class EdgeRefreshComponent: RefreshComponent {
                 scrollView.contentSize.width
                     - scrollView.bounds.width
                     + adjustedOriginalInset.right
-                    + triggerThreshold,
+                    + displayExtent,
                 minimumX
             )
         }

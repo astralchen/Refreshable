@@ -7,6 +7,8 @@ private enum AssociatedKeys {
     nonisolated(unsafe) static let componentStore = malloc(1)!
 }
 
+private let defaultHorizontalEdgeTriggerOffset: CGFloat = 54
+
 @MainActor
 private final class RefreshableComponentStore {
     var components: [RefreshableEdge: EdgeRefreshComponent] = [:]
@@ -30,7 +32,12 @@ extension UIScrollView {
         edge: RefreshableEdge = .top,
         action: @escaping @Sendable () async -> Void
     ) {
-        installRefreshable(edge: edge, style: defaultStyle(for: edge, role: .refresh), options: RefreshableOptions(), action: action)
+        installRefreshable(
+            edge: edge,
+            style: defaultStyle(for: edge, role: .refresh),
+            options: defaultOptions(for: edge, options: RefreshableOptions()),
+            action: action
+        )
     }
 
     /// 使用指定配置为滚动视图添加刷新组件。
@@ -45,7 +52,12 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        installRefreshable(edge: edge, style: defaultStyle(for: edge, role: .refresh), options: options, action: action)
+        installRefreshable(
+            edge: edge,
+            style: defaultStyle(for: edge, role: .refresh),
+            options: defaultOptions(for: edge, options: options),
+            action: action
+        )
     }
 
     /// 使用自定义样式为滚动视图添加刷新组件。
@@ -116,7 +128,12 @@ extension UIScrollView {
         edge: RefreshableEdge = .bottom,
         action: @escaping @Sendable () async -> Void
     ) {
-        installLoadMoreable(edge: edge, style: defaultStyle(for: edge, role: .loadMore), options: RefreshableOptions(), action: action)
+        installLoadMoreable(
+            edge: edge,
+            style: defaultStyle(for: edge, role: .loadMore),
+            options: defaultOptions(for: edge, options: RefreshableOptions()),
+            action: action
+        )
     }
 
     /// 使用指定配置为滚动视图添加加载更多组件。
@@ -131,7 +148,12 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        installLoadMoreable(edge: edge, style: defaultStyle(for: edge, role: .loadMore), options: options, action: action)
+        installLoadMoreable(
+            edge: edge,
+            style: defaultStyle(for: edge, role: .loadMore),
+            options: defaultOptions(for: edge, options: options),
+            action: action
+        )
     }
 
     /// 使用自定义样式为滚动视图添加加载更多组件。
@@ -408,5 +430,12 @@ extension UIScrollView {
         default:
             DefaultEdgeStyle(edge: edge, role: role)
         }
+    }
+
+    private func defaultOptions(for edge: RefreshableEdge, options: RefreshableOptions) -> RefreshableOptions {
+        guard edge.axis == .horizontal, options.triggerOffset == nil else { return options }
+        var resolvedOptions = options
+        resolvedOptions.triggerOffset = defaultHorizontalEdgeTriggerOffset
+        return resolvedOptions
     }
 }

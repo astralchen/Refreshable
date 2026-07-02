@@ -90,6 +90,28 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.refreshState == .idle)
     }
 
+    @Test("默认横向刷新保留 54pt 触发距离并预留 130pt 显示空间")
+    func defaultHorizontalRefreshUsesWideDisplayExtentWithDefaultTriggerOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+
+        scrollView.refreshable(
+            edge: .leading,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        let component = scrollView.component(for: .leading)
+        #expect(component?.options.triggerOffset == 54)
+        #expect(component?.style.extent == 130)
+        #expect(component?.style.view.frame == CGRect(x: -130, y: 0, width: 844, height: 390))
+
+        scrollView.beginRefreshing(edge: .leading)
+
+        #expect(scrollView.contentInset.left == 130)
+        #expect(scrollView.contentOffset.x == -130)
+    }
+
     @Test("endRefreshing 转发到 headerComponent")
     func endRefreshing() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))

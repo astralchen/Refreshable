@@ -160,17 +160,82 @@ struct EdgeRefreshComponentTests {
         #expect(leadingStyle.view.frame == CGRect(x: -54, y: 0, width: 750, height: 390))
         #expect(trailingStyle.view.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
         #expect(leadingStyle.view.layoutMargins.left == 0)
-        #expect(leadingStyle.view.layoutMargins.right == 620)
-        #expect(trailingStyle.view.layoutMargins.left == 620)
+        #expect(leadingStyle.view.layoutMargins.right == 696)
+        #expect(trailingStyle.view.layoutMargins.left == 696)
         #expect(trailingStyle.view.layoutMargins.right == 0)
 
         scrollView.beginRefreshing(edge: .leading)
+        #expect(scrollView.contentInset.left == 54)
         #expect(scrollView.contentOffset.x == -101)
 
         scrollView.endRefreshing(edge: .leading)
         scrollView.contentOffset.x = 1600 - 844 + 47
         scrollView.beginLoadingMore(edge: .trailing)
+        #expect(scrollView.contentInset.right == 54)
         #expect(scrollView.contentOffset.x == 857)
+    }
+
+    @Test("宽横向 edge 在关闭自动 inset 调整时仍将视觉区域限制在 safe area")
+    func wideHorizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() {
+        let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
+        let leadingStyle = MockStyle(extent: 130)
+        let trailingStyle = MockStyle(extent: 130)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: leadingStyle,
+            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+        scrollView.loadMoreable(
+            edge: .trailing,
+            style: trailingStyle,
+            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        #expect(leadingStyle.view.frame == CGRect(x: -130, y: 0, width: 750, height: 390))
+        #expect(trailingStyle.view.frame == CGRect(x: 980, y: 0, width: 750, height: 390))
+        #expect(leadingStyle.view.layoutMargins.left == 0)
+        #expect(leadingStyle.view.layoutMargins.right == 620)
+        #expect(trailingStyle.view.layoutMargins.left == 620)
+        #expect(trailingStyle.view.layoutMargins.right == 0)
+
+        scrollView.beginRefreshing(edge: .leading)
+        #expect(scrollView.contentInset.left == 130)
+        #expect(scrollView.contentOffset.x == -177)
+
+        scrollView.endRefreshing(edge: .leading)
+        scrollView.contentOffset.x = 1600 - 844 + 47
+        scrollView.beginLoadingMore(edge: .trailing)
+        #expect(scrollView.contentInset.right == 130)
+        #expect(scrollView.contentOffset.x == 933)
+    }
+
+    @Test("横向 edge 可以分离触发距离和刷新占位")
+    func horizontalEdgeSeparatesTriggerDistanceFromDisplayExtent() {
+        let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1600, height: 390)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 130)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: style,
+            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+        ) {}
+
+        scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: CGPoint(x: -53, y: 0))
+        #expect(scrollView.refreshState(edge: .leading) == .pulling(53.0 / 54.0))
+
+        scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: CGPoint(x: -54, y: 0))
+        #expect(scrollView.refreshState(edge: .leading) == .triggered)
+
+        scrollView.beginRefreshing(edge: .leading)
+        #expect(scrollView.contentInset.left == 130)
+        #expect(scrollView.contentOffset.x == -130)
     }
 
     @Test("overlay loadMore 在 action 执行期间保持可见但不占位")

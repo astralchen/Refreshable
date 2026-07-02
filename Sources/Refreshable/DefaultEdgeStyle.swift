@@ -157,7 +157,9 @@ final class DefaultEdgeStyle: RefreshableStyle {
     }
 
     let view: UIView = UIView()
-    let extent: CGFloat = 54
+    var extent: CGFloat {
+        edge.axis == .horizontal ? 130 : 54
+    }
 
     private let edge: RefreshableEdge
     private let role: RefreshableRole

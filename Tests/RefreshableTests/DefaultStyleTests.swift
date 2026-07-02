@@ -209,6 +209,7 @@ struct DefaultEdgeStyleTests {
     func horizontalEdgeStyleUsesCircularProgressWithoutSpinner() {
         let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
 
+        #expect(style.extent == 130)
         #expect(style.view.firstSubview(ofType: UIActivityIndicatorView.self) == nil)
         #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
     }
