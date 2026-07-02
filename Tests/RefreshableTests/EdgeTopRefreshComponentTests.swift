@@ -70,6 +70,30 @@ struct EdgeTopRefreshComponentTests {
         #expect(style.lastState == .triggered)
     }
 
+    @Test("triggered 后继续下拉仍传递进度")
+    func triggeredStateContinuesForwardingPullProgress() {
+        let scrollView = HeaderDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 1200)
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 60)
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 60,
+                automaticallyEndRefreshing: false
+            )
+        )
+        component.scrollView = scrollView
+        style.reset()
+
+        component.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -60))
+        component.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -102))
+
+        #expect(component.state == .triggered)
+        #expect(style.lastState == .triggered)
+        #expect(style.lastProgress == 1.7)
+    }
+
     @Test("scrollViewDidEndDragging: triggered 状态下触发 refreshing")
     func endDraggingTriggersRefresh() {
         let (_, component, _) = makeSUT()
@@ -358,6 +382,14 @@ private actor ActionCallCounter {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return count
+    }
+}
+
+private final class HeaderDraggingScrollView: UIScrollView {
+    var isDraggingOverride = false
+
+    override var isDragging: Bool {
+        isDraggingOverride
     }
 }
 

@@ -53,18 +53,25 @@ class EdgeRefreshComponent: RefreshComponent {
         lockOverlayContentOffsetIfNeeded(in: scrollView, distance: distance)
         updateOverlayFrameIfNeeded(in: scrollView)
 
+        let rawProgress = distance / triggerThreshold
+
         switch state {
         case .idle, .pulling:
             guard scrollView.isDragging, distance > 0 else { return }
-            let progress = min(distance / triggerThreshold, 1.0)
+            let progress = min(rawProgress, 1.0)
             if distance >= triggerThreshold {
                 setState(.triggered)
+                updateTriggeredPullProgress(rawProgress)
             } else {
                 setState(.pulling(progress))
             }
 
         case .triggered:
-            guard scrollView.isDragging, distance < triggerThreshold else { return }
+            guard scrollView.isDragging else { return }
+            guard distance < triggerThreshold else {
+                updateTriggeredPullProgress(rawProgress)
+                return
+            }
             if distance > 0 {
                 setState(.pulling(min(distance / triggerThreshold, 1.0)))
             } else {
@@ -74,6 +81,10 @@ class EdgeRefreshComponent: RefreshComponent {
         case .refreshing, .ending, .noMoreData:
             break
         }
+    }
+
+    private func updateTriggeredPullProgress(_ progress: CGFloat) {
+        style.update(state: .triggered, progress: min(max(progress, 1), 2))
     }
 
     override func scrollViewDidEndDragging() {

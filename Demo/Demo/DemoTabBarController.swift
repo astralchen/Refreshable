@@ -27,6 +27,11 @@ final class DemoTabBarController: UITabBarController {
                 title: "视频",
                 imageName: "play.rectangle.fill"
             ),
+            makeNavigationController(
+                rootViewController: CustomStylesDemoController(),
+                title: "样式",
+                imageName: "sparkles"
+            ),
         ]
     }
 

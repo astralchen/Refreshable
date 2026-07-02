@@ -39,6 +39,7 @@ public struct RefreshableOptions {
     /// 触发刷新动作所需的拖动距离。
     ///
     /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.extent` 作为触发距离。
+    /// 进入刷新中后，`contentInset` 保持的可见高度仍由样式的 `extent` 决定。
     public var triggerOffset: CGFloat?
 
     /// 展开和恢复 `contentInset` 时使用的动画时长。
@@ -70,7 +71,7 @@ public struct RefreshableOptions {
     /// 创建一组刷新行为配置。
     ///
     /// - Parameters:
-    ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度。
+    ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度；刷新中的停留高度仍使用样式高度。
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
