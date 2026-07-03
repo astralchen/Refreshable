@@ -168,6 +168,40 @@ struct CustomRefreshStyleTests {
         #expect(alphas.count >= 4)
     }
 
+    @Test("SystemNativeRefreshStyle keeps the pull hint arrow pointing down")
+    func systemNativeHintArrowPointsDown() throws {
+        let style = SystemNativeRefreshStyle()
+        let hintArrow = try #require(style.view.systemNativeHintArrow())
+        let actualImage = try #require(hintArrow.image)
+        let expectedImage = try #require(UIImage(
+            systemName: "arrow.down",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        ))
+
+        #expect(
+            actualImage.renderedSymbolData(size: CGSize(width: 24, height: 14))
+                == expectedImage.renderedSymbolData(size: CGSize(width: 24, height: 14))
+        )
+    }
+
+    @Test("SystemNativeRefreshStyle rotates the pull hint arrow with pull progress")
+    func systemNativeHintArrowRotatesWithPullProgress() throws {
+        let style = SystemNativeRefreshStyle()
+        let hintArrow = try #require(style.view.systemNativeHintArrow())
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+        #expect(hintArrow.transform.rotationAngle.isApproximately(.pi / 2))
+
+        style.update(state: .pulling(1.2), progress: 1.2)
+        #expect(hintArrow.transform.rotationAngle.isApproximately(.pi))
+
+        style.update(state: .triggered, progress: 1)
+        #expect(hintArrow.transform.rotationAngle.isApproximately(.pi))
+
+        style.update(state: .idle, progress: 0)
+        #expect(hintArrow.transform.rotationAngle.isApproximately(0))
+    }
+
     @Test("SystemNativeRefreshStyle uses custom spinner while refreshing")
     func systemNativeUsesCustomSpinnerWhileRefreshing() throws {
         let style = SystemNativeRefreshStyle()
@@ -504,6 +538,13 @@ private extension UIView {
         }
     }
 
+    func systemNativeHintArrow() -> UIImageView? {
+        let iconArrow = systemNativeIconArrow()
+        return allSubviews(of: UIImageView.self).first { imageView in
+            imageView !== iconArrow
+        }
+    }
+
     func visibleTaijiOrbitLayers() -> [CAShapeLayer] {
         layer.allSublayers(of: CAShapeLayer.self).filter { shapeLayer in
             guard ["taijiBackOrbitLayer", "taijiFrontOrbitLayer"].contains(shapeLayer.name) else {
@@ -528,6 +569,29 @@ private extension UIView {
             ancestor = currentAncestor.superview
         }
         return true
+    }
+}
+
+private extension UIImage {
+    func renderedSymbolData(size: CGSize) -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: size, format: format).pngData { _ in
+            withTintColor(.black, renderingMode: .alwaysOriginal).draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+}
+
+private extension CGAffineTransform {
+    var rotationAngle: CGFloat {
+        atan2(b, a)
+    }
+}
+
+private extension CGFloat {
+    func isApproximately(_ other: CGFloat, tolerance: CGFloat = 0.001) -> Bool {
+        abs(self - other) <= tolerance
     }
 }
 

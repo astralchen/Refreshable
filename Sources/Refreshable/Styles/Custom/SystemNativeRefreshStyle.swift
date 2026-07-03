@@ -67,6 +67,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
             hintContainer.alpha = 0
+            hintArrowView.transform = .identity
 
         case .pulling(let p):
             label.text = texts.pulling
@@ -77,6 +78,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
             hintContainer.alpha = min(max(p, 0), 1) * 0.72
+            hintArrowView.transform = hintArrowTransform(progress: p)
 
         case .triggered:
             label.text = texts.triggered
@@ -87,6 +89,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
             hintContainer.alpha = 0.82
+            hintArrowView.transform = hintArrowTransform(progress: 1)
 
         case .refreshing:
             label.text = texts.refreshing
@@ -101,6 +104,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             subtitleLabel.text = lastUpdatedText
             subtitleLabel.isHidden = false
             hintContainer.alpha = 0.62
+            hintArrowView.transform = hintArrowTransform(progress: 1)
 
         case .ending:
             label.text = texts.ending
@@ -111,6 +115,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             subtitleLabel.text = lastUpdatedText
             subtitleLabel.isHidden = false
             hintContainer.alpha = 0.35
+            hintArrowView.transform = hintArrowTransform(progress: 1)
 
         case .noMoreData:
             label.text = texts.ending
@@ -120,6 +125,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
             arrowView.isHidden = true
             subtitleLabel.isHidden = true
             hintContainer.alpha = 0
+            hintArrowView.transform = .identity
         }
     }
 
@@ -134,7 +140,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
         view.addSubview(hintContainer)
 
         let hintImageConfiguration = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
-        hintArrowView.image = UIImage(systemName: "arrow.up", withConfiguration: hintImageConfiguration)
+        hintArrowView.image = UIImage(systemName: "arrow.down", withConfiguration: hintImageConfiguration)
         hintArrowView.tintColor = .tertiaryLabel
         hintArrowView.contentMode = .center
         hintArrowView.translatesAutoresizingMaskIntoConstraints = false
@@ -218,6 +224,11 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
 
     private var honorsReduceMotion: Bool {
         configuration.honorsReduceMotion && UIAccessibility.isReduceMotionEnabled
+    }
+
+    private func hintArrowTransform(progress: CGFloat) -> CGAffineTransform {
+        guard !honorsReduceMotion else { return .identity }
+        return CGAffineTransform(rotationAngle: min(max(progress, 0), 1) * .pi)
     }
 
     private func currentTextColor() -> UIColor {
