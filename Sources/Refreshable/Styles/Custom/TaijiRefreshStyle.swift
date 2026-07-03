@@ -196,8 +196,6 @@ private final class TaijiRefreshView: UIView {
 
     private let glassBaseLayer = CAShapeLayer()
     private let mistLayer = CAGradientLayer()
-    private let backArcLayer = CAShapeLayer()
-    private let frontArcLayer = CAShapeLayer()
     private let rippleLayer = CAShapeLayer()
     private let taijiSymbolView = TaijiSymbolView()
     private let particleLayers: [CAShapeLayer] = (0..<14).map { _ in CAShapeLayer() }
@@ -234,7 +232,6 @@ private final class TaijiRefreshView: UIView {
         )
 
         updateGlassBasePath()
-        updateArcPaths()
         updateParticlePositions(progress: 1)
         updateRipplePath()
     }
@@ -254,8 +251,6 @@ private final class TaijiRefreshView: UIView {
                 UIColor.clear.cgColor,
             ]
             self.mistLayer.locations = [0, 0.42, 0.72, 1]
-            self.backArcLayer.strokeColor = palette.secondaryGlow.withAlphaComponent(0.45).cgColor
-            self.frontArcLayer.strokeColor = palette.primaryGlow.withAlphaComponent(0.8).cgColor
             self.rippleLayer.strokeColor = palette.glassHighlight.withAlphaComponent(0.42).cgColor
             self.particleLayers.forEach { $0.fillColor = palette.particle.cgColor }
         }
@@ -281,55 +276,45 @@ private final class TaijiRefreshView: UIView {
         let baseAlpha: Float
         let scale: CGFloat
         let mistAlpha: Float
-        let arcEnd: CGFloat
-        let arcAlpha: Float
         let particleAlpha: Float
-        let orbitRotation: CGFloat
         let coreRotation: CGFloat
+        let energyProgress: CGFloat
 
         switch state {
         case .idle:
             baseAlpha = 0
             scale = 0.86
             mistAlpha = 0
-            arcEnd = 0
-            arcAlpha = 0
             particleAlpha = 0
-            orbitRotation = 0
             coreRotation = 0
+            energyProgress = 0
             stopContinuousMotion()
 
         case .pulling:
             baseAlpha = Float(0.15 + p * 0.85)
             scale = 0.86 + p * 0.14
             mistAlpha = Float(p * (reduceTransparency ? 0.32 : 0.56))
-            arcEnd = 0.10 + p * 0.58
-            arcAlpha = Float(0.18 + p * 0.56)
             particleAlpha = Float(p * 0.85)
-            orbitRotation = reduceMotion ? 0 : p * 0.58
-            coreRotation = 0
+            coreRotation = Self.easeOut(p) * .pi * 0.78
+            energyProgress = p
             stopContinuousMotion()
 
         case .triggered:
             baseAlpha = 1
             scale = 1.04
             mistAlpha = reduceTransparency ? 0.32 : 0.62
-            arcEnd = 0.76
-            arcAlpha = 0.76
             particleAlpha = 1
-            orbitRotation = reduceMotion ? 0 : 0.32
-            coreRotation = 0
+            coreRotation = .pi * 0.88
+            energyProgress = 1
             stopContinuousMotion()
 
         case .refreshing:
             baseAlpha = 1
             scale = 1
             mistAlpha = reduceTransparency ? 0.34 : 0.58
-            arcEnd = 0.54
-            arcAlpha = 0.68
             particleAlpha = 0.92
-            orbitRotation = 0
             coreRotation = 0
+            energyProgress = 1
             if reduceMotion {
                 stopContinuousMotion()
                 startBreathing()
@@ -341,11 +326,9 @@ private final class TaijiRefreshView: UIView {
             baseAlpha = 0.78
             scale = 0.92
             mistAlpha = 0.10
-            arcEnd = 0.28
-            arcAlpha = 0.24
             particleAlpha = 0.25
-            orbitRotation = 0
             coreRotation = 0
+            energyProgress = 0.35
             stopContinuousMotion()
             playRipple()
 
@@ -353,28 +336,26 @@ private final class TaijiRefreshView: UIView {
             baseAlpha = 0.55
             scale = 0.92
             mistAlpha = 0.08
-            arcEnd = 0.24
-            arcAlpha = 0.20
             particleAlpha = 0
-            orbitRotation = 0
             coreRotation = 0
+            energyProgress = 0.20
             stopContinuousMotion()
         }
 
         layer.opacity = baseAlpha
         glassBaseLayer.opacity = min(mistAlpha + 0.04, 0.36)
         mistLayer.opacity = mistAlpha
-        backArcLayer.opacity = min(arcAlpha * 0.66, 0.50)
-        frontArcLayer.opacity = min(arcAlpha, 0.74)
-        backArcLayer.strokeEnd = arcEnd * 0.72
-        frontArcLayer.strokeEnd = arcEnd
         particleLayers.enumerated().forEach { index, layer in
             layer.opacity = index < Int(ceil(CGFloat(particleLayers.count) * max(p, 0.25))) ? particleAlpha : 0
         }
         updateParticlePositions(progress: max(p, 0.2))
-        applyOrbitRotation(orbitRotation)
+        taijiSymbolView.setEnergyProgress(energyProgress)
         taijiSymbolView.setPatternRotation(coreRotation)
         taijiSymbolView.transform = CGAffineTransform(scaleX: scale, y: scale)
+    }
+
+    private static func easeOut(_ value: CGFloat) -> CGFloat {
+        1 - pow(1 - min(max(value, 0), 1), 2)
     }
 
     private func setupLayers() {
@@ -393,28 +374,20 @@ private final class TaijiRefreshView: UIView {
         mistLayer.endPoint = CGPoint(x: 1, y: 1)
         layer.addSublayer(mistLayer)
 
-        [backArcLayer, frontArcLayer, rippleLayer].forEach { arcLayer in
-            arcLayer.fillColor = UIColor.clear.cgColor
-            arcLayer.lineCap = .round
-            arcLayer.lineJoin = .round
-            arcLayer.lineWidth = 1.4
-        }
-        backArcLayer.name = "taijiBackOrbitLayer"
-        frontArcLayer.name = "taijiFrontOrbitLayer"
+        rippleLayer.fillColor = UIColor.clear.cgColor
+        rippleLayer.lineCap = .round
+        rippleLayer.lineJoin = .round
         rippleLayer.name = "taijiRippleLayer"
 
-        backArcLayer.lineWidth = 1.05
-        frontArcLayer.lineWidth = 1.55
         rippleLayer.lineWidth = 1.35
         rippleLayer.opacity = 0
 
-        layer.addSublayer(backArcLayer)
         addSubview(taijiSymbolView)
-        layer.addSublayer(frontArcLayer)
         layer.addSublayer(rippleLayer)
 
         particleLayers.enumerated().forEach { index, particle in
             let size: CGFloat = index.isMultiple(of: 3) ? 2.4 : 1.7
+            particle.name = "taijiParticleLayer"
             particle.path = UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size, height: size)).cgPath
             particle.opacity = 0
             layer.addSublayer(particle)
@@ -430,32 +403,6 @@ private final class TaijiRefreshView: UIView {
         )
         glassBaseLayer.path = UIBezierPath(ovalIn: rect).cgPath
         glassBaseLayer.shadowPath = glassBaseLayer.path
-    }
-
-    private func updateArcPaths() {
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        [backArcLayer, frontArcLayer, rippleLayer].forEach { orbitLayer in
-            orbitLayer.frame = bounds
-        }
-
-        let backPath = UIBezierPath()
-        backPath.move(to: CGPoint(x: center.x - 40, y: center.y - 8))
-        backPath.addCurve(
-            to: CGPoint(x: center.x + 40, y: center.y - 6),
-            controlPoint1: CGPoint(x: center.x - 23, y: center.y - 26),
-            controlPoint2: CGPoint(x: center.x + 23, y: center.y - 24)
-        )
-
-        let frontPath = UIBezierPath()
-        frontPath.move(to: CGPoint(x: center.x - 40, y: center.y - 1))
-        frontPath.addCurve(
-            to: CGPoint(x: center.x + 40, y: center.y),
-            controlPoint1: CGPoint(x: center.x - 24, y: center.y + 22),
-            controlPoint2: CGPoint(x: center.x + 24, y: center.y + 22)
-        )
-
-        frontArcLayer.path = frontPath.cgPath
-        backArcLayer.path = backPath.cgPath
     }
 
     private func updateParticlePositions(progress: CGFloat) {
@@ -483,26 +430,9 @@ private final class TaijiRefreshView: UIView {
     private func startContinuousSpin() {
         taijiSymbolView.layer.removeAnimation(forKey: "taijiBreath")
         taijiSymbolView.startPatternSpin()
-        guard frontArcLayer.animation(forKey: "taijiOrbitSpin") == nil else { return }
-
-        let frontSpin = CABasicAnimation(keyPath: "transform.rotation.z")
-        frontSpin.fromValue = 0
-        frontSpin.toValue = CGFloat.pi * 2
-        frontSpin.duration = 1.05
-        frontSpin.repeatCount = .infinity
-        frontArcLayer.add(frontSpin, forKey: "taijiOrbitSpin")
-
-        let backSpin = CABasicAnimation(keyPath: "transform.rotation.z")
-        backSpin.fromValue = CGFloat.pi * 2
-        backSpin.toValue = 0
-        backSpin.duration = 1.32
-        backSpin.repeatCount = .infinity
-        backArcLayer.add(backSpin, forKey: "taijiOrbitSpin")
     }
 
     private func startBreathing() {
-        frontArcLayer.removeAnimation(forKey: "taijiOrbitSpin")
-        backArcLayer.removeAnimation(forKey: "taijiOrbitSpin")
         taijiSymbolView.stopPatternSpin()
         guard taijiSymbolView.layer.animation(forKey: "taijiBreath") == nil else { return }
         let animation = CABasicAnimation(keyPath: "opacity")
@@ -515,16 +445,9 @@ private final class TaijiRefreshView: UIView {
     }
 
     private func stopContinuousMotion() {
-        frontArcLayer.removeAnimation(forKey: "taijiOrbitSpin")
-        backArcLayer.removeAnimation(forKey: "taijiOrbitSpin")
         taijiSymbolView.stopPatternSpin()
         taijiSymbolView.layer.removeAnimation(forKey: "taijiSpin")
         taijiSymbolView.layer.removeAnimation(forKey: "taijiBreath")
-    }
-
-    private func applyOrbitRotation(_ rotation: CGFloat) {
-        frontArcLayer.transform = CATransform3DMakeRotation(rotation * 0.24, 0, 0, 1)
-        backArcLayer.transform = CATransform3DMakeRotation(-rotation * 0.18, 0, 0, 1)
     }
 
     private func playRipple() {
@@ -602,6 +525,11 @@ private final class TaijiSymbolView: UIView {
         patternView.layer.name = "taijiPatternLayer"
         addSubview(patternView)
 
+        edgeDepthLayer.name = "taijiEdgeDepthLayer"
+        lowerGlowLayer.name = "taijiLowerGlowLayer"
+        rimLayer.name = "taijiRimLayer"
+        glossLayer.name = "taijiGlossLayer"
+
         [edgeDepthLayer, lowerGlowLayer, rimLayer, glossLayer].forEach { shellLayer in
             shellLayer.contentsScale = UIScreen.main.scale
             shellLayer.allowsEdgeAntialiasing = true
@@ -634,6 +562,19 @@ private final class TaijiSymbolView: UIView {
         lowerGlowLayer.strokeColor = UIColor.clear.cgColor
         lowerGlowLayer.lineWidth = 0
         lowerGlowLayer.opacity = 0.8
+    }
+
+    func setEnergyProgress(_ progress: CGFloat) {
+        let p = min(max(progress, 0), 1)
+
+        rimLayer.lineWidth = 1.15 + p * 0.65
+        rimLayer.opacity = Float(0.68 + p * 0.30)
+
+        lowerGlowLayer.opacity = Float(0.22 + p * 0.68)
+        edgeDepthLayer.opacity = Float(0.68 + p * 0.25)
+
+        layer.shadowOpacity = Float(0.18 + p * 0.22)
+        layer.shadowRadius = 8 + p * 8
     }
 
     private func updateShellLayerPaths() {

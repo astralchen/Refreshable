@@ -179,6 +179,44 @@ struct CustomRefreshStyleTests {
         #expect(baseLayer.shadowOpacity <= 0.24)
     }
 
+    @Test("TaijiRefreshStyle communicates pull progress through body energy")
+    func taijiCommunicatesPullProgressThroughBodyEnergy() throws {
+        let style = TaijiRefreshStyle(theme: .dark)
+        style.view.frame = CGRect(x: 0, y: 0, width: 390, height: style.extent)
+        style.view.layoutIfNeeded()
+
+        let symbol = try #require(style.view.firstSubview(className: "TaijiSymbolView"))
+        let patternLayer = try #require(symbol.layer.sublayers?.first { $0.name == "taijiPatternLayer" })
+        let rimLayer = try #require(symbol.layer.allSublayers(of: CAShapeLayer.self).first { $0.name == "taijiRimLayer" })
+        let lowerGlowLayer = try #require(symbol.layer.allSublayers(of: CAShapeLayer.self).first { $0.name == "taijiLowerGlowLayer" })
+        let mistLayer = try #require(style.view.layer.allSublayers(of: CAGradientLayer.self).first)
+
+        style.update(state: .pulling(0.2), progress: 0.2)
+        style.view.layoutIfNeeded()
+        let lowScale = symbol.transform.a
+        let lowPatternRotation = abs(atan2(patternLayer.affineTransform().b, patternLayer.affineTransform().a))
+        let lowRimWidth = rimLayer.lineWidth
+        let lowGlowOpacity = lowerGlowLayer.opacity
+        let lowMistOpacity = mistLayer.opacity
+        let lowParticleCount = style.view.visibleTaijiParticleLayers().count
+
+        style.update(state: .pulling(0.9), progress: 0.9)
+        style.view.layoutIfNeeded()
+        let highScale = symbol.transform.a
+        let highPatternRotation = abs(atan2(patternLayer.affineTransform().b, patternLayer.affineTransform().a))
+        let highRimWidth = rimLayer.lineWidth
+        let highGlowOpacity = lowerGlowLayer.opacity
+        let highMistOpacity = mistLayer.opacity
+        let highParticleCount = style.view.visibleTaijiParticleLayers().count
+
+        #expect(highScale > lowScale)
+        #expect(highPatternRotation > lowPatternRotation + 0.18)
+        #expect(highRimWidth > lowRimWidth)
+        #expect(highGlowOpacity > lowGlowOpacity)
+        #expect(highMistOpacity > lowMistOpacity)
+        #expect(highParticleCount > lowParticleCount)
+    }
+
     @Test("TaijiRefreshStyle keeps the glass body as the visual focal point")
     func taijiKeepsGlassBodyAsFocalPoint() throws {
         let style = TaijiRefreshStyle(theme: .dark)
@@ -196,9 +234,9 @@ struct CustomRefreshStyleTests {
 
         let activeOrbitLayers = (style.view.layer.sublayers ?? [])
             .compactMap { $0 as? CAShapeLayer }
-            .filter { ($0.fillColor?.alpha ?? 1) == 0 && $0.opacity > 0.1 && $0.path != nil }
-        #expect((activeOrbitLayers.map(\.lineWidth).max() ?? 0) <= 1.8)
-        #expect(activeOrbitLayers.allSatisfy { $0.opacity <= 0.82 })
+            .filter { ["taijiBackOrbitLayer", "taijiFrontOrbitLayer"].contains($0.name) }
+            .filter { $0.path != nil || $0.opacity > 0 || $0.strokeEnd > 0 }
+        #expect(activeOrbitLayers.isEmpty)
     }
 
     @Test("TaijiRefreshStyle spins the inner taiji while keeping the body front facing")
@@ -217,61 +255,43 @@ struct CustomRefreshStyleTests {
         #expect(abs(symbol.transform.c) < 0.001)
         #expect(abs(coreLayer.affineTransform().b) < 0.001)
         #expect(abs(coreLayer.affineTransform().c) < 0.001)
-        #expect(abs(patternLayer.affineTransform().b) < 0.001)
-        #expect(abs(patternLayer.affineTransform().c) < 0.001)
 
         style.update(state: .triggered, progress: 1)
         #expect(abs(symbol.transform.b) < 0.001)
         #expect(abs(symbol.transform.c) < 0.001)
         #expect(abs(coreLayer.affineTransform().b) < 0.001)
         #expect(abs(coreLayer.affineTransform().c) < 0.001)
-        #expect(abs(patternLayer.affineTransform().b) < 0.001)
-        #expect(abs(patternLayer.affineTransform().c) < 0.001)
 
         style.update(state: .refreshing, progress: 1)
         #expect(symbol.layer.animation(forKey: "taijiSpin") == nil)
 
         #expect(coreLayer.animation(forKey: "taijiCoreSpin") == nil)
         #expect(patternLayer.animation(forKey: "taijiPatternSpin") != nil)
+
+        #expect(style.view.visibleTaijiOrbitLayers().isEmpty)
     }
 
-    @Test("TaijiRefreshStyle layers tilted orbit arcs around the glass body")
-    func taijiLayersTiltedOrbitArcsAroundGlassBody() throws {
+    @Test("TaijiRefreshStyle removes orbit arcs from every visible state")
+    func taijiRemovesOrbitArcsFromEveryVisibleState() {
         let style = TaijiRefreshStyle(theme: .dark)
         style.view.frame = CGRect(x: 0, y: 0, width: 390, height: style.extent)
         style.view.layoutIfNeeded()
 
         style.update(state: .pulling(0.9), progress: 0.9)
         style.view.layoutIfNeeded()
+        #expect(style.view.visibleTaijiOrbitLayers().isEmpty)
 
-        let symbol = try #require(style.view.firstSubview(className: "TaijiSymbolView"))
-        let sublayers = try #require(style.view.layer.sublayers)
-        let backOrbit = try #require(sublayers.first { $0.name == "taijiBackOrbitLayer" } as? CAShapeLayer)
-        let frontOrbit = try #require(sublayers.first { $0.name == "taijiFrontOrbitLayer" } as? CAShapeLayer)
-        let backIndex = try #require(sublayers.firstIndex(of: backOrbit))
-        let symbolIndex = try #require(sublayers.firstIndex(of: symbol.layer))
-        let frontIndex = try #require(sublayers.firstIndex(of: frontOrbit))
+        style.update(state: .triggered, progress: 1)
+        style.view.layoutIfNeeded()
+        #expect(style.view.visibleTaijiOrbitLayers().isEmpty)
 
-        #expect(backIndex < symbolIndex)
-        #expect(symbolIndex < frontIndex)
-        #expect(frontOrbit.lineWidth > backOrbit.lineWidth)
-        #expect(frontOrbit.opacity > backOrbit.opacity)
-        #expect(abs(frontOrbit.affineTransform().b) < 0.18)
-        #expect(abs(backOrbit.affineTransform().b) < 0.18)
+        style.update(state: .refreshing, progress: 1)
+        style.view.layoutIfNeeded()
+        #expect(style.view.visibleTaijiOrbitLayers().isEmpty)
 
-        let backBounds = try #require(backOrbit.path?.boundingBoxOfPath)
-        let frontBounds = try #require(frontOrbit.path?.boundingBoxOfPath)
-
-        #expect(backBounds.width > backBounds.height * 1.9)
-        #expect(frontBounds.width > frontBounds.height * 2.0)
-        #expect(backBounds.width < 92)
-        #expect(frontBounds.width < 92)
-        #expect(backBounds.height < 32)
-        #expect(frontBounds.height < 31)
-        #expect(backBounds.minY >= symbol.frame.minY - 6)
-        #expect(backBounds.maxY < symbol.frame.midY + 4)
-        #expect(frontBounds.minY > symbol.frame.midY - 12)
-        #expect(frontBounds.maxY <= symbol.frame.maxY + 6)
+        style.update(state: .ending, progress: 1)
+        style.view.layoutIfNeeded()
+        #expect(style.view.visibleTaijiOrbitLayers().isEmpty)
     }
 
     @Test("KineticRefreshStyle exposes playful state text")
@@ -371,6 +391,22 @@ private extension UIView {
     func systemNativeIconArrow() -> UIImageView? {
         allSubviews(of: UIImageView.self).first { imageView in
             imageView.superview?.firstSubview(className: "SystemNativeSpinnerView") != nil
+        }
+    }
+
+    func visibleTaijiOrbitLayers() -> [CAShapeLayer] {
+        layer.allSublayers(of: CAShapeLayer.self).filter { shapeLayer in
+            guard ["taijiBackOrbitLayer", "taijiFrontOrbitLayer"].contains(shapeLayer.name) else {
+                return false
+            }
+
+            return shapeLayer.path != nil || shapeLayer.opacity > 0 || shapeLayer.strokeEnd > 0
+        }
+    }
+
+    func visibleTaijiParticleLayers() -> [CAShapeLayer] {
+        layer.allSublayers(of: CAShapeLayer.self).filter { shapeLayer in
+            shapeLayer.name == "taijiParticleLayer" && shapeLayer.opacity > 0.05
         }
     }
 
