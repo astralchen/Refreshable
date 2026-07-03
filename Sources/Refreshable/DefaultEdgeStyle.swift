@@ -51,6 +51,33 @@ final class CAShapeLayerHostView: UIView {
     }
 }
 
+private final class DefaultEdgeStyleRootView: UIView {
+    weak var horizontalContentView: UIView?
+    var horizontalContentWidth: CGFloat = 72 {
+        didSet { setNeedsLayout() }
+    }
+    var horizontalContentPhysicalEdge: RefreshablePhysicalEdge = .left {
+        didSet { setNeedsLayout() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        guard let horizontalContentView else { return }
+
+        let width = min(horizontalContentWidth, bounds.width)
+        let x: CGFloat
+        switch horizontalContentPhysicalEdge {
+        case .right:
+            x = max(bounds.width - width, 0)
+        case .top, .bottom, .left:
+            x = 0
+        }
+
+        horizontalContentView.frame = CGRect(x: x, y: 0, width: width, height: bounds.height)
+    }
+}
+
 /// 非传统边缘使用的默认刷新样式。
 @MainActor
 final class DefaultEdgeStyle: RefreshableStyle {
@@ -158,15 +185,17 @@ final class DefaultEdgeStyle: RefreshableStyle {
         }
     }
 
-    let view: UIView = UIView()
+    var view: UIView { rootView }
     var extent: CGFloat {
-        edge.axis == .horizontal ? 130 : 54
+        edge.axis == .horizontal ? horizontalLabelMinimumWidth : 54
     }
 
+    private let rootView = DefaultEdgeStyleRootView()
     private let edge: RefreshableEdge
     private let role: RefreshableRole
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
+    private let horizontalContentView = UIView()
     private let progressHost = CAShapeLayerHostView()
     private let arrowView = UIImageView()
     private let horizontalLabelMinimumWidth: CGFloat = 72
@@ -210,23 +239,29 @@ final class DefaultEdgeStyle: RefreshableStyle {
     }
 
     private func setupHorizontalUI() {
+        rootView.horizontalContentView = horizontalContentView
+        rootView.horizontalContentWidth = horizontalLabelMinimumWidth
+        horizontalContentView.autoresizingMask = []
+        horizontalContentView.isUserInteractionEnabled = false
+        view.addSubview(horizontalContentView)
+
         progressHost.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(progressHost)
+        horizontalContentView.addSubview(progressHost)
 
         let arrowConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
         arrowView.preferredSymbolConfiguration = arrowConfiguration
         arrowView.tintColor = .secondaryLabel
         arrowView.contentMode = .center
         arrowView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(arrowView)
+        horizontalContentView.addSubview(arrowView)
 
-        setupLabel(numberOfLines: 1)
+        setupLabel(numberOfLines: 1, in: horizontalContentView)
         let minimumLabelWidth = label.widthAnchor.constraint(greaterThanOrEqualToConstant: horizontalLabelMinimumWidth)
         minimumLabelWidth.priority = .defaultHigh
 
-        NSLayoutConstraint.activate([
-            progressHost.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            progressHost.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -13),
+        let constraints: [NSLayoutConstraint] = [
+            progressHost.centerXAnchor.constraint(equalTo: horizontalContentView.centerXAnchor),
+            progressHost.centerYAnchor.constraint(equalTo: horizontalContentView.centerYAnchor, constant: -13),
             progressHost.widthAnchor.constraint(equalToConstant: 48),
             progressHost.heightAnchor.constraint(equalTo: progressHost.widthAnchor),
 
@@ -236,15 +271,18 @@ final class DefaultEdgeStyle: RefreshableStyle {
             arrowView.heightAnchor.constraint(equalTo: arrowView.widthAnchor),
 
             label.topAnchor.constraint(equalTo: progressHost.bottomAnchor, constant: 8),
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            label.centerXAnchor.constraint(equalTo: horizontalContentView.centerXAnchor),
             minimumLabelWidth,
-            label.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -4),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 2),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -2),
-        ])
+            label.widthAnchor.constraint(lessThanOrEqualTo: horizontalContentView.widthAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: horizontalContentView.leadingAnchor),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: horizontalContentView.trailingAnchor),
+        ]
+
+        NSLayoutConstraint.activate(constraints)
+        updateHorizontalContentAlignment()
     }
 
-    private func setupLabel(numberOfLines: Int) {
+    private func setupLabel(numberOfLines: Int, in containerView: UIView? = nil) {
         label.font = .systemFont(ofSize: edge.axis == .horizontal ? 12 : 12)
         label.textColor = .secondaryLabel
         label.textAlignment = .center
@@ -252,7 +290,7 @@ final class DefaultEdgeStyle: RefreshableStyle {
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
         label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
+        (containerView ?? view).addSubview(label)
     }
 
     func update(state: RefreshState, progress: CGFloat) {
@@ -286,6 +324,8 @@ final class DefaultEdgeStyle: RefreshableStyle {
     }
 
     private func updateHorizontal(state: RefreshState, progress: CGFloat) {
+        updateHorizontalContentAlignment()
+
         let renderState = RenderState(
             edge: edge,
             role: role,
@@ -308,6 +348,12 @@ final class DefaultEdgeStyle: RefreshableStyle {
         let scale = state == .triggered ? 1.06 : 1
         arrowView.transform = CGAffineTransform(scaleX: scale, y: scale)
         updateProgressRotation(shouldRotate: renderState.shouldRotateProgress)
+    }
+
+    private func updateHorizontalContentAlignment() {
+        guard edge.axis == .horizontal else { return }
+
+        rootView.horizontalContentPhysicalEdge = edge.physicalEdge(in: view)
     }
 
     private func updateProgressRotation(shouldRotate: Bool) {

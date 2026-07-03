@@ -209,24 +209,48 @@ struct DefaultEdgeStyleTests {
     func horizontalEdgeStyleUsesCircularProgressWithoutSpinner() {
         let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
 
-        #expect(style.extent == 130)
+        #expect(style.extent == 72)
         #expect(style.view.firstSubview(ofType: UIActivityIndicatorView.self) == nil)
         #expect(!style.view.allSubviews(ofType: CAShapeLayerHostView.self).isEmpty)
     }
 
-    @Test("horizontal edge visual content uses visual bounds without margin contract")
-    func horizontalEdgeVisualContentUsesVisualBoundsWithoutMarginContract() throws {
-        let style = DefaultEdgeStyle(edge: .leading, role: .refresh)
-        style.view.frame = CGRect(x: 0, y: 0, width: 130, height: 390)
-        let progressHost = try #require(style.view.firstSubview(ofType: CAShapeLayerHostView.self))
-        let label = try #require(style.view.firstSubview(ofType: UILabel.self))
+    @Test("horizontal edge visual content aligns to the refresh edge")
+    func horizontalEdgeVisualContentAlignsToRefreshEdge() throws {
+        let leadingStyle = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        layoutHorizontalStyle(leadingStyle, semanticContentAttribute: .forceLeftToRight)
+        let leadingProgressHost = try #require(leadingStyle.view.firstSubview(ofType: CAShapeLayerHostView.self))
+        let leadingLabel = try #require(leadingStyle.view.firstSubview(ofType: UILabel.self))
+        let leadingProgressFrame = frameInStyleView(leadingProgressHost, style: leadingStyle)
+        let leadingLabelFrame = frameInStyleView(leadingLabel, style: leadingStyle)
 
-        style.update(state: .refreshing, progress: 1)
-        style.view.layoutIfNeeded()
+        #expect(leadingProgressFrame.midX == 36)
+        #expect(leadingLabelFrame.minX == 0)
+        #expect(leadingLabelFrame.width >= 72)
 
-        #expect(progressHost.center.x == 65)
-        #expect(label.frame.minX >= 0)
-        #expect(label.frame.width > 70)
+        let trailingStyle = DefaultEdgeStyle(edge: .trailing, role: .refresh)
+        layoutHorizontalStyle(trailingStyle, semanticContentAttribute: .forceLeftToRight)
+        let trailingProgressHost = try #require(trailingStyle.view.firstSubview(ofType: CAShapeLayerHostView.self))
+        let trailingLabel = try #require(trailingStyle.view.firstSubview(ofType: UILabel.self))
+        let trailingProgressFrame = frameInStyleView(trailingProgressHost, style: trailingStyle)
+        let trailingLabelFrame = frameInStyleView(trailingLabel, style: trailingStyle)
+
+        #expect(trailingProgressFrame.midX == 94)
+        #expect(trailingLabelFrame.maxX == 130)
+        #expect(trailingLabelFrame.width >= 72)
+
+        let rtlLeadingStyle = DefaultEdgeStyle(edge: .leading, role: .refresh)
+        layoutHorizontalStyle(rtlLeadingStyle, semanticContentAttribute: .forceRightToLeft)
+        let rtlLeadingProgressHost = try #require(rtlLeadingStyle.view.firstSubview(ofType: CAShapeLayerHostView.self))
+        let rtlLeadingProgressFrame = frameInStyleView(rtlLeadingProgressHost, style: rtlLeadingStyle)
+
+        #expect(rtlLeadingProgressFrame.midX == 94)
+
+        let rtlTrailingStyle = DefaultEdgeStyle(edge: .trailing, role: .refresh)
+        layoutHorizontalStyle(rtlTrailingStyle, semanticContentAttribute: .forceRightToLeft)
+        let rtlTrailingProgressHost = try #require(rtlTrailingStyle.view.firstSubview(ofType: CAShapeLayerHostView.self))
+        let rtlTrailingProgressFrame = frameInStyleView(rtlTrailingProgressHost, style: rtlTrailingStyle)
+
+        #expect(rtlTrailingProgressFrame.midX == 36)
     }
 
     @Test("horizontal edge pulling text stays generic")
@@ -291,6 +315,25 @@ struct DefaultEdgeStyleTests {
 
         #expect(negative.progress == 0)
         #expect(overflow.progress == 1)
+    }
+
+    private func layoutHorizontalStyle(
+        _ style: DefaultEdgeStyle,
+        semanticContentAttribute: UISemanticContentAttribute
+    ) {
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 130, height: 390))
+        hostView.semanticContentAttribute = semanticContentAttribute
+        style.view.semanticContentAttribute = semanticContentAttribute
+        style.view.frame = hostView.bounds
+        hostView.addSubview(style.view)
+
+        style.update(state: .refreshing, progress: 1)
+        hostView.layoutIfNeeded()
+        style.view.layoutIfNeeded()
+    }
+
+    private func frameInStyleView(_ subview: UIView, style: DefaultEdgeStyle) -> CGRect {
+        subview.convert(subview.bounds, to: style.view)
     }
 }
 
