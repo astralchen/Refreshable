@@ -1,7 +1,7 @@
 import UIKit
 import ObjectiveC
 
-// MARK: - Associated Object Keys
+// MARK: - 关联对象键
 
 private enum AssociatedKeys {
     nonisolated(unsafe) static let componentStore = malloc(1)!
@@ -15,11 +15,11 @@ private final class RefreshableComponentStore {
     var components: [RefreshableEdge: EdgeRefreshComponent] = [:]
 }
 
-// MARK: - Public API
+// MARK: - 公开 API
 
 extension UIScrollView {
 
-    // MARK: - Refresh
+    // MARK: - 刷新
 
     /// 为滚动视图添加刷新组件。
     ///
@@ -115,7 +115,7 @@ extension UIScrollView {
         refreshComponent(for: edge)?.endRefreshing()
     }
 
-    // MARK: - Load More
+    // MARK: - 加载更多
 
     /// 为滚动视图添加加载更多组件。
     ///
@@ -230,7 +230,7 @@ extension UIScrollView {
         loadMoreComponent(for: edge)?.resetNoMoreData()
     }
 
-    // MARK: - State
+    // MARK: - 状态
 
     /// 当前默认顶部刷新状态。
     ///
@@ -296,7 +296,7 @@ extension UIScrollView {
         loadMoreState(edge: edge).isRefreshing
     }
 
-    // MARK: - Runtime Control
+    // MARK: - 运行时控制
 
     /// 启用或禁用指定边缘的刷新组件。
     ///
@@ -344,7 +344,7 @@ extension UIScrollView {
         setComponent(nil, for: edge)
     }
 
-    // MARK: - Internal Accessors
+    // MARK: - 内部访问
 
     @MainActor
     func component(for edge: RefreshableEdge) -> EdgeRefreshComponent? {

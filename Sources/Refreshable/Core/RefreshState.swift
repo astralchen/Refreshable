@@ -19,7 +19,7 @@ public enum RefreshState: Sendable, Equatable {
     /// 刷新动作已经结束，组件正在执行收起动画。
     case ending
 
-    /// footer 已经进入没有更多数据的状态。
+    /// 加载更多组件已经进入没有更多数据的状态。
     case noMoreData
 
     /// 一个布尔值，指示状态是否为 `refreshing`。

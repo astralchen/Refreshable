@@ -1,22 +1,49 @@
 import UIKit
 
-/// Theme selection for `TaijiRefreshStyle`.
+/// `TaijiRefreshStyle` 使用的主题选项。
 public enum TaijiRefreshTheme: Sendable, Equatable {
+    /// 跟随当前 trait collection 自动选择浅色或深色主题。
     case system
+
+    /// 使用内置浅色主题。
     case light
+
+    /// 使用内置深色主题。
     case dark
+
+    /// 使用自定义颜色配置。
     case custom(TaijiRefreshPalette)
 }
 
-/// Color palette used by the compact glass taiji refresh style.
+/// 紧凑玻璃太极刷新样式使用的颜色配置。
 public struct TaijiRefreshPalette: Equatable, @unchecked Sendable {
+    /// 背景雾面颜色。
     public var backgroundTint: UIColor
+
+    /// 主要发光颜色。
     public var primaryGlow: UIColor
+
+    /// 次要发光颜色。
     public var secondaryGlow: UIColor
+
+    /// 玻璃高光颜色。
     public var glassHighlight: UIColor
+
+    /// 核心阴影颜色。
     public var shadowCore: UIColor
+
+    /// 粒子颜色。
     public var particle: UIColor
 
+    /// 创建太极刷新样式的颜色配置。
+    ///
+    /// - Parameters:
+    ///   - backgroundTint: 背景雾面颜色。
+    ///   - primaryGlow: 主要发光颜色。
+    ///   - secondaryGlow: 次要发光颜色。
+    ///   - glassHighlight: 玻璃高光颜色。
+    ///   - shadowCore: 核心阴影颜色。
+    ///   - particle: 粒子颜色。
     public init(
         backgroundTint: UIColor,
         primaryGlow: UIColor,
@@ -42,6 +69,7 @@ public struct TaijiRefreshPalette: Equatable, @unchecked Sendable {
             && lhs.particle.isEqual(rhs.particle)
     }
 
+    /// 内置浅色主题颜色配置。
     public static var light: TaijiRefreshPalette {
         TaijiRefreshPalette(
             backgroundTint: UIColor(red: 0.89, green: 0.86, blue: 1.0, alpha: 0.22),
@@ -53,6 +81,7 @@ public struct TaijiRefreshPalette: Equatable, @unchecked Sendable {
         )
     }
 
+    /// 内置深色主题颜色配置。
     public static var dark: TaijiRefreshPalette {
         TaijiRefreshPalette(
             backgroundTint: UIColor(red: 0.02, green: 0.05, blue: 0.11, alpha: 0.86),
@@ -65,22 +94,26 @@ public struct TaijiRefreshPalette: Equatable, @unchecked Sendable {
     }
 }
 
-/// A compact premium glass taiji refresh style.
+/// 一种紧凑的玻璃质感太极刷新样式。
 @MainActor
 public final class TaijiRefreshStyle: RefreshableStyle {
 
-    /// The root view installed into the scroll view.
+    /// 安装到滚动视图中的根视图。
     public let view: UIView
 
-    /// Header height.
+    /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
 
-    /// Current theme selection.
+    /// 当前主题选项。
     public private(set) var theme: TaijiRefreshTheme
 
     private let taijiView: TaijiRefreshView
 
-    /// Creates a compact taiji refresh style.
+    /// 创建太极刷新样式。
+    ///
+    /// - Parameters:
+    ///   - extent: 刷新视图沿滚动轴占用的尺寸。
+    ///   - theme: 初始主题选项。
     public init(
         extent: CGFloat = 92,
         theme: TaijiRefreshTheme = .system
@@ -96,14 +129,22 @@ public final class TaijiRefreshStyle: RefreshableStyle {
         update(state: .idle, progress: 0)
     }
 
-    /// Switches the palette without resetting the current refresh state.
+    /// 切换主题，不重置当前刷新状态。
+    ///
+    /// - Parameters:
+    ///   - theme: 新的主题选项。
+    ///   - animated: 是否使用过渡动画应用新颜色。
     public func setTheme(_ theme: TaijiRefreshTheme, animated: Bool = true) {
         self.theme = theme
         let palette = Self.palette(for: theme, traitCollection: taijiView.traitCollection)
         taijiView.apply(palette: palette, animated: animated)
     }
 
-    /// Updates the taiji refresh control for the current state.
+    /// 根据当前状态更新太极刷新控件。
+    ///
+    /// - Parameters:
+    ///   - state: 当前刷新状态。
+    ///   - progress: `pulling` 阶段的归一化拖动进度。
     public func update(state: RefreshState, progress: CGFloat) {
         let palette = Self.palette(for: theme, traitCollection: taijiView.traitCollection)
         taijiView.render(

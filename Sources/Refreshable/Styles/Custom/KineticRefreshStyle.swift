@@ -1,22 +1,62 @@
 import UIKit
 
-/// Visible and accessibility text used by `KineticRefreshStyle`.
+/// `KineticRefreshStyle` 使用的可见文案和 VoiceOver 文案。
 public struct KineticRefreshTexts {
+    /// 空闲状态显示的文案。
     public var idle: String
+
+    /// 用户拖动但尚未达到触发距离时显示的文案。
     public var pulling: String
+
+    /// 已达到触发距离、等待用户松手时显示的文案。
     public var triggered: String
+
+    /// 刷新或加载动作执行中显示的文案。
     public var refreshing: String
+
+    /// 动作结束并开始收起时显示的文案。
     public var ending: String
+
+    /// 加载更多组件进入没有更多数据状态时显示的文案。
     public var noMoreData: String
+
+    /// 刷新视图的无障碍标签。
     public var accessibilityLabel: String
+
+    /// 空闲状态的无障碍值。
     public var idleAccessibilityValue: String
+
+    /// 拖动状态的无障碍值。
     public var pullingAccessibilityValue: String
+
+    /// 已触发状态的无障碍值。
     public var triggeredAccessibilityValue: String
+
+    /// 执行中状态的无障碍值。
     public var refreshingAccessibilityValue: String
+
+    /// 结束状态的无障碍值。
     public var endingAccessibilityValue: String
+
+    /// 没有更多数据状态的无障碍值。
     public var noMoreDataAccessibilityValue: String
 
-    /// Creates text for the kinetic refresh style.
+    /// 创建动感刷新样式的文案配置。
+    ///
+    /// - Parameters:
+    ///   - idle: 空闲状态显示的文案。
+    ///   - pulling: 用户拖动但尚未达到触发距离时显示的文案。
+    ///   - triggered: 已达到触发距离、等待用户松手时显示的文案。
+    ///   - refreshing: 刷新或加载动作执行中显示的文案。
+    ///   - ending: 动作结束并开始收起时显示的文案。
+    ///   - noMoreData: 没有更多数据状态显示的文案。
+    ///   - accessibilityLabel: 刷新视图的无障碍标签。
+    ///   - idleAccessibilityValue: 空闲状态的无障碍值。
+    ///   - pullingAccessibilityValue: 拖动状态的无障碍值。
+    ///   - triggeredAccessibilityValue: 已触发状态的无障碍值。
+    ///   - refreshingAccessibilityValue: 执行中状态的无障碍值。
+    ///   - endingAccessibilityValue: 结束状态的无障碍值。
+    ///   - noMoreDataAccessibilityValue: 没有更多数据状态的无障碍值。
     public init(
         idle: String = "下拉刷新",
         pulling: String = "继续下拉",
@@ -48,16 +88,35 @@ public struct KineticRefreshTexts {
     }
 }
 
-/// Color palette used by `KineticRefreshStyle`.
+/// `KineticRefreshStyle` 使用的颜色配置。
 public struct KineticRefreshPalette {
+    /// 主强调色，默认用于进度和状态点。
     public var teal: UIColor
+
+    /// 暖色强调色，默认用于动感轨迹的起始段。
     public var coral: UIColor
+
+    /// 冷色强调色，默认用于动感轨迹的中段。
     public var indigo: UIColor
+
+    /// 亮色强调色，默认用于动感轨迹的结束段。
     public var lime: UIColor
+
+    /// 文案颜色。
     public var ink: UIColor
+
+    /// 胶囊背景颜色。
     public var surface: UIColor
 
-    /// Creates a playful kinetic palette.
+    /// 创建动感刷新样式的颜色配置。
+    ///
+    /// - Parameters:
+    ///   - teal: 主强调色。
+    ///   - coral: 暖色强调色。
+    ///   - indigo: 冷色强调色。
+    ///   - lime: 亮色强调色。
+    ///   - ink: 文案颜色。
+    ///   - surface: 胶囊背景颜色。
     public init(
         teal: UIColor = .systemTeal,
         coral: UIColor = .systemPink,
@@ -75,21 +134,26 @@ public struct KineticRefreshPalette {
     }
 }
 
-/// A playful refresh style with an elastic path, rotating glyph, ticks, and status label.
+/// 一种带有弹性轨迹、旋转图标、刻度和状态文案的动感刷新样式。
 @MainActor
 public final class KineticRefreshStyle: RefreshableStyle {
 
-    /// The root view installed into the scroll view.
+    /// 安装到滚动视图中的根视图。
     public let view: UIView
 
-    /// Header height.
+    /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
 
     private let texts: KineticRefreshTexts
     private let palette: KineticRefreshPalette
     private let kineticView: KineticRefreshView
 
-    /// Creates a kinetic refresh style.
+    /// 创建动感刷新样式。
+    ///
+    /// - Parameters:
+    ///   - extent: 刷新视图沿滚动轴占用的尺寸。
+    ///   - texts: 可见文案和 VoiceOver 文案配置。
+    ///   - palette: 颜色配置。
     public init(
         extent: CGFloat = 82,
         texts: KineticRefreshTexts = KineticRefreshTexts(),
@@ -107,7 +171,11 @@ public final class KineticRefreshStyle: RefreshableStyle {
         update(state: .idle, progress: 0)
     }
 
-    /// Updates the kinetic refresh control for the current state.
+    /// 根据当前状态更新动感刷新控件。
+    ///
+    /// - Parameters:
+    ///   - state: 当前刷新状态。
+    ///   - progress: `pulling` 阶段的归一化拖动进度。
     public func update(state: RefreshState, progress: CGFloat) {
         let normalizedProgress = state.normalizedKineticProgress(fallback: progress)
         kineticView.render(

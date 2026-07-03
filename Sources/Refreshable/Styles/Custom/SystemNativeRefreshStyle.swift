@@ -1,13 +1,13 @@
 import UIKit
 
-/// A compact native-feeling refresh style with an arrow, progress ring, spinner, and status text.
+/// 一种包含箭头、进度环、活动指示器和状态文案的紧凑系统风格刷新样式。
 @MainActor
 public final class SystemNativeRefreshStyle: RefreshableStyle {
 
-    /// The root view installed into the scroll view.
+    /// 安装到滚动视图中的根视图。
     public let view: UIView = UIView()
 
-    /// The default header height.
+    /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
 
     private let texts: DefaultTopRefreshTexts
@@ -23,7 +23,13 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
     private let label = UILabel()
     private let subtitleLabel = UILabel()
 
-    /// Creates a native-style refresh control.
+    /// 创建系统风格刷新样式。
+    ///
+    /// - Parameters:
+    ///   - extent: 刷新视图沿滚动轴占用的尺寸。
+    ///   - texts: 顶部下拉刷新使用的可见文案和 VoiceOver 文案。
+    ///   - configuration: 字体、颜色和无障碍行为配置。
+    ///   - lastUpdatedText: 刷新中和结束状态显示的最近更新时间文案。
     public init(
         extent: CGFloat = 64,
         texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
@@ -41,7 +47,11 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
         update(state: .idle, progress: 0)
     }
 
-    /// Updates the native refresh control for the current state.
+    /// 根据当前状态更新系统风格刷新控件。
+    ///
+    /// - Parameters:
+    ///   - state: 当前刷新状态。
+    ///   - progress: `pulling` 阶段的归一化拖动进度。
     public func update(state: RefreshState, progress: CGFloat) {
         label.textColor = currentTextColor()
         subtitleLabel.textColor = currentSecondaryTextColor()

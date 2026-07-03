@@ -210,16 +210,26 @@ UIScrollView+Refreshable.swift    公开 API（associated object 持有 edge sto
 Refreshable/
 ├── Package.swift
 ├── Sources/Refreshable/
-│   ├── RefreshState.swift
-│   ├── RefreshableEdge.swift
-│   ├── RefreshableStyle.swift
-│   ├── RefreshableOptions.swift
-│   ├── DefaultHeaderStyle.swift
-│   ├── DefaultFooterStyle.swift
-│   ├── DefaultEdgeStyle.swift
-│   ├── RefreshComponent.swift
-│   ├── EdgeRefreshComponent.swift
-│   └── UIScrollView+Refreshable.swift
+│   ├── Core/
+│   │   ├── RefreshState.swift
+│   │   ├── RefreshableEdge.swift
+│   │   ├── RefreshableStyle.swift
+│   │   └── RefreshableOptions.swift
+│   ├── Components/
+│   │   ├── RefreshComponent.swift
+│   │   └── EdgeRefreshComponent.swift
+│   ├── Extensions/
+│   │   └── UIScrollView+Refreshable.swift
+│   └── Styles/
+│       ├── Default/
+│       │   ├── DefaultRefreshStyleConfiguration.swift
+│       │   ├── DefaultTopRefreshStyle.swift
+│       │   ├── DefaultBottomLoadMoreStyle.swift
+│       │   └── DefaultEdgeStyle.swift
+│       └── Custom/
+│           ├── SystemNativeRefreshStyle.swift
+│           ├── TaijiRefreshStyle.swift
+│           └── KineticRefreshStyle.swift
 ├── Tests/RefreshableTests/
 │   ├── MockStyle.swift
 │   ├── RefreshStateTests.swift

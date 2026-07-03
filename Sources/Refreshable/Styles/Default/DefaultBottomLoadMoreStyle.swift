@@ -19,6 +19,10 @@ public final class DefaultBottomLoadMoreStyle: RefreshableStyle {
     private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
 
     /// 创建默认的底部上拉加载更多样式。
+    ///
+    /// - Parameters:
+    ///   - texts: 底部上拉加载更多样式使用的可见文案和 VoiceOver 文案。
+    ///   - configuration: 字体、颜色和无障碍行为配置。
     public init(
         texts: DefaultBottomLoadMoreTexts = DefaultBottomLoadMoreTexts(),
         configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()

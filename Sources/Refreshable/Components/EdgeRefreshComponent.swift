@@ -142,7 +142,7 @@ class EdgeRefreshComponent: RefreshComponent {
         activeInsetEdge = nil
     }
 
-    // MARK: - Manual Trigger
+    // MARK: - 手动触发
 
     func beginRefreshing() {
         beginAction()
@@ -153,7 +153,7 @@ class EdgeRefreshComponent: RefreshComponent {
         beginAction()
     }
 
-    // MARK: - No More Data
+    // MARK: - 没有更多数据
 
     func setNoMoreData() {
         guard role == .loadMore else { return }
@@ -184,7 +184,7 @@ class EdgeRefreshComponent: RefreshComponent {
         setState(.idle)
     }
 
-    // MARK: - Geometry
+    // MARK: - 几何布局
 
     private var displayExtent: CGFloat {
         let rawValue = style.extent

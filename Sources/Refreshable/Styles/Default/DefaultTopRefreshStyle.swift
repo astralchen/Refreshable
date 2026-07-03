@@ -20,6 +20,10 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
     private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
 
     /// 创建默认的顶部下拉刷新样式。
+    ///
+    /// - Parameters:
+    ///   - texts: 顶部下拉刷新样式使用的可见文案和 VoiceOver 文案。
+    ///   - configuration: 字体、颜色和无障碍行为配置。
     public init(
         texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
         configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()
@@ -46,19 +50,19 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
         view.isAccessibilityElement = true
         view.accessibilityLabel = texts.accessibilityLabel
 
-        // Arrow
+        // 下拉方向提示箭头。
         let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         arrowView.image = UIImage(systemName: "arrow.down", withConfiguration: config)
         arrowView.tintColor = .secondaryLabel
         arrowView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(arrowView)
 
-        // Indicator
+        // 刷新执行中的系统活动指示器。
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(indicator)
 
-        // Label
+        // 状态文案标签。
         label.font = UIFontMetrics(forTextStyle: configuration.fontTextStyle)
             .scaledFont(for: configuration.font)
         label.adjustsFontForContentSizeCategory = configuration.adjustsFontForContentSizeCategory

@@ -23,7 +23,7 @@ import UIKit
 public protocol RefreshableStyle: AnyObject {
     /// 渲染刷新控件视觉内容的视图。
     ///
-    /// 组件可能会将此视图安装在内部 host view 中。样式应基于此视图自身的
+    /// 组件可能会将此视图安装在内部宿主视图中。样式应基于此视图自身的
     /// `bounds` 布局，不应依赖 `superview` 或 `layoutMargins` 获取组件几何信息。
     var view: UIView { get }
 

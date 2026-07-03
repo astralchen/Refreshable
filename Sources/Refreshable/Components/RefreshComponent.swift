@@ -7,7 +7,7 @@ import UIKit
 @MainActor
 public class RefreshComponent: NSObject {
 
-    // MARK: - Properties
+    // MARK: - 属性
 
     weak var scrollView: UIScrollView? {
         didSet {
@@ -52,7 +52,7 @@ public class RefreshComponent: NSObject {
 
     var isEnabled = true
 
-    // MARK: - Init
+    // MARK: - 初始化
 
     init(
         style: any RefreshableStyle,
@@ -66,15 +66,15 @@ public class RefreshComponent: NSObject {
     }
 
     deinit {
-        // NSKeyValueObservation 会在 deinit 时自动 invalidate
+        // NSKeyValueObservation 会在释放时自动失效。
         currentTask?.cancel()
     }
 
-    // MARK: - Subclass Hooks
+    // MARK: - 子类钩子
 
     /// 将 `style.view` 安装到指定滚动视图中。
     func installView(in scrollView: UIScrollView) {
-        // override
+        // 子类按具体布局方式安装视图。
     }
 
     /// 当前组件安装到滚动视图上的外层视图。
@@ -94,25 +94,25 @@ public class RefreshComponent: NSObject {
 
     /// 滚动视图的 `contentOffset` 变化时调用。
     func scrollViewDidScroll(contentOffset: CGPoint) {
-        // override
+        // 子类根据偏移量更新交互状态。
     }
 
     /// 滚动视图的 `contentSize` 变化时调用。
     func scrollViewContentSizeDidChange(contentSize: CGSize) {
-        // override
+        // 子类根据内容尺寸变化更新布局。
     }
 
     /// 用户结束拖动时调用。
     func scrollViewDidEndDragging() {
-        // override
+        // 子类在达到触发条件时开始刷新。
     }
 
     /// 状态变化时调用，子类可重写以调整 inset。
     func stateDidChange(from oldState: RefreshState, to newState: RefreshState) {
-        // override
+        // 子类根据状态切换同步滚动视图 inset。
     }
 
-    // MARK: - View Visibility
+    // MARK: - 视图可见性
 
     /// 控制 `style.view` 的可见性，模拟 `UIRefreshControl` 的显示逻辑。
     private func updateViewVisibility(state: RefreshState, progress: CGFloat) {
@@ -133,7 +133,7 @@ public class RefreshComponent: NSObject {
         }
     }
 
-    // MARK: - State Management
+    // MARK: - 状态管理
 
     func setState(_ newState: RefreshState) {
         state = newState
@@ -168,7 +168,7 @@ public class RefreshComponent: NSObject {
 
     /// 恢复指定滚动视图的 inset。
     func resetInset(for scrollView: UIScrollView) {
-        // override
+        // 子类恢复对应方向的滚动视图 inset。
     }
 
     func captureOriginalInset() {
