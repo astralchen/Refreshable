@@ -6,6 +6,116 @@ import UIKit
 @MainActor
 struct CustomRefreshStyleTests {
 
+    @Test("VideoTopRefreshStyle exposes reusable video refresh UI")
+    func videoTopRefreshStyleStateText() throws {
+        let style = VideoTopRefreshStyle()
+        let label = try #require(style.view.firstSubview(of: UILabel.self))
+
+        #expect(style.extent == 44)
+        #expect(style.view.isAccessibilityElement)
+        #expect(style.view.firstSubview(of: UIVisualEffectView.self) != nil)
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+        #expect(label.text == "继续下拉刷新视频")
+        #expect(style.view.accessibilityValue == "下拉中")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "释放刷新视频")
+        #expect(style.view.accessibilityValue == "释放刷新")
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(label.text == "正在刷新视频")
+        #expect(style.view.accessibilityValue == "正在刷新")
+        let indicator = try #require(style.view.firstSubview(of: UIActivityIndicatorView.self))
+        #expect(indicator.isAnimating)
+
+        style.update(state: .ending, progress: 0)
+        #expect(label.text == "视频已刷新")
+        #expect(style.view.accessibilityValue == "刷新完成")
+    }
+
+    @Test("VideoBottomLoadMoreStyle exposes reusable video load-more UI")
+    func videoBottomLoadMoreStyleStateText() throws {
+        let style = VideoBottomLoadMoreStyle(extent: 76)
+        let label = try #require(style.view.firstSubview(of: UILabel.self))
+
+        #expect(style.extent == 76)
+        #expect(style.view.isAccessibilityElement)
+        #expect(style.view.firstSubview(of: UIVisualEffectView.self) != nil)
+
+        style.update(state: .pulling(0.5), progress: 0.5)
+        #expect(label.text == "继续上拉加载视频")
+        #expect(style.view.accessibilityValue == "上拉中")
+
+        style.update(state: .triggered, progress: 1)
+        #expect(label.text == "释放加载视频")
+        #expect(style.view.accessibilityValue == "释放加载")
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(label.text == "正在加载视频")
+        #expect(style.view.accessibilityValue == "正在加载")
+        let indicator = try #require(style.view.firstSubview(of: UIActivityIndicatorView.self))
+        #expect(indicator.isAnimating)
+
+        style.update(state: .noMoreData, progress: 0)
+        #expect(label.text == "没有更多视频")
+        #expect(style.view.accessibilityValue == "没有更多视频")
+        #expect(indicator.isAnimating == false)
+    }
+
+    @Test("Video overlay styles allow custom text and extent")
+    func videoOverlayStylesAllowCustomTextAndExtent() throws {
+        let topStyle = VideoTopRefreshStyle(
+            extent: 52,
+            texts: VideoTopRefreshTexts(
+                idle: "Pull video",
+                pulling: "Keep pulling video",
+                triggered: "Release video",
+                refreshing: "Refreshing video",
+                ending: "Video refreshed",
+                accessibilityLabel: "Video refresh",
+                idleAccessibilityValue: "Idle",
+                pullingAccessibilityValue: "Pulling",
+                triggeredAccessibilityValue: "Ready",
+                refreshingAccessibilityValue: "Refreshing",
+                endingAccessibilityValue: "Done"
+            )
+        )
+        let topLabel = try #require(topStyle.view.firstSubview(of: UILabel.self))
+        topStyle.update(state: .triggered, progress: 1)
+
+        #expect(topStyle.extent == 52)
+        #expect(topLabel.text == "Release video")
+        #expect(topStyle.view.accessibilityLabel == "Video refresh")
+        #expect(topStyle.view.accessibilityValue == "Ready")
+
+        let bottomStyle = VideoBottomLoadMoreStyle(
+            extent: 68,
+            texts: VideoBottomLoadMoreTexts(
+                idle: "Pull more video",
+                pulling: "Keep pulling more video",
+                triggered: "Release more video",
+                refreshing: "Loading video",
+                ending: "Loaded video",
+                noMoreData: "No more video",
+                accessibilityLabel: "Video load more",
+                idleAccessibilityValue: "Idle",
+                pullingAccessibilityValue: "Pulling",
+                triggeredAccessibilityValue: "Ready",
+                refreshingAccessibilityValue: "Loading",
+                endingAccessibilityValue: "Done",
+                noMoreDataAccessibilityValue: "Complete"
+            )
+        )
+        let bottomLabel = try #require(bottomStyle.view.firstSubview(of: UILabel.self))
+        bottomStyle.update(state: .noMoreData, progress: 0)
+
+        #expect(bottomStyle.extent == 68)
+        #expect(bottomLabel.text == "No more video")
+        #expect(bottomStyle.view.accessibilityLabel == "Video load more")
+        #expect(bottomStyle.view.accessibilityValue == "Complete")
+    }
+
     @Test("SystemNativeRefreshStyle exposes compact native state text")
     func systemNativeStateText() {
         let style = SystemNativeRefreshStyle()
