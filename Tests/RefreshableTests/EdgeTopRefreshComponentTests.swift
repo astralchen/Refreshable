@@ -209,6 +209,20 @@ struct EdgeTopRefreshComponentTests {
         #expect(validStates.contains(component.state))
     }
 
+    @Test("回到 idle 前先隐藏刷新视图以避免完成态闪烁")
+    func hidesRefreshViewBeforeIdleStyleUpdate() {
+        let (_, component, style) = makeSUT()
+        component.setState(.ending)
+        style.view.alpha = 1
+        style.reset()
+
+        component.setState(.idle)
+
+        let idleRecord = style.records.first { $0.state == .idle }
+        #expect(idleRecord?.viewAlpha == 0)
+        #expect(style.view.alpha == 0)
+    }
+
     @Test("endRefreshing 在 idle 时忽略")
     func endRefreshingWhenIdle() {
         let (_, component, style) = makeSUT()

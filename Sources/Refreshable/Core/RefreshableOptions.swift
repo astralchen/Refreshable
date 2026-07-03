@@ -14,6 +14,15 @@ public enum RefreshablePresentation: Sendable, Equatable {
     case overlay(spacing: CGFloat = 12, locksContentOffset: Bool = false)
 }
 
+/// 浮层刷新视图的锚定方式。
+public enum RefreshableOverlayAnchor: Sendable, Equatable {
+    /// 固定在滚动视图当前可见区域的边缘内侧。
+    case viewport
+
+    /// 跟随滚动内容边界，显示在内容起始或结束边缘外侧。
+    case contentBoundary
+}
+
 extension RefreshablePresentation {
     var usesContentInset: Bool {
         switch self {
@@ -87,9 +96,17 @@ public struct RefreshableOptions {
     /// 刷新视图的展示方式。
     ///
     /// 默认值为 `.contentInset`，保持传统列表刷新体验。设置为 `.overlay` 时，刷新视图
-    /// 会浮在滚动视图可见区域的对应边缘内侧，不会修改 `contentInset`。浮层模式可选择
-    /// 在边界拖动时锁定内容偏移，适合下拉时不希望视频画面移动的全屏视频流。
+    /// 不会修改 `contentInset`。浮层默认固定在滚动视图可见区域边缘，也可以配置为跟随内容
+    /// 边界显示在最后一屏之后。浮层模式可选择在边界拖动时锁定内容偏移，适合下拉时不希望
+    /// 视频画面移动的全屏视频流。
     public var presentation: RefreshablePresentation
+
+    /// 浮层刷新视图的锚定方式。
+    ///
+    /// 仅在 `presentation` 为 `.overlay` 时生效。默认值为 `.viewport`，保持浮在当前可见区域
+    /// 边缘的行为；设置为 `.contentBoundary` 时，刷新视图跟随内容边界，适合只在上拉越界拖拽
+    /// 时显示在最后一屏之后。
+    public var overlayAnchor: RefreshableOverlayAnchor
 
     /// 状态变化时在主线程调用的闭包。
     ///
@@ -106,6 +123,7 @@ public struct RefreshableOptions {
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
     ///   - placement: 样式视觉视图在组件宿主区域内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
+    ///   - overlayAnchor: 浮层刷新视图的锚定方式。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
         triggerOffset: CGFloat? = nil,
@@ -114,6 +132,7 @@ public struct RefreshableOptions {
         allowsLoadMoreWhenContentFits: Bool = false,
         placement: RefreshablePlacement = RefreshablePlacement(),
         presentation: RefreshablePresentation = .contentInset,
+        overlayAnchor: RefreshableOverlayAnchor = .viewport,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
         self.triggerOffset = triggerOffset
@@ -122,6 +141,7 @@ public struct RefreshableOptions {
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
         self.placement = placement
         self.presentation = presentation
+        self.overlayAnchor = overlayAnchor
         self.onStateChange = onStateChange
     }
 }

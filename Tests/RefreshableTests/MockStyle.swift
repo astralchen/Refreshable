@@ -14,6 +14,7 @@ final class MockStyle: RefreshableStyle {
     struct StateRecord: Equatable {
         let state: RefreshState
         let progress: CGFloat
+        let viewAlpha: CGFloat
     }
 
     private(set) var records: [StateRecord] = []
@@ -22,7 +23,7 @@ final class MockStyle: RefreshableStyle {
     var lastProgress: CGFloat? { records.last?.progress }
 
     func update(state: RefreshState, progress: CGFloat) {
-        records.append(StateRecord(state: state, progress: progress))
+        records.append(StateRecord(state: state, progress: progress, viewAlpha: view.alpha))
     }
 
     func reset() {

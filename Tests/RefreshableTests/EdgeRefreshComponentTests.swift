@@ -457,6 +457,38 @@ struct EdgeRefreshComponentTests {
         #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
     }
 
+    @Test("overlay 可跟随内容边界显示在最后一屏之后且不调整 inset")
+    func overlayPresentationCanAnchorBelowContentBoundaryWithoutInset() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentSize = CGSize(width: 390, height: 1688)
+        scrollView.contentOffset = CGPoint(x: 0, y: 844)
+        let style = MockStyle(extent: 76)
+
+        scrollView.loadMoreable(
+            edge: .bottom,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 76,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 24),
+                overlayAnchor: .contentBoundary
+            )
+        ) {}
+
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame == CGRect(x: 0, y: 1712, width: 390, height: 76))
+        #expect(style.view.frame == CGRect(x: 0, y: 0, width: 390, height: 76))
+        #expect(scrollView.contentInset.bottom == 0)
+
+        scrollView.contentOffset = CGPoint(x: 0, y: 920)
+        scrollView.component(for: .bottom)?.scrollViewDidScroll(contentOffset: scrollView.contentOffset)
+
+        #expect(hostView.frame == CGRect(x: 0, y: 1712, width: 390, height: 76))
+        #expect(scrollView.contentInset.bottom == 0)
+    }
+
     @Test("overlay 展示模式默认保留系统弹性位移")
     func overlayPresentationAllowsContentOffsetMovementByDefault() {
         let scrollView = EdgeDraggingScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -512,6 +544,63 @@ struct EdgeRefreshComponentTests {
         let hostView = try #require(style.view.superview)
         #expect(hostView.frame == CGRect(x: 0, y: 4, width: 320, height: 44))
         #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
+    }
+
+    @Test("overlay 锁定全屏视频下拉时不把内容推到 safe area 下方")
+    func overlayLockDoesNotMoveFullscreenTopContentBelowSafeArea() throws {
+        let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentSize = CGSize(width: 390, height: 2532)
+        scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 47, left: 0, bottom: 34, right: 0)
+        scrollView.contentOffset = .zero
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 76,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 14, locksContentOffset: true)
+            )
+        ) {}
+
+        scrollView.contentOffset = CGPoint(x: 0, y: -76)
+        scrollView.component(for: .top)?.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: -76))
+
+        #expect(scrollView.refreshState(edge: .top) == .triggered)
+        #expect(scrollView.contentOffset.y == 0)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame == CGRect(x: 0, y: 61, width: 390, height: 44))
+    }
+
+    @Test("overlay 锁定后继续拖动可通过手势位移触发刷新")
+    func overlayLockUsesPanTranslationAfterContentOffsetIsPinned() {
+        let scrollView = PanTranslationScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentSize = CGSize(width: 390, height: 2532)
+        scrollView.contentOffset = .zero
+        scrollView.isDraggingOverride = true
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: style,
+            options: RefreshableOptions(
+                triggerOffset: 76,
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 14, locksContentOffset: true)
+            )
+        ) {}
+
+        scrollView.panTranslationOverride = CGPoint(x: 0, y: 88)
+        scrollView.component(for: .top)?.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(scrollView.refreshState(edge: .top) == .triggered)
+        #expect(scrollView.contentOffset.y == 0)
     }
 
     @Test("noMoreData(edge:) 对 refresh 组件无副作用")
@@ -648,6 +737,27 @@ private class EdgeDraggingScrollView: UIScrollView {
 
     override var isDragging: Bool {
         isDraggingOverride
+    }
+}
+
+private final class PanTranslationScrollView: EdgeDraggingScrollView {
+    private let panGestureRecognizerOverride = PanTranslationGestureRecognizer()
+
+    var panTranslationOverride: CGPoint {
+        get { panGestureRecognizerOverride.translationOverride }
+        set { panGestureRecognizerOverride.translationOverride = newValue }
+    }
+
+    override var panGestureRecognizer: UIPanGestureRecognizer {
+        panGestureRecognizerOverride
+    }
+}
+
+private final class PanTranslationGestureRecognizer: UIPanGestureRecognizer {
+    var translationOverride: CGPoint = .zero
+
+    override func translation(in view: UIView?) -> CGPoint {
+        translationOverride
     }
 }
 

@@ -34,8 +34,13 @@ public class RefreshComponent: NSObject {
         didSet {
             guard state != oldValue else { return }
             let progress: CGFloat = if case .pulling(let p) = state { p } else { 0 }
+            if state == .idle {
+                updateViewVisibility(state: state, progress: progress)
+            }
             style.update(state: state, progress: progress)
-            updateViewVisibility(state: state, progress: progress)
+            if state != .idle {
+                updateViewVisibility(state: state, progress: progress)
+            }
             options.onStateChange?(state)
             stateDidChange(from: oldValue, to: state)
         }
@@ -126,7 +131,6 @@ public class RefreshComponent: NSObject {
         case .refreshing:
             visibilityView.alpha = 1
         case .ending:
-            // ending 期间保持可见，动画结束后回到 idle 时会置 0
             break
         case .noMoreData:
             visibilityView.alpha = 1

@@ -18,7 +18,9 @@ struct RefreshableOptionsTests {
         #expect(options.placement.contentSpacing == 0)
         #expect(options.placement.crossAxisInset == 0)
         #expect(options.presentation == .contentInset)
+        #expect(options.overlayAnchor == .viewport)
         #expect(!storedPropertyNames(in: options).contains("keepsRefreshViewVisibleDuringAction"))
+        #expect(!storedPropertyNames(in: options).contains("keepsRefreshViewVisibleAfterTrigger"))
     }
 
     @Test("可配置触发距离、动画时长、自动结束、内容不足一屏加载和展示方式")
@@ -29,7 +31,8 @@ struct RefreshableOptionsTests {
             automaticallyEndRefreshing: false,
             allowsLoadMoreWhenContentFits: true,
             placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
-            presentation: .overlay(spacing: 12, locksContentOffset: true)
+            presentation: .overlay(spacing: 12, locksContentOffset: true),
+            overlayAnchor: .contentBoundary
         )
 
         #expect(options.triggerOffset == 80)
@@ -40,6 +43,15 @@ struct RefreshableOptionsTests {
         #expect(options.placement.outerSpacing == 8)
         #expect(options.placement.crossAxisInset == 20)
         #expect(options.presentation == .overlay(spacing: 12, locksContentOffset: true))
+        #expect(options.overlayAnchor == .contentBoundary)
+    }
+
+    @Test("overlay 默认固定到可见区域边缘")
+    func overlayDefaultsToViewportAnchor() {
+        let options = RefreshableOptions(presentation: .overlay(spacing: 12))
+
+        #expect(options.presentation == .overlay(spacing: 12, locksContentOffset: false))
+        #expect(options.overlayAnchor == .viewport)
     }
 
     @Test("placement 默认不增加额外间距")

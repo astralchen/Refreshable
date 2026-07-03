@@ -14,7 +14,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
     private let refreshTriggerOffset: CGFloat = 76
     private let loadMoreTriggerOffset: CGFloat = 76
     private let refreshOverlayTopSpacing: CGFloat = 14
-    private let loadMoreOverlayBottomSpacing: CGFloat = 96
+    private let loadMoreContentBoundarySpacing: CGFloat = 8
     private let videoResourceNames = [
         "refreshable-video-1",
         "refreshable-video-2",
@@ -66,8 +66,9 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
             await MainActor.run {
                 self.refreshSeed += 1
                 self.page = 0
+                let previousCount = self.items.count
                 self.items = self.makeItems(start: 1 + self.refreshSeed * 20, count: 5)
-                self.collectionView.reloadData()
+                self.reconfigureRefreshItems(previousCount: previousCount)
                 self.collectionView.resetNoMoreData(edge: .bottom)
                 self.playCurrentCellAfterLayout()
             }
@@ -80,7 +81,8 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 triggerOffset: loadMoreTriggerOffset,
                 animationDuration: 0.24,
                 allowsLoadMoreWhenContentFits: true,
-                presentation: .overlay(spacing: loadMoreOverlayBottomSpacing)
+                presentation: .overlay(spacing: loadMoreContentBoundarySpacing),
+                overlayAnchor: .contentBoundary
             )
         ) {
             try? await Task.sleep(nanoseconds: 900_000_000)
@@ -126,6 +128,25 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
     private func loadInitialData() {
         items = makeItems(start: 1, count: 5)
         collectionView.reloadData()
+    }
+
+    private func reconfigureRefreshItems(previousCount: Int) {
+        guard previousCount == items.count else {
+            collectionView.reloadData()
+            return
+        }
+
+        let visibleIndexPaths = collectionView.indexPathsForVisibleItems
+            .filter { $0.item < items.count }
+        guard !visibleIndexPaths.isEmpty else {
+            collectionView.reloadData()
+            return
+        }
+
+        UIView.performWithoutAnimation {
+            collectionView.reconfigureItems(at: visibleIndexPaths)
+            collectionView.layoutIfNeeded()
+        }
     }
 
     private func makeItems(start: Int, count: Int) -> [VideoFeedItem] {
@@ -228,6 +249,7 @@ private final class VideoFeedCell: UICollectionViewCell {
     private let playerLayer = AVPlayerLayer()
     private var player: AVQueuePlayer?
     private var playerLooper: AVPlayerLooper?
+    private var currentVideoURL: URL?
 
     private let fallbackView = UIView()
     private let titleLabel = UILabel()
@@ -337,11 +359,18 @@ private final class VideoFeedCell: UICollectionViewCell {
         likesLabel.text = item.likes
         captionLabel.text = item.caption
 
-        releasePlayer()
         guard let url = item.videoURL else {
+            releasePlayer()
             fallbackView.isHidden = false
             return
         }
+        guard currentVideoURL != url || player == nil else {
+            fallbackView.isHidden = true
+            return
+        }
+
+        releasePlayer()
+        currentVideoURL = url
 
         let queuePlayer = AVQueuePlayer()
         queuePlayer.isMuted = true
@@ -367,6 +396,7 @@ private final class VideoFeedCell: UICollectionViewCell {
         playerLayer.player = nil
         playerLooper = nil
         player = nil
+        currentVideoURL = nil
         fallbackView.isHidden = false
     }
 }
@@ -398,7 +428,9 @@ private final class VideoOverlayRefreshStyle: RefreshableStyle {
 }
 
 private final class VideoRefreshOverlayView: UIView {
-    private let backgroundView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+    private let shadowView = UIView()
+    private let backgroundView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterialDark))
+    private let dimmingView = UIView()
     private let iconView = UIImageView(image: UIImage(systemName: "arrow.down.circle.fill"))
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
@@ -409,22 +441,46 @@ private final class VideoRefreshOverlayView: UIView {
         alpha = 0
         isUserInteractionEnabled = false
 
+        shadowView.backgroundColor = UIColor.black.withAlphaComponent(0.72)
+        shadowView.layer.cornerRadius = 24
+        shadowView.layer.shadowColor = UIColor.black.cgColor
+        shadowView.layer.shadowOpacity = 0.42
+        shadowView.layer.shadowRadius = 14
+        shadowView.layer.shadowOffset = CGSize(width: 0, height: 6)
+        shadowView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(shadowView)
+
         backgroundView.layer.cornerRadius = 22
         backgroundView.layer.masksToBounds = true
+        backgroundView.layer.borderWidth = 1
+        backgroundView.layer.borderColor = UIColor.white.withAlphaComponent(0.18).cgColor
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(backgroundView)
 
+        dimmingView.backgroundColor = UIColor.black.withAlphaComponent(0.52)
+        dimmingView.translatesAutoresizingMaskIntoConstraints = false
+        backgroundView.contentView.addSubview(dimmingView)
+
         iconView.tintColor = .white
         iconView.contentMode = .scaleAspectFit
+        iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        iconView.layer.shadowColor = UIColor.black.cgColor
+        iconView.layer.shadowOpacity = 0.55
+        iconView.layer.shadowRadius = 4
+        iconView.layer.shadowOffset = CGSize(width: 0, height: 1)
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
         indicator.color = .white
         indicator.hidesWhenStopped = true
         indicator.translatesAutoresizingMaskIntoConstraints = false
 
-        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.font = .systemFont(ofSize: 14, weight: .bold)
         label.textColor = .white
         label.textAlignment = .center
+        label.layer.shadowColor = UIColor.black.cgColor
+        label.layer.shadowOpacity = 0.75
+        label.layer.shadowRadius = 5
+        label.layer.shadowOffset = CGSize(width: 0, height: 1)
         label.translatesAutoresizingMaskIntoConstraints = false
 
         backgroundView.contentView.addSubview(iconView)
@@ -432,12 +488,22 @@ private final class VideoRefreshOverlayView: UIView {
         backgroundView.contentView.addSubview(label)
 
         NSLayoutConstraint.activate([
+            shadowView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            shadowView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            shadowView.widthAnchor.constraint(equalToConstant: 222),
+            shadowView.heightAnchor.constraint(equalToConstant: 48),
+
             backgroundView.centerXAnchor.constraint(equalTo: centerXAnchor),
             backgroundView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            backgroundView.widthAnchor.constraint(equalToConstant: 190),
-            backgroundView.heightAnchor.constraint(equalToConstant: 44),
+            backgroundView.widthAnchor.constraint(equalToConstant: 222),
+            backgroundView.heightAnchor.constraint(equalToConstant: 48),
 
-            iconView.leadingAnchor.constraint(equalTo: backgroundView.contentView.leadingAnchor, constant: 16),
+            dimmingView.topAnchor.constraint(equalTo: backgroundView.contentView.topAnchor),
+            dimmingView.leadingAnchor.constraint(equalTo: backgroundView.contentView.leadingAnchor),
+            dimmingView.trailingAnchor.constraint(equalTo: backgroundView.contentView.trailingAnchor),
+            dimmingView.bottomAnchor.constraint(equalTo: backgroundView.contentView.bottomAnchor),
+
+            iconView.leadingAnchor.constraint(equalTo: backgroundView.contentView.leadingAnchor, constant: 18),
             iconView.centerYAnchor.constraint(equalTo: backgroundView.contentView.centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: 20),
             iconView.heightAnchor.constraint(equalToConstant: 20),
@@ -446,7 +512,7 @@ private final class VideoRefreshOverlayView: UIView {
             indicator.centerYAnchor.constraint(equalTo: iconView.centerYAnchor),
 
             label.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 8),
-            label.trailingAnchor.constraint(equalTo: backgroundView.contentView.trailingAnchor, constant: -16),
+            label.trailingAnchor.constraint(equalTo: backgroundView.contentView.trailingAnchor, constant: -18),
             label.centerYAnchor.constraint(equalTo: backgroundView.contentView.centerYAnchor),
         ])
     }
