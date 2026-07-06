@@ -270,6 +270,42 @@ struct EdgeTopRefreshComponentTests {
         #expect(scrollView.contentInset.top == 94)
     }
 
+    @Test("默认滚到顶部不会自动触发刷新")
+    func defaultDoesNotAutomaticallyTriggerRefreshAtTop() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 1200)
+        let style = MockStyle()
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        )
+        component.scrollView = scrollView
+
+        component.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(component.state == .idle)
+    }
+
+    @Test("设置 automaticTriggerOffset 后滚到顶部自动触发刷新")
+    func automaticallyTriggersRefreshAtTop() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 1200)
+        let style = MockStyle()
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticTriggerOffset: 0
+            )
+        )
+        component.scrollView = scrollView
+
+        component.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(component.state == .refreshing)
+        #expect(style.records.contains { $0.state == .refreshing })
+    }
+
     // MARK: - Action 执行
 
     @Test("trigger 执行 action 闭包")

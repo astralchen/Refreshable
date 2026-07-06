@@ -69,6 +69,17 @@ public struct RefreshablePlacement: Equatable {
 
 /// 一组用于配置刷新和加载更多行为的选项。
 public struct RefreshableOptions {
+    /// 自动触发刷新或加载更多的边缘距离配置。
+    public enum AutomaticTriggerOffset: Equatable {
+        /// 使用组件的内置自动触发策略。
+        ///
+        /// 目前无配置的底部加载更多会在滚到底部时自动触发；其他方向默认不自动触发。
+        case `default`
+
+        /// 在距离对应边缘小于等于指定值时自动触发。
+        case offset(CGFloat)
+    }
+
     /// 触发刷新动作所需的拖动距离。
     ///
     /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.extent` 作为触发距离。
@@ -90,11 +101,11 @@ public struct RefreshableOptions {
     /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
-    /// 自动触发加载更多的边缘距离。
+    /// 自动触发刷新或加载更多的边缘距离。
     ///
-    /// 当此值为 `nil` 时，加载更多保持默认的上拉/拖拽触发行为。传入非负值时，
-    /// 通过 `loadMoreable` 安装的组件会在滚动位置距离对应边缘小于等于该距离时自动开始加载。
-    public var automaticLoadMoreTriggerOffset: CGFloat?
+    /// 默认值为 `.default`，表示使用组件内置自动触发策略。传入 `0` 时滚动到对应边缘自动开始刷新
+    /// 或加载更多；传入正值时会在距离对应边缘小于等于该距离时提前触发；传入 `nil` 时关闭自动触发。
+    public var automaticTriggerOffset: AutomaticTriggerOffset?
 
     /// 组件宿主布局应用到样式视觉视图周围的位置配置。
     public var placement: RefreshablePlacement
@@ -127,7 +138,7 @@ public struct RefreshableOptions {
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
-    ///   - automaticLoadMoreTriggerOffset: 自动触发加载更多的边缘距离。传入 `nil` 时关闭自动触发。
+    ///   - automaticTriggerOffset: 自动触发刷新或加载更多的边缘距离。默认 `.default`，传入 `nil` 时关闭自动触发。
     ///   - placement: 样式视觉视图在组件宿主区域内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
     ///   - overlayAnchor: 浮层刷新视图的锚定方式。
@@ -137,7 +148,7 @@ public struct RefreshableOptions {
         animationDuration: TimeInterval = 0.25,
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
-        automaticLoadMoreTriggerOffset: CGFloat? = nil,
+        automaticTriggerOffset: AutomaticTriggerOffset? = .default,
         placement: RefreshablePlacement = RefreshablePlacement(),
         presentation: RefreshablePresentation = .contentInset,
         overlayAnchor: RefreshableOverlayAnchor = .viewport,
@@ -147,10 +158,22 @@ public struct RefreshableOptions {
         self.animationDuration = animationDuration
         self.automaticallyEndRefreshing = automaticallyEndRefreshing
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
-        self.automaticLoadMoreTriggerOffset = automaticLoadMoreTriggerOffset
+        self.automaticTriggerOffset = automaticTriggerOffset
         self.placement = placement
         self.presentation = presentation
         self.overlayAnchor = overlayAnchor
         self.onStateChange = onStateChange
+    }
+}
+
+extension RefreshableOptions.AutomaticTriggerOffset: ExpressibleByIntegerLiteral {
+    public init(integerLiteral value: Int) {
+        self = .offset(CGFloat(value))
+    }
+}
+
+extension RefreshableOptions.AutomaticTriggerOffset: ExpressibleByFloatLiteral {
+    public init(floatLiteral value: Double) {
+        self = .offset(CGFloat(value))
     }
 }

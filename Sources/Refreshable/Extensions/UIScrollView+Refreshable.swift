@@ -434,9 +434,9 @@ extension UIScrollView {
     }
 
     private func defaultOptions(for edge: RefreshableEdge, options: RefreshableOptions) -> RefreshableOptions {
-        guard edge.axis == .horizontal else { return options }
-
         var resolvedOptions = options
+        guard edge.axis == .horizontal else { return resolvedOptions }
+
         if resolvedOptions.triggerOffset == nil {
             resolvedOptions.triggerOffset = defaultHorizontalEdgeTriggerOffset
         }

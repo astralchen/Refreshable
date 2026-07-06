@@ -118,7 +118,11 @@ struct EdgeRefreshComponentTests {
         scrollView.loadMoreable(
             edge: .bottom,
             style: MockStyle(extent: 54),
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                automaticTriggerOffset: nil
+            )
         ) {}
 
         scrollView.component(for: .bottom)?.scrollViewDidScroll(contentOffset: scrollView.contentOffset)
@@ -367,6 +371,28 @@ struct EdgeRefreshComponentTests {
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 130)
         #expect(scrollView.contentOffset.x == -130)
+    }
+
+    @Test("设置 automaticTriggerOffset 后 leading refresh 可自动触发")
+    func leadingRefreshAutomaticallyTriggersAtEdge() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 1000, height: 480)
+        let style = MockStyle(extent: 44)
+
+        scrollView.refreshable(
+            edge: .leading,
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticTriggerOffset: 0
+            )
+        ) {}
+
+        scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(scrollView.refreshState(edge: .leading) == .refreshing)
+        #expect(style.records.contains { $0.state == .refreshing })
     }
 
     @Test("横向小幅触发后松手会完整露出刷新控件")
@@ -725,7 +751,11 @@ struct EdgeRefreshComponentTests {
         scrollView.loadMoreable(
             edge: .trailing,
             style: MockStyle(),
-            options: RefreshableOptions(animationDuration: 0, allowsLoadMoreWhenContentFits: true)
+            options: RefreshableOptions(
+                animationDuration: 0,
+                allowsLoadMoreWhenContentFits: true,
+                automaticTriggerOffset: nil
+            )
         ) {}
         scrollView.component(for: .trailing)?.scrollViewDidScroll(contentOffset: CGPoint(x: 200, y: 0))
         #expect(scrollView.loadMoreState(edge: .trailing) == .triggered)

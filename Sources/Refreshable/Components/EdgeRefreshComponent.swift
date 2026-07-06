@@ -73,7 +73,7 @@ class EdgeRefreshComponent: RefreshComponent {
             guard contentLength(in: scrollView) > viewportLength(in: scrollView) else { return }
         }
 
-        if triggerAutomaticLoadMoreIfNeeded(in: scrollView, contentOffset: contentOffset) {
+        if triggerAutomaticallyIfNeeded(in: scrollView, contentOffset: contentOffset) {
             return
         }
 
@@ -506,22 +506,38 @@ class EdgeRefreshComponent: RefreshComponent {
         }
     }
 
-    private func triggerAutomaticLoadMoreIfNeeded(in scrollView: UIScrollView, contentOffset: CGPoint) -> Bool {
-        guard role == .loadMore else { return false }
-        guard let triggerOffset = automaticLoadMoreTriggerOffset else { return false }
-        guard distanceToLoadMoreEdge(in: scrollView, contentOffset: contentOffset) <= triggerOffset else { return false }
+    private func triggerAutomaticallyIfNeeded(in scrollView: UIScrollView, contentOffset: CGPoint) -> Bool {
+        guard let triggerOffset = automaticTriggerOffset(in: scrollView) else { return false }
+        guard distanceToAutomaticTriggerEdge(in: scrollView, contentOffset: contentOffset) <= triggerOffset else {
+            return false
+        }
 
-        beginLoadingMore()
+        switch role {
+        case .refresh:
+            beginRefreshing()
+        case .loadMore:
+            beginLoadingMore()
+        }
         return state.isRefreshing
     }
 
-    private var automaticLoadMoreTriggerOffset: CGFloat? {
-        guard let rawValue = options.automaticLoadMoreTriggerOffset else { return nil }
+    private func automaticTriggerOffset(in scrollView: UIScrollView) -> CGFloat? {
+        guard let configuredOffset = options.automaticTriggerOffset else { return nil }
+
+        let rawValue: CGFloat
+        switch configuredOffset {
+        case .default:
+            guard role == .loadMore, edge.physicalEdge(in: scrollView) == .bottom else { return nil }
+            rawValue = 0
+        case .offset(let value):
+            rawValue = value
+        }
+
         guard rawValue.isFinite, rawValue >= 0 else { return nil }
         return rawValue
     }
 
-    private func distanceToLoadMoreEdge(in scrollView: UIScrollView, contentOffset: CGPoint) -> CGFloat {
+    private func distanceToAutomaticTriggerEdge(in scrollView: UIScrollView, contentOffset: CGPoint) -> CGFloat {
         let adjustedOriginalInset = adjustedOriginalInset(in: scrollView)
 
         let distance: CGFloat

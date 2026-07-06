@@ -306,14 +306,35 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(component.state == .idle)
     }
 
-    @Test("默认滚到底部不会自动触发加载更多")
-    func defaultDoesNotAutomaticallyTriggerLoadMoreAtBottom() {
+    @Test("默认滚到底部自动触发加载更多")
+    func defaultAutomaticallyTriggersLoadMoreAtBottom() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(automaticallyEndRefreshing: false)
+        )
+        component.scrollView = scrollView
+
+        let bottomOffset = CGPoint(x: 0, y: 2000 - 667)
+        component.scrollViewDidScroll(contentOffset: bottomOffset)
+
+        #expect(component.state == .refreshing)
+        #expect(style.records.contains { $0.state == .refreshing })
+    }
+
+    @Test("automaticTriggerOffset 为 nil 时关闭滚到底部自动加载")
+    func nilAutomaticTriggerOffsetDisablesAutomaticLoading() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticTriggerOffset: nil
+            )
         )
         component.scrollView = scrollView
 
@@ -332,7 +353,7 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 automaticallyEndRefreshing: false,
-                automaticLoadMoreTriggerOffset: 80
+                automaticTriggerOffset: 80
             )
         )
         component.scrollView = scrollView
@@ -353,7 +374,7 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 automaticallyEndRefreshing: false,
-                automaticLoadMoreTriggerOffset: 80
+                automaticTriggerOffset: 80
             )
         )
         component.scrollView = scrollView
@@ -373,7 +394,7 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 automaticallyEndRefreshing: false,
-                automaticLoadMoreTriggerOffset: 80
+                automaticTriggerOffset: 80
             )
         )
         component.scrollView = scrollView
@@ -391,7 +412,10 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
+            options: RefreshableOptions(
+                allowsLoadMoreWhenContentFits: true,
+                automaticTriggerOffset: nil
+            )
         )
         component.scrollView = scrollView
 

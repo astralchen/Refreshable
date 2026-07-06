@@ -141,6 +141,17 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.footerComponent != nil)
     }
 
+    @Test("默认底部 loadMoreable 滚到底部自动触发")
+    func defaultBottomLoadMoreAutomaticallyTriggersAtBottom() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.loadMoreable { }
+
+        scrollView.footerComponent?.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: 2000 - 667))
+
+        #expect(scrollView.loadMoreState == .refreshing)
+    }
+
     @Test("loadMoreable 自定义 style")
     func loadMoreableCustomStyle() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
