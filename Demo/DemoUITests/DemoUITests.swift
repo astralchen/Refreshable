@@ -37,6 +37,71 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testListRefreshProductionScreenLoads() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let listTab = app.tabBars.buttons["列表刷新"]
+        XCTAssertTrue(listTab.waitForExistence(timeout: 5))
+        listTab.tap()
+
+        XCTAssertTrue(app.navigationBars["列表刷新"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["今日更新"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["刚刚同步 · 24 项缓存"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["全部"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["关注"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["系统"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["新增下拉刷新动画效果，优化自动加载逻辑，修复列表边界问题。"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testListRefreshInsertsFreshRow() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let listTab = app.tabBars.buttons["列表刷新"]
+        XCTAssertTrue(listTab.waitForExistence(timeout: 5))
+        listTab.tap()
+
+        let table = app.tables.firstMatch
+        XCTAssertTrue(table.waitForExistence(timeout: 3))
+
+        let start = table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        let end = table.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
+        start.press(forDuration: 0.08, thenDragTo: end)
+
+        XCTAssertTrue(app.staticTexts["刚刚刷新完成"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.staticTexts["已同步最新更新流，并重置底部自动加载状态。"].waitForExistence(timeout: 4))
+    }
+
+    @MainActor
+    func testListRefreshSegmentSwitchFiltersRows() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let listTab = app.tabBars.buttons["列表刷新"]
+        XCTAssertTrue(listTab.waitForExistence(timeout: 5))
+        listTab.tap()
+
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+
+        app.buttons["关注"].tap()
+        XCTAssertTrue(app.staticTexts["关注：技术分享精选"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["系统通知"].exists)
+        XCTAssertFalse(app.staticTexts["版本 2.1.0 发布"].exists)
+
+        app.buttons["系统"].tap()
+        XCTAssertTrue(app.staticTexts["系统通知"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["关注：技术分享精选"].exists)
+
+        app.buttons["全部"].tap()
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["关注：技术分享精选"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["系统通知"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
