@@ -102,6 +102,151 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testGridRefreshStateFooterScreenLoads() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        XCTAssertTrue(app.navigationBars["刷新网格"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["最近更新"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["已加载 36 项"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["刚刚同步"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["全部"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["加载中"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["完成"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["下拉刷新 · 自动收起"].exists)
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["接口文档更新"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testGridRefreshDoesNotShowNumberedPagination() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        XCTAssertTrue(app.navigationBars["刷新网格"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["1"].exists)
+        XCTAssertFalse(app.buttons["2"].exists)
+        XCTAssertFalse(app.buttons["3"].exists)
+        XCTAssertFalse(app.staticTexts["..."].exists)
+        XCTAssertFalse(app.staticTexts["…"].exists)
+    }
+
+    @MainActor
+    func testGridRefreshFiltersItems() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+
+        app.buttons["加载中"].tap()
+        XCTAssertTrue(app.staticTexts["接口文档更新"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["性能优化"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["构建任务完成"].exists)
+
+        app.buttons["完成"].tap()
+        XCTAssertTrue(app.staticTexts["构建任务完成"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["问题修复"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["接口文档更新"].exists)
+
+        app.buttons["全部"].tap()
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["系统通知"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testGridRefreshCellsUseStableTwoColumnRows() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+
+        let firstCell = collectionView.cells.element(boundBy: 0)
+        let secondCell = collectionView.cells.element(boundBy: 1)
+        let thirdCell = collectionView.cells.element(boundBy: 2)
+        let fourthCell = collectionView.cells.element(boundBy: 3)
+        XCTAssertTrue(firstCell.waitForExistence(timeout: 3))
+        XCTAssertTrue(secondCell.waitForExistence(timeout: 3))
+        XCTAssertTrue(thirdCell.waitForExistence(timeout: 3))
+        XCTAssertTrue(fourthCell.waitForExistence(timeout: 3))
+
+        XCTAssertEqual(firstCell.frame.minY, secondCell.frame.minY, accuracy: 2)
+        XCTAssertEqual(firstCell.frame.height, secondCell.frame.height, accuracy: 2)
+        XCTAssertEqual(thirdCell.frame.minY, fourthCell.frame.minY, accuracy: 2)
+        XCTAssertEqual(thirdCell.frame.height, fourthCell.frame.height, accuracy: 2)
+    }
+
+    @MainActor
+    func testGridRefreshDoesNotInsertStatusCard() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+
+        let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        let end = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
+        start.press(forDuration: 0.08, thenDragTo: end)
+
+        XCTAssertFalse(app.staticTexts["刚刚刷新完成"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["版本 2.1.0 发布"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testGridRefreshShowsNoMoreDataFooter() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+
+        for _ in 0..<8 {
+            collectionView.swipeUp()
+        }
+
+        XCTAssertTrue(app.staticTexts["没有更多数据"].waitForExistence(timeout: 4))
+        let title = app.staticTexts["没有更多数据"]
+        let message = app.staticTexts["下拉刷新后重新加载"]
+        let count = app.staticTexts["36 项已加载"]
+        XCTAssertTrue(message.exists)
+        XCTAssertTrue(count.exists)
+        let footer = app.otherElements["GridNoMoreDataFooter"]
+        XCTAssertTrue(footer.exists)
+        XCTAssertFalse(collectionView.cells.containing(.staticText, identifier: "没有更多数据").firstMatch.exists)
+        XCTAssertGreaterThan(footer.frame.width, footer.frame.height)
+        XCTAssertLessThan(title.frame.maxY, message.frame.minY)
+        XCTAssertLessThanOrEqual(message.frame.maxY + 8, count.frame.minY)
+        XCTAssertGreaterThan(footer.frame.height, 108)
+        let noMoreDataTexts = app.staticTexts.matching(NSPredicate(format: "label == %@", "没有更多数据"))
+        XCTAssertEqual(noMoreDataTexts.count, 1)
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
