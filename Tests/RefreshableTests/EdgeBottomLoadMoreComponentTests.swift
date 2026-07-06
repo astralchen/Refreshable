@@ -197,6 +197,45 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(scrollView.contentInset.bottom == 12)
     }
 
+    @Test("overlay contentBoundary 底部结束刷新不占用 contentSize")
+    func overlayBottomEndingDoesNotReserveContentSize() throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 88
+        let originalContentSize = scrollView.contentSize
+        let originalContentInset = scrollView.contentInset
+        let style = MockStyle(extent: 54)
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                placement: RefreshablePlacement(contentSpacing: 0),
+                presentation: .overlay(spacing: 0),
+                overlayAnchor: .contentBoundary
+            )
+        )
+        component.scrollView = scrollView
+
+        component.beginLoadingMore()
+
+        #expect(scrollView.contentSize == originalContentSize)
+        #expect(scrollView.contentInset == originalContentInset)
+
+        component.endRefreshing()
+
+        #expect(scrollView.contentSize == originalContentSize)
+        #expect(scrollView.contentInset == originalContentInset)
+
+        component.setNoMoreData()
+
+        #expect(scrollView.contentSize == originalContentSize)
+        #expect(scrollView.contentInset == originalContentInset)
+        let hostView = try #require(style.view.superview)
+        #expect(hostView.frame.origin.y == originalContentSize.height)
+        #expect(hostView.frame.height == style.extent)
+    }
+
     @Test("resetNoMoreData 从 noMoreData → idle")
     func resetNoMoreData() {
         let (_, component, _) = makeSUT()
