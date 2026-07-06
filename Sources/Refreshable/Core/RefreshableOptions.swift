@@ -90,6 +90,12 @@ public struct RefreshableOptions {
     /// 此选项仅影响通过 `loadMoreable` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
+    /// 自动触发加载更多的边缘距离。
+    ///
+    /// 当此值为 `nil` 时，加载更多保持默认的上拉/拖拽触发行为。传入非负值时，
+    /// 通过 `loadMoreable` 安装的组件会在滚动位置距离对应边缘小于等于该距离时自动开始加载。
+    public var automaticLoadMoreTriggerOffset: CGFloat?
+
     /// 组件宿主布局应用到样式视觉视图周围的位置配置。
     public var placement: RefreshablePlacement
 
@@ -121,6 +127,7 @@ public struct RefreshableOptions {
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
     ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
+    ///   - automaticLoadMoreTriggerOffset: 自动触发加载更多的边缘距离。传入 `nil` 时关闭自动触发。
     ///   - placement: 样式视觉视图在组件宿主区域内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
     ///   - overlayAnchor: 浮层刷新视图的锚定方式。
@@ -130,6 +137,7 @@ public struct RefreshableOptions {
         animationDuration: TimeInterval = 0.25,
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
+        automaticLoadMoreTriggerOffset: CGFloat? = nil,
         placement: RefreshablePlacement = RefreshablePlacement(),
         presentation: RefreshablePresentation = .contentInset,
         overlayAnchor: RefreshableOverlayAnchor = .viewport,
@@ -139,6 +147,7 @@ public struct RefreshableOptions {
         self.animationDuration = animationDuration
         self.automaticallyEndRefreshing = automaticallyEndRefreshing
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
+        self.automaticLoadMoreTriggerOffset = automaticLoadMoreTriggerOffset
         self.placement = placement
         self.presentation = presentation
         self.overlayAnchor = overlayAnchor

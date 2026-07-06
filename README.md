@@ -89,6 +89,7 @@ let options = RefreshableOptions(
     animationDuration: 0.35,
     automaticallyEndRefreshing: false,
     allowsLoadMoreWhenContentFits: true,
+    automaticLoadMoreTriggerOffset: 120,
     placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
     presentation: .contentInset,
     onStateChange: { state in
@@ -117,6 +118,7 @@ tableView.loadMoreable(options: options) {
 - `animationDuration: 0.25`
 - `automaticallyEndRefreshing: true`，action 完成后自动收起
 - `allowsLoadMoreWhenContentFits: false`，内容未填满当前滚动轴时默认不触发加载更多
+- `automaticLoadMoreTriggerOffset: nil`，默认关闭滚动到边缘自动加载；设置为非负值时，`loadMoreable` 会在距离对应边缘小于等于该距离时自动开始加载更多
 - `placement: RefreshablePlacement()`，默认不增加额外间距；`outerSpacing` 沿刷新方向增加视觉控件与可见外侧边缘之间的距离，`contentSpacing` 增加视觉控件与内容之间的距离，`crossAxisInset` 在垂直于刷新方向的轴上收缩视觉控件
 - `presentation: .contentInset`，默认通过 inset 保持刷新视图；全屏视频流可使用 `.overlay(spacing:locksContentOffset:)` 浮在可见区域边缘，并可在边界拖动时保持视频画面不移动
 

@@ -73,6 +73,10 @@ class EdgeRefreshComponent: RefreshComponent {
             guard contentLength(in: scrollView) > viewportLength(in: scrollView) else { return }
         }
 
+        if triggerAutomaticLoadMoreIfNeeded(in: scrollView, contentOffset: contentOffset) {
+            return
+        }
+
         let distance = pullDistance(in: scrollView, contentOffset: contentOffset)
         lockOverlayContentOffsetIfNeeded(in: scrollView, distance: distance)
         updateOverlayFrameIfNeeded(in: scrollView)
@@ -500,6 +504,45 @@ class EdgeRefreshComponent: RefreshComponent {
         case .right:
             return max(-translation.x, 0)
         }
+    }
+
+    private func triggerAutomaticLoadMoreIfNeeded(in scrollView: UIScrollView, contentOffset: CGPoint) -> Bool {
+        guard role == .loadMore else { return false }
+        guard let triggerOffset = automaticLoadMoreTriggerOffset else { return false }
+        guard distanceToLoadMoreEdge(in: scrollView, contentOffset: contentOffset) <= triggerOffset else { return false }
+
+        beginLoadingMore()
+        return state.isRefreshing
+    }
+
+    private var automaticLoadMoreTriggerOffset: CGFloat? {
+        guard let rawValue = options.automaticLoadMoreTriggerOffset else { return nil }
+        guard rawValue.isFinite, rawValue >= 0 else { return nil }
+        return rawValue
+    }
+
+    private func distanceToLoadMoreEdge(in scrollView: UIScrollView, contentOffset: CGPoint) -> CGFloat {
+        let adjustedOriginalInset = adjustedOriginalInset(in: scrollView)
+
+        let distance: CGFloat
+        switch edge.physicalEdge(in: scrollView) {
+        case .top:
+            distance = contentOffset.y + adjustedOriginalInset.top
+        case .bottom:
+            distance = scrollView.contentSize.height
+                + adjustedOriginalInset.bottom
+                - contentOffset.y
+                - scrollView.bounds.height
+        case .left:
+            distance = contentOffset.x + adjustedOriginalInset.left
+        case .right:
+            distance = scrollView.contentSize.width
+                + adjustedOriginalInset.right
+                - contentOffset.x
+                - scrollView.bounds.width
+        }
+
+        return max(distance, 0)
     }
 
     private func contentLength(in scrollView: UIScrollView) -> CGFloat {

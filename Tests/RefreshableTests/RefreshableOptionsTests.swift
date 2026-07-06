@@ -13,6 +13,7 @@ struct RefreshableOptionsTests {
         #expect(options.animationDuration == 0.25)
         #expect(options.automaticallyEndRefreshing == true)
         #expect(options.allowsLoadMoreWhenContentFits == false)
+        #expect(options.automaticLoadMoreTriggerOffset == nil)
         #expect(options.placement == RefreshablePlacement())
         #expect(options.placement.outerSpacing == 0)
         #expect(options.placement.contentSpacing == 0)
@@ -30,6 +31,7 @@ struct RefreshableOptionsTests {
             animationDuration: 0.4,
             automaticallyEndRefreshing: false,
             allowsLoadMoreWhenContentFits: true,
+            automaticLoadMoreTriggerOffset: 120,
             placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
             presentation: .overlay(spacing: 12, locksContentOffset: true),
             overlayAnchor: .contentBoundary
@@ -39,6 +41,7 @@ struct RefreshableOptionsTests {
         #expect(options.animationDuration == 0.4)
         #expect(options.automaticallyEndRefreshing == false)
         #expect(options.allowsLoadMoreWhenContentFits == true)
+        #expect(options.automaticLoadMoreTriggerOffset == 120)
         #expect(options.placement.contentSpacing == 12)
         #expect(options.placement.outerSpacing == 8)
         #expect(options.placement.crossAxisInset == 20)

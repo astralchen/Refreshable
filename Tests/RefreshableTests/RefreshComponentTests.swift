@@ -136,24 +136,18 @@ struct RefreshComponentTests {
 
     @Test("默认 action 完成后自动结束刷新")
     func automaticallyEndsRefreshingAfterActionCompletes() async {
-        await confirmation(expectedCount: 1) { confirm in
-            var didConfirm = false
-            let style = MockStyle()
-            let component = makeTopRefreshComponent(
-                style: style,
-                options: RefreshableOptions(onStateChange: { state in
-                    guard !didConfirm, state == .ending || state == .idle else { return }
-                    didConfirm = true
-                    confirm()
-                })
-            )
-            let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-            component.scrollView = scrollView
-            #expect(component.scrollView === scrollView)
+        let style = MockStyle()
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(animationDuration: 0)
+        )
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        component.scrollView = scrollView
+        #expect(component.scrollView === scrollView)
 
-            component.trigger()
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-        }
+        component.trigger()
+
+        #expect(await waitForState(.idle, in: component) == true)
     }
 
     private func makeTopRefreshComponent(
@@ -163,6 +157,15 @@ struct RefreshComponentTests {
     ) -> EdgeRefreshComponent {
         EdgeRefreshComponent(edge: .top, role: .refresh, style: style, options: options, action: action)
     }
+}
+
+@MainActor
+private func waitForState(_ expectedState: RefreshState, in component: RefreshComponent) async -> Bool {
+    for _ in 0..<150 {
+        if component.state == expectedState { return true }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+    }
+    return component.state == expectedState
 }
 
 private func expectSendableAction(_ action: (@Sendable () async -> Void)?) {

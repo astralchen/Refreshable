@@ -306,6 +306,83 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(component.state == .idle)
     }
 
+    @Test("默认滚到底部不会自动触发加载更多")
+    func defaultDoesNotAutomaticallyTriggerLoadMoreAtBottom() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(automaticallyEndRefreshing: false)
+        )
+        component.scrollView = scrollView
+
+        let bottomOffset = CGPoint(x: 0, y: 2000 - 667)
+        component.scrollViewDidScroll(contentOffset: bottomOffset)
+
+        #expect(component.state == .idle)
+    }
+
+    @Test("滚动到自动触发距离内时开始加载更多")
+    func automaticallyTriggersLoadMoreNearBottom() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticLoadMoreTriggerOffset: 80
+            )
+        )
+        component.scrollView = scrollView
+
+        let nearBottomOffset = CGPoint(x: 0, y: 2000 - 667 - 79)
+        component.scrollViewDidScroll(contentOffset: nearBottomOffset)
+
+        #expect(component.state == .refreshing)
+        #expect(style.records.contains { $0.state == .refreshing })
+    }
+
+    @Test("未滚动到自动触发距离内时不开始加载更多")
+    func automaticLoadMoreWaitsUntilNearBottom() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticLoadMoreTriggerOffset: 80
+            )
+        )
+        component.scrollView = scrollView
+
+        let outsideThresholdOffset = CGPoint(x: 0, y: 2000 - 667 - 81)
+        component.scrollViewDidScroll(contentOffset: outsideThresholdOffset)
+
+        #expect(component.state == .idle)
+    }
+
+    @Test("内容不足一屏时自动触发仍遵守 allowsLoadMoreWhenContentFits")
+    func automaticLoadMoreRespectsContentFitsOption() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 100)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                automaticallyEndRefreshing: false,
+                automaticLoadMoreTriggerOffset: 80
+            )
+        )
+        component.scrollView = scrollView
+
+        component.scrollViewDidScroll(contentOffset: .zero)
+
+        #expect(component.state == .idle)
+    }
+
     @Test("allowsLoadMoreWhenContentFits 为 true 时内容不足一屏也可触发")
     func allowsLoadMoreWhenContentFits() {
         let scrollView = DraggingScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))

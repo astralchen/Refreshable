@@ -371,22 +371,22 @@ struct EdgeTopRefreshComponentTests {
     func cancelTopTask() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        let cancellationProbe = CancellationProbe()
+        let taskProbe = TaskCancellationProbe()
         let component = makeTopRefreshComponent(style: style) {
+            await taskProbe.markStarted()
             do {
                 try await Task.sleep(nanoseconds: 1_000_000_000)
             } catch {
-                await cancellationProbe.markObserved(Task.isCancelled)
+                await taskProbe.markCancellationObserved(Task.isCancelled)
             }
         }
         component.scrollView = scrollView
 
         component.trigger()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(await taskProbe.waitUntilStarted() == true)
         component.cancelCurrentTask(resetState: true)
-        try? await Task.sleep(nanoseconds: 50_000_000)
 
-        #expect(await cancellationProbe.waitUntilObserved() == true)
+        #expect(await taskProbe.waitUntilCancellationObserved() == true)
         #expect([RefreshState.ending, .idle].contains(component.state))
     }
 
@@ -423,14 +423,27 @@ private final class HeaderDraggingScrollView: UIScrollView {
     }
 }
 
-private actor CancellationProbe {
+private actor TaskCancellationProbe {
+    private var didStart = false
     private var observedCancellation = false
 
-    func markObserved(_ isCancelled: Bool) {
+    func markStarted() {
+        didStart = true
+    }
+
+    func markCancellationObserved(_ isCancelled: Bool) {
         observedCancellation = isCancelled
     }
 
-    func waitUntilObserved() async -> Bool {
+    func waitUntilStarted() async -> Bool {
+        for _ in 0..<150 {
+            if didStart { return true }
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return didStart
+    }
+
+    func waitUntilCancellationObserved() async -> Bool {
         for _ in 0..<100 {
             if observedCancellation { return true }
             try? await Task.sleep(nanoseconds: 20_000_000)
