@@ -4,6 +4,8 @@ import Refreshable
 @MainActor
 final class DefaultRefreshControlPreviewController: UIViewController {
 
+    private static let componentAnimationDuration: TimeInterval = 0.25
+
     private enum PreviewRole: Int {
         case refresh
         case loadMore
@@ -18,9 +20,16 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     private let statusLabel = UILabel()
     private let canvas = UIScrollView()
     private let canvasContent = BoundaryGridCanvasView()
+    private lazy var canvasContentWidthConstraint = canvasContent.widthAnchor.constraint(
+        equalToConstant: 900
+    )
+    private lazy var canvasContentHeightConstraint = canvasContent.heightAnchor.constraint(
+        equalToConstant: 900
+    )
 
     private var selectedState: RefreshState = .idle
     private var needsBoundaryPosition = true
+    private var boundaryPositionGeneration = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,6 +44,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        updateCanvasContentGeometry()
         positionCanvasAtSelectedBoundaryIfNeeded()
     }
 
@@ -157,9 +167,28 @@ final class DefaultRefreshControlPreviewController: UIViewController {
             canvasContent.trailingAnchor.constraint(equalTo: canvas.contentLayoutGuide.trailingAnchor),
             canvasContent.topAnchor.constraint(equalTo: canvas.contentLayoutGuide.topAnchor),
             canvasContent.bottomAnchor.constraint(equalTo: canvas.contentLayoutGuide.bottomAnchor),
-            canvasContent.widthAnchor.constraint(equalToConstant: 900),
-            canvasContent.heightAnchor.constraint(equalToConstant: 900),
+            canvasContentWidthConstraint,
+            canvasContentHeightConstraint,
         ])
+    }
+
+    private func updateCanvasContentGeometry() {
+        let minimumLength: CGFloat = 900
+        let viewportOverflow: CGFloat = 240
+        canvasContentWidthConstraint.constant = max(
+            minimumLength,
+            canvas.bounds.width + viewportOverflow
+        )
+        canvasContentHeightConstraint.constant = max(
+            minimumLength,
+            canvas.bounds.height + viewportOverflow
+        )
+        canvas.layoutIfNeeded()
+
+        canvas.accessibilityValue = [
+            "contentWidth=\(Int(canvas.contentSize.width.rounded()))",
+            "contentHeight=\(Int(canvas.contentSize.height.rounded()))",
+        ].joined(separator: ";")
     }
 
     private func configure(
@@ -180,6 +209,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     }
 
     private func installSelectedComponent() {
+        boundaryPositionGeneration += 1
         for edge in RefreshableEdge.allCases {
             canvas.removeRefreshable(edge: edge)
             canvas.removeLoadMoreable(edge: edge)
@@ -187,6 +217,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
 
         selectedState = .idle
         let options = RefreshableOptions(
+            animationDuration: Self.componentAnimationDuration,
             allowsLoadMoreWhenContentFits: true,
             automaticTriggerOffset: nil,
             textConfiguration: textSwitch.isOn ? RefreshableTextConfiguration() : nil,
@@ -233,7 +264,8 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         guard let indicator = firstDescendant(
             in: canvas,
             matching: { $0.accessibilityIdentifier == "Refreshable.DefaultIndicator" }
-        ), indicator.alpha > 0.01 else {
+        ), indicator.alpha > 0.01,
+           indicator.convert(indicator.bounds, to: canvas).intersects(canvas.bounds) else {
             return nil
         }
 
@@ -303,16 +335,46 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         case .loadMore:
             canvas.beginLoadingMore(edge: selectedEdge)
         }
+        updateStatus()
     }
 
     @objc private func setNoMoreData() {
         guard selectedRole == .loadMore else { return }
         canvas.noMoreData(edge: selectedEdge)
+        repositionCanvasAtSelectedBoundary(expectedState: .noMoreData)
     }
 
     @objc private func resetNoMoreData() {
         guard selectedRole == .loadMore else { return }
         canvas.resetNoMoreData(edge: selectedEdge)
+        repositionCanvasAtSelectedBoundary(expectedState: .idle)
+    }
+
+    private func repositionCanvasAtSelectedBoundary(expectedState: RefreshState) {
+        boundaryPositionGeneration += 1
+        let generation = boundaryPositionGeneration
+        let edge = selectedEdge
+        let role = selectedRole
+
+        needsBoundaryPosition = true
+        positionCanvasAtSelectedBoundaryIfNeeded()
+        updateStatus()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.componentAnimationDuration) {
+            [weak self] in
+            guard let self,
+                  self.boundaryPositionGeneration == generation,
+                  self.selectedEdge == edge,
+                  self.selectedRole == role,
+                  self.selectedState == expectedState else {
+                return
+            }
+
+            self.view.layoutIfNeeded()
+            self.needsBoundaryPosition = true
+            self.positionCanvasAtSelectedBoundaryIfNeeded()
+            self.updateStatus()
+        }
     }
 
     private func positionCanvasAtSelectedBoundaryIfNeeded() {
@@ -368,9 +430,17 @@ private final class BoundaryGridCanvasView: UIView {
         let cardSize = CGSize(width: 128, height: 104)
         let spacing = CGSize(width: 32, height: 32)
         let origin = CGPoint(x: 44, y: 56)
+        let columnCount = max(
+            Int(ceil((bounds.width - origin.x) / (cardSize.width + spacing.width))),
+            1
+        )
+        let rowCount = max(
+            Int(ceil((bounds.height - origin.y) / (cardSize.height + spacing.height))),
+            1
+        )
 
-        for row in 0..<6 {
-            for column in 0..<6 {
+        for row in 0..<rowCount {
+            for column in 0..<columnCount {
                 let cardRect = CGRect(
                     x: origin.x + CGFloat(column) * (cardSize.width + spacing.width),
                     y: origin.y + CGFloat(row) * (cardSize.height + spacing.height),

@@ -39,9 +39,10 @@ final class DemoUITests: XCTestCase {
     @MainActor
     func testDefaultRefreshPreviewShowsAllControls() throws {
         let app = try launchDefaultRefreshPreview()
+        let canvas = app.scrollViews["DefaultRefreshPreview.Canvas"]
 
         XCTAssertTrue(app.navigationBars["默认刷新控件"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.scrollViews["DefaultRefreshPreview.Canvas"].exists)
+        XCTAssertTrue(canvas.exists)
         XCTAssertTrue(app.segmentedControls["DefaultRefreshPreview.EdgeSelector"].exists)
         XCTAssertTrue(app.segmentedControls["DefaultRefreshPreview.RoleSelector"].exists)
         XCTAssertTrue(app.switches["DefaultRefreshPreview.TextSwitch"].exists)
@@ -49,6 +50,12 @@ final class DemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["DefaultRefreshPreview.NoMoreData"].exists)
         XCTAssertTrue(app.buttons["DefaultRefreshPreview.Reset"].exists)
         XCTAssertTrue(app.staticTexts["DefaultRefreshPreview.Status"].exists)
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(
+            waitForCanvasContent(toExceed: canvas, by: 200, timeout: 3),
+            "Canvas content should remain scrollable in both axes on a wide viewport"
+        )
     }
 
     @MainActor
@@ -107,6 +114,7 @@ final class DemoUITests: XCTestCase {
     @MainActor
     func testDefaultRefreshPreviewTextAndNoMoreDataControls() throws {
         let app = try launchDefaultRefreshPreview(actionDuration: 8)
+        let canvas = app.scrollViews["DefaultRefreshPreview.Canvas"]
         let status = app.staticTexts["DefaultRefreshPreview.Status"]
 
         app.switches["DefaultRefreshPreview.TextSwitch"].tap()
@@ -126,6 +134,11 @@ final class DemoUITests: XCTestCase {
         app.buttons["DefaultRefreshPreview.NoMoreData"].tap()
 
         XCTAssertEqual(indicator.value as? String, "没有更多数据")
+        XCTAssertTrue(
+            waitForIntersection(of: indicator, with: canvas, timeout: 3),
+            "No-more-data indicator should be visible inside the canvas"
+        )
+        assert(indicator: indicator, isAt: .minYEdge, of: canvas)
         XCTAssertEqual(status.value as? String, "没有更多数据")
         addPreviewScreenshot(named: "默认刷新控件-没有更多数据", app: app)
         app.buttons["DefaultRefreshPreview.Reset"].tap()
@@ -356,6 +369,11 @@ final class DemoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["DefaultRefreshPreview.UITestActionDuration"] = String(actionDuration)
         app.launch()
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(
+            waitForPortraitLayout(in: app, timeout: 5),
+            "Preview tests require a settled portrait app window"
+        )
 
         let stylesTab = app.tabBars.buttons["样式"]
         XCTAssertTrue(stylesTab.waitForExistence(timeout: 5))
@@ -368,6 +386,19 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    private func waitForPortraitLayout(
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        let window = app.windows.firstMatch
+        let predicate = NSPredicate { _, _ in
+            window.exists && window.frame.height > window.frame.width
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: window)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
     private func waitForLabel(
         containing text: String,
         in element: XCUIElement,
@@ -376,6 +407,53 @@ final class DemoUITests: XCTestCase {
         let predicate = NSPredicate(format: "label CONTAINS %@", text)
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForIntersection(
+        of element: XCUIElement,
+        with viewport: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate { _, _ in
+            element.exists && element.frame.intersects(viewport.frame)
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForCanvasContent(
+        toExceed canvas: XCUIElement,
+        by minimumOverflow: CGFloat,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate { _, _ in
+            guard let contentSize = self.reportedContentSize(for: canvas) else {
+                return false
+            }
+            return contentSize.width >= canvas.frame.width + minimumOverflow
+                && contentSize.height >= canvas.frame.height + minimumOverflow
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: canvas)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func reportedContentSize(for canvas: XCUIElement) -> CGSize? {
+        guard let value = canvas.value as? String else { return nil }
+        let fields = value.split(separator: ";").reduce(into: [Substring: Substring]()) {
+            let pair = $1.split(separator: "=", maxSplits: 1)
+            guard pair.count == 2 else { return }
+            $0[pair[0]] = pair[1]
+        }
+        guard let widthText = fields["contentWidth"],
+              let heightText = fields["contentHeight"],
+              let width = Double(widthText),
+              let height = Double(heightText) else {
+            return nil
+        }
+        return CGSize(width: width, height: height)
     }
 
     @MainActor
