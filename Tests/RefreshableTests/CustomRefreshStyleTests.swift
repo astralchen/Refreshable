@@ -162,7 +162,7 @@ struct CustomRefreshStyleTests {
         let iconArrow = try #require(style.view.systemNativeIconArrow())
         #expect(iconArrow.isHidden)
 
-        let spinner = try #require(style.view.firstSubview(className: "SystemNativeSpinnerView"))
+        let spinner = try #require(style.view.firstSubview(className: "SegmentedRefreshSpinnerView"))
         let segments = try #require(spinner.layer.sublayers as? [CAShapeLayer])
         let alphas = Set(segments.map { round(($0.fillColor?.alpha ?? 0) * 100) / 100 })
         #expect(alphas.count >= 4)
@@ -209,7 +209,7 @@ struct CustomRefreshStyleTests {
         style.update(state: .refreshing, progress: 0)
 
         #expect(style.view.firstSubview(of: UIActivityIndicatorView.self) == nil)
-        let spinner = try #require(style.view.firstSubview(className: "SystemNativeSpinnerView"))
+        let spinner = try #require(style.view.firstSubview(className: "SegmentedRefreshSpinnerView"))
         #expect(spinner.isHidden == false)
         #expect(spinner.layer.animation(forKey: "systemNativeSpin") != nil)
     }
@@ -220,7 +220,7 @@ struct CustomRefreshStyleTests {
         style.view.frame = CGRect(x: 0, y: 0, width: 390, height: style.extent)
         style.view.layoutIfNeeded()
 
-        let spinner = try #require(style.view.firstSubview(className: "SystemNativeSpinnerView"))
+        let spinner = try #require(style.view.firstSubview(className: "SegmentedRefreshSpinnerView"))
 
         style.update(state: .pulling(0.2), progress: 0.2)
         spinner.layoutIfNeeded()
@@ -247,7 +247,7 @@ struct CustomRefreshStyleTests {
         style.view.frame = CGRect(x: 0, y: 0, width: 390, height: style.extent)
         style.view.layoutIfNeeded()
 
-        let spinner = try #require(style.view.firstSubview(className: "SystemNativeSpinnerView"))
+        let spinner = try #require(style.view.firstSubview(className: "SegmentedRefreshSpinnerView"))
 
         style.update(state: .triggered, progress: 1)
         spinner.layoutIfNeeded()
@@ -534,7 +534,7 @@ private extension UIView {
 
     func systemNativeIconArrow() -> UIImageView? {
         allSubviews(of: UIImageView.self).first { imageView in
-            imageView.superview?.firstSubview(className: "SystemNativeSpinnerView") != nil
+            imageView.superview?.firstSubview(className: "SegmentedRefreshSpinnerView") != nil
         }
     }
 

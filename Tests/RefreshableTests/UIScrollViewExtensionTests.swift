@@ -90,7 +90,7 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.refreshState == .idle)
     }
 
-    @Test("默认横向刷新保留 54pt 触发距离并预留 72pt 显示空间和 8pt 外侧留白")
+    @Test("默认横向无文字刷新保留 54pt 触发距离、54pt 显示空间和 8pt 外侧留白")
     func defaultHorizontalRefreshUsesCompactDisplayExtentWithDefaultTriggerOffset() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
@@ -104,16 +104,55 @@ struct UIScrollViewExtensionTests {
         let component = scrollView.component(for: .leading)
         #expect(component?.options.triggerOffset == 54)
         #expect(component?.options.placement.outerSpacing == 8)
-        #expect(component?.style.extent == 72)
+        #expect(component?.style.extent == 54)
         let styleView = try #require(component?.style.view)
         let hostView = try #require(styleView.superview)
-        #expect(hostView.frame == CGRect(x: -80, y: 0, width: 844, height: 390))
-        #expect(styleView.frame == CGRect(x: 8, y: 0, width: 72, height: 390))
+        #expect(hostView.frame == CGRect(x: -62, y: 0, width: 844, height: 390))
+        #expect(styleView.frame == CGRect(x: 8, y: 0, width: 54, height: 390))
 
         scrollView.beginRefreshing(edge: .leading)
 
-        #expect(scrollView.contentInset.left == 80)
-        #expect(scrollView.contentOffset.x == -80)
+        #expect(scrollView.contentInset.left == 62)
+        #expect(scrollView.contentOffset.x == -62)
+    }
+
+    @Test("所有无样式 edge 与 role 路由都安装 unified default style")
+    func allNoStyleRoutesInstallDefaultRefreshControlStyle() {
+        for edge in RefreshableEdge.allCases {
+            let refreshScrollView = UIScrollView()
+            refreshScrollView.refreshable(
+                edge: edge,
+                options: RefreshableOptions(textConfiguration: RefreshableTextConfiguration(idle: "Refresh"))
+            ) {}
+            let refreshStyle = refreshScrollView.component(for: edge)?.style as? DefaultRefreshControlStyle
+            #expect(refreshStyle != nil)
+            #expect(refreshStyle?.view.firstDefaultRouteLabel?.text == "Refresh")
+
+            let loadMoreScrollView = UIScrollView()
+            loadMoreScrollView.loadMoreable(
+                edge: edge,
+                options: RefreshableOptions(textConfiguration: RefreshableTextConfiguration(idle: "Load"))
+            ) {}
+            let loadMoreStyle = loadMoreScrollView.component(for: edge)?.style as? DefaultRefreshControlStyle
+            #expect(loadMoreStyle != nil)
+            #expect(loadMoreStyle?.view.firstDefaultRouteLabel?.text == "Load")
+        }
+    }
+
+    @Test("显式 custom style 忽略 non-nil textConfiguration 并保持对象身份")
+    func customStyleIgnoresTextConfiguration() {
+        let scrollView = UIScrollView()
+        let refreshStyle = MockStyle()
+        let loadMoreStyle = MockStyle()
+        let options = RefreshableOptions(
+            textConfiguration: RefreshableTextConfiguration(idle: "Must not be interpreted")
+        )
+
+        scrollView.refreshable(edge: .leading, style: refreshStyle, options: options) {}
+        scrollView.loadMoreable(edge: .trailing, style: loadMoreStyle, options: options) {}
+
+        #expect(scrollView.component(for: .leading)?.style === refreshStyle)
+        #expect(scrollView.component(for: .trailing)?.style === loadMoreStyle)
     }
 
     @Test("endRefreshing 转发到 headerComponent")
@@ -465,6 +504,20 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)
         #expect(scrollView.contentInset.bottom == 12)
+    }
+}
+
+private extension UIView {
+    var firstDefaultRouteLabel: UILabel? {
+        if let label = self as? UILabel {
+            return label
+        }
+        for subview in subviews {
+            if let label = subview.firstDefaultRouteLabel {
+                return label
+            }
+        }
+        return nil
     }
 }
 

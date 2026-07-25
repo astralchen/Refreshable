@@ -33,10 +33,15 @@ extension UIScrollView {
         edge: RefreshableEdge = .top,
         action: @escaping @Sendable () async -> Void
     ) {
+        let resolvedOptions = defaultOptions(for: edge, options: RefreshableOptions())
         installRefreshable(
             edge: edge,
-            style: defaultStyle(for: edge, role: .refresh),
-            options: defaultOptions(for: edge, options: RefreshableOptions()),
+            style: DefaultRefreshControlStyle(
+                edge: edge,
+                role: .refresh,
+                textConfiguration: resolvedOptions.textConfiguration
+            ),
+            options: resolvedOptions,
             action: action
         )
     }
@@ -53,10 +58,15 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
+        let resolvedOptions = defaultOptions(for: edge, options: options)
         installRefreshable(
             edge: edge,
-            style: defaultStyle(for: edge, role: .refresh),
-            options: defaultOptions(for: edge, options: options),
+            style: DefaultRefreshControlStyle(
+                edge: edge,
+                role: .refresh,
+                textConfiguration: resolvedOptions.textConfiguration
+            ),
+            options: resolvedOptions,
             action: action
         )
     }
@@ -129,10 +139,15 @@ extension UIScrollView {
         edge: RefreshableEdge = .bottom,
         action: @escaping @Sendable () async -> Void
     ) {
+        let resolvedOptions = defaultOptions(for: edge, options: RefreshableOptions())
         installLoadMoreable(
             edge: edge,
-            style: defaultStyle(for: edge, role: .loadMore),
-            options: defaultOptions(for: edge, options: RefreshableOptions()),
+            style: DefaultRefreshControlStyle(
+                edge: edge,
+                role: .loadMore,
+                textConfiguration: resolvedOptions.textConfiguration
+            ),
+            options: resolvedOptions,
             action: action
         )
     }
@@ -149,10 +164,15 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
+        let resolvedOptions = defaultOptions(for: edge, options: options)
         installLoadMoreable(
             edge: edge,
-            style: defaultStyle(for: edge, role: .loadMore),
-            options: defaultOptions(for: edge, options: options),
+            style: DefaultRefreshControlStyle(
+                edge: edge,
+                role: .loadMore,
+                textConfiguration: resolvedOptions.textConfiguration
+            ),
+            options: resolvedOptions,
             action: action
         )
     }
@@ -420,17 +440,6 @@ extension UIScrollView {
     private func loadMoreComponent(for edge: RefreshableEdge) -> EdgeRefreshComponent? {
         let component = component(for: edge)
         return component?.role == .loadMore ? component : nil
-    }
-
-    private func defaultStyle(for edge: RefreshableEdge, role: RefreshableRole) -> any RefreshableStyle {
-        switch (edge, role) {
-        case (.top, .refresh):
-            DefaultTopRefreshStyle()
-        case (.bottom, .loadMore):
-            DefaultBottomLoadMoreStyle()
-        default:
-            DefaultEdgeStyle(edge: edge, role: role)
-        }
     }
 
     private func defaultOptions(for edge: RefreshableEdge, options: RefreshableOptions) -> RefreshableOptions {
