@@ -53,11 +53,12 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
         segmentedControl.selectedSegmentTintColor = .white
         navigationItem.titleView = segmentedControl
         navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(systemName: "plus.circle.fill"),
+            title: "默认预览",
             style: .plain,
-            target: nil,
-            action: nil
+            target: self,
+            action: #selector(showDefaultRefreshPreview)
         )
+        navigationItem.rightBarButtonItem?.accessibilityIdentifier = "DefaultRefreshPreview.Entry"
         navigationItem.rightBarButtonItem?.tintColor = .systemTeal
     }
 
@@ -224,6 +225,10 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
         page = 0
         installSelectedStyle()
         tableView.reloadData()
+    }
+
+    @objc private func showDefaultRefreshPreview() {
+        navigationController?.pushViewController(DefaultRefreshControlPreviewController(), animated: true)
     }
 
     // MARK: - UITableViewDataSource

@@ -37,6 +37,102 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testDefaultRefreshPreviewShowsAllControls() throws {
+        let app = try launchDefaultRefreshPreview()
+
+        XCTAssertTrue(app.navigationBars["默认刷新控件"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.scrollViews["DefaultRefreshPreview.Canvas"].exists)
+        XCTAssertTrue(app.segmentedControls["DefaultRefreshPreview.EdgeSelector"].exists)
+        XCTAssertTrue(app.segmentedControls["DefaultRefreshPreview.RoleSelector"].exists)
+        XCTAssertTrue(app.switches["DefaultRefreshPreview.TextSwitch"].exists)
+        XCTAssertTrue(app.buttons["DefaultRefreshPreview.Trigger"].exists)
+        XCTAssertTrue(app.buttons["DefaultRefreshPreview.NoMoreData"].exists)
+        XCTAssertTrue(app.buttons["DefaultRefreshPreview.Reset"].exists)
+        XCTAssertTrue(app.staticTexts["DefaultRefreshPreview.Status"].exists)
+    }
+
+    @MainActor
+    func testDefaultRefreshPreviewPhysicallyRefreshesAtEveryEdge() throws {
+        let app = try launchDefaultRefreshPreview(actionDuration: 5)
+        let canvas = app.scrollViews["DefaultRefreshPreview.Canvas"]
+        let edgeSelector = app.segmentedControls["DefaultRefreshPreview.EdgeSelector"]
+        let status = app.staticTexts["DefaultRefreshPreview.Status"]
+
+        let cases: [(title: String, start: CGVector, end: CGVector, edge: CGRectEdge)] = [
+            ("上", CGVector(dx: 0.5, dy: 0.20), CGVector(dx: 0.5, dy: 0.95), .minYEdge),
+            ("下", CGVector(dx: 0.5, dy: 0.80), CGVector(dx: 0.5, dy: 0.05), .maxYEdge),
+            ("左", CGVector(dx: 0.20, dy: 0.5), CGVector(dx: 0.95, dy: 0.5), .minXEdge),
+            ("右", CGVector(dx: 0.80, dy: 0.5), CGVector(dx: 0.05, dy: 0.5), .maxXEdge),
+        ]
+
+        for testCase in cases {
+            edgeSelector.buttons[testCase.title].tap()
+            XCTAssertTrue(
+                waitForLabel(
+                    containing: "\(testCase.title) · 刷新 · 空闲",
+                    in: status,
+                    timeout: 3
+                )
+            )
+
+            canvas.coordinate(withNormalizedOffset: testCase.start)
+                .press(
+                    forDuration: 0.15,
+                    thenDragTo: canvas.coordinate(withNormalizedOffset: testCase.end),
+                    withVelocity: .slow,
+                    thenHoldForDuration: 0.2
+                )
+
+            XCTAssertTrue(
+                waitForLabel(containing: "刷新中", in: status, timeout: 3),
+                "\(testCase.title) edge should reach refreshing"
+            )
+
+            let indicator = app.descendants(matching: .any)
+                .matching(identifier: "Refreshable.DefaultIndicator")
+                .firstMatch
+            XCTAssertTrue(indicator.exists)
+            XCTAssertEqual(indicator.value as? String, "正在刷新")
+            assert(indicator: indicator, isAt: testCase.edge, of: canvas)
+            XCTAssertTrue((status.value as? String)?.isEmpty ?? true)
+            XCTAssertFalse(app.staticTexts["正在刷新..."].exists)
+
+            XCTAssertTrue(
+                waitForLabel(containing: "空闲", in: status, timeout: 7),
+                "\(testCase.title) edge should finish normally"
+            )
+        }
+    }
+
+    @MainActor
+    func testDefaultRefreshPreviewTextAndNoMoreDataControls() throws {
+        let app = try launchDefaultRefreshPreview(actionDuration: 8)
+        let status = app.staticTexts["DefaultRefreshPreview.Status"]
+
+        app.switches["DefaultRefreshPreview.TextSwitch"].tap()
+        app.buttons["DefaultRefreshPreview.Trigger"].tap()
+
+        XCTAssertTrue(waitForLabel(containing: "刷新中", in: status, timeout: 3))
+        let indicator = app.descendants(matching: .any)
+            .matching(identifier: "Refreshable.DefaultIndicator")
+            .firstMatch
+        XCTAssertTrue(indicator.exists)
+        XCTAssertEqual(indicator.value as? String, "正在刷新")
+        XCTAssertEqual(status.value as? String, "正在刷新...")
+        addPreviewScreenshot(named: "默认刷新控件-显示刷新文案", app: app)
+        XCTAssertTrue(waitForLabel(containing: "空闲", in: status, timeout: 10))
+
+        app.segmentedControls["DefaultRefreshPreview.RoleSelector"].buttons["加载更多"].tap()
+        app.buttons["DefaultRefreshPreview.NoMoreData"].tap()
+
+        XCTAssertEqual(indicator.value as? String, "没有更多数据")
+        XCTAssertEqual(status.value as? String, "没有更多数据")
+        addPreviewScreenshot(named: "默认刷新控件-没有更多数据", app: app)
+        app.buttons["DefaultRefreshPreview.Reset"].tap()
+        XCTAssertFalse(indicator.waitForExistence(timeout: 1))
+    }
+
+    @MainActor
     func testListRefreshProductionScreenLoads() throws {
         let app = XCUIApplication()
         app.launch()
@@ -251,6 +347,67 @@ final class DemoUITests: XCTestCase {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()
+        }
+    }
+
+    @MainActor
+    private func launchDefaultRefreshPreview(actionDuration: TimeInterval = 3) throws -> XCUIApplication {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchEnvironment["DefaultRefreshPreview.UITestActionDuration"] = String(actionDuration)
+        app.launch()
+
+        let stylesTab = app.tabBars.buttons["样式"]
+        XCTAssertTrue(stylesTab.waitForExistence(timeout: 5))
+        stylesTab.tap()
+
+        let entry = app.buttons["DefaultRefreshPreview.Entry"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 3))
+        entry.tap()
+        return app
+    }
+
+    @MainActor
+    private func waitForLabel(
+        containing text: String,
+        in element: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate(format: "label CONTAINS %@", text)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func addPreviewScreenshot(named name: String, app: XCUIApplication) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    private func assert(
+        indicator: XCUIElement,
+        isAt edge: CGRectEdge,
+        of canvas: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let indicatorFrame = indicator.frame
+        let canvasFrame = canvas.frame
+
+        switch edge {
+        case .minXEdge:
+            XCTAssertLessThan(indicatorFrame.midX, canvasFrame.minX + canvasFrame.width * 0.35, file: file, line: line)
+        case .maxXEdge:
+            XCTAssertGreaterThan(indicatorFrame.midX, canvasFrame.maxX - canvasFrame.width * 0.35, file: file, line: line)
+        case .minYEdge:
+            XCTAssertLessThan(indicatorFrame.midY, canvasFrame.minY + canvasFrame.height * 0.35, file: file, line: line)
+        case .maxYEdge:
+            XCTAssertGreaterThan(indicatorFrame.midY, canvasFrame.maxY - canvasFrame.height * 0.35, file: file, line: line)
+        @unknown default:
+            XCTFail("Unsupported canvas edge", file: file, line: line)
         }
     }
 
