@@ -3,12 +3,6 @@ import UIKit
 @MainActor
 final class SegmentedRefreshSpinnerView: UIView {
 
-    override var tintColor: UIColor! {
-        didSet {
-            updateSegmentColors()
-        }
-    }
-
     private let segmentLayers: [CAShapeLayer] = (0..<12).map { _ in CAShapeLayer() }
 
     private(set) var currentProgress: CGFloat = 0
@@ -32,6 +26,16 @@ final class SegmentedRefreshSpinnerView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         updateSegmentLayout()
+    }
+
+    override func tintColorDidChange() {
+        super.tintColorDidChange()
+        updateSegmentColors()
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        updateSegmentColors()
     }
 
     func setProgress(_ progress: CGFloat, animated: Bool) {

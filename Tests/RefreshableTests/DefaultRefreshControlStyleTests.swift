@@ -12,10 +12,18 @@ struct DefaultRefreshControlStyleTests {
         let label = try #require(style.view.firstDefaultSubview(of: UILabel.self))
         let spinner = try #require(style.view.firstDefaultSubview(of: SegmentedRefreshSpinnerView.self))
 
+        style.view.frame = edge.axis == .vertical
+            ? CGRect(x: 0, y: 0, width: 320, height: style.extent)
+            : CGRect(x: 0, y: 0, width: style.extent, height: 320)
+        style.view.layoutIfNeeded()
+        let spinnerFrame = spinner.convert(spinner.bounds, to: style.view)
+
         #expect(style.extent == 54)
         #expect(label.isHidden)
         #expect(style.view.firstDefaultSubview(of: UIImageView.self) == nil)
         #expect(spinner.superview != nil)
+        #expect(abs(spinnerFrame.midX - style.view.bounds.midX) < 0.5)
+        #expect(abs(spinnerFrame.midY - style.view.bounds.midY) < 0.5)
         #expect(style.view.accessibilityIdentifier == "Refreshable.DefaultIndicator")
         #expect(style.view.isAccessibilityElement)
     }
@@ -242,6 +250,69 @@ struct DefaultRefreshControlStyleTests {
             label.textColor.resolvedColor(with: light)
                 != label.textColor.resolvedColor(with: dark)
         )
+    }
+
+    @Test("segmented spinner refreshes layer colors when appearance changes")
+    func segmentedSpinnerRefreshesLayerColorsForAppearanceChanges() throws {
+        let spinner = SegmentedRefreshSpinnerView(frame: CGRect(x: 0, y: 0, width: 24, height: 24))
+        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+
+        lightTraits.performAsCurrent {
+            spinner.tintColor = UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.8, green: 0.7, blue: 0.6, alpha: 1)
+                    : UIColor(red: 0.2, green: 0.3, blue: 0.4, alpha: 1)
+            }
+            spinner.setProgress(1, animated: false)
+        }
+
+        let segments = try #require(spinner.layer.sublayers as? [CAShapeLayer])
+        let lightFillColors = try segments.map { segment in
+            try #require(segment.fillColor)
+        }
+        let lightFillColor = try #require(lightFillColors.first)
+        let lightComponents = try rgbaComponents(of: lightFillColor)
+
+        darkTraits.performAsCurrent {
+            #expect(UITraitCollection.current.userInterfaceStyle == .dark)
+            spinner.traitCollectionDidChange(lightTraits)
+        }
+        let darkFillColors = try segments.map { segment in
+            try #require(segment.fillColor)
+        }
+        let darkFillColor = try #require(darkFillColors.first)
+        let darkComponents = try rgbaComponents(of: darkFillColor)
+
+        #expect(lightFillColors.count == 12)
+        #expect(darkFillColors.count == 12)
+        #expect(zip(lightFillColors, darkFillColors).allSatisfy { pair in
+            pair.0 != pair.1
+        })
+        #expect(abs(lightComponents.red - 0.2) < 0.01)
+        #expect(abs(lightComponents.green - 0.3) < 0.01)
+        #expect(abs(lightComponents.blue - 0.4) < 0.01)
+        #expect(abs(darkComponents.red - 0.8) < 0.01)
+        #expect(abs(darkComponents.green - 0.7) < 0.01)
+        #expect(abs(darkComponents.blue - 0.6) < 0.01)
+        #expect(abs(lightComponents.alpha - darkComponents.alpha) < 0.01)
+    }
+
+    private func rgbaComponents(
+        of color: CGColor
+    ) throws -> (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        let extracted = UIColor(cgColor: color).getRed(
+            &red,
+            green: &green,
+            blue: &blue,
+            alpha: &alpha
+        )
+        try #require(extracted)
+        return (red, green, blue, alpha)
     }
 }
 
