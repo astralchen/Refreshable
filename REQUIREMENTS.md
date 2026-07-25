@@ -57,9 +57,13 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 
 ### 3.5 默认 UI
 
-- **下拉**：箭头图标（跟随拖拽旋转）+ 文案 + 菊花
-- **上拉**：菊花 + 文案，noMoreData 时显示 "没有更多数据"
-- **横向边缘**：使用适配 `.leading` / `.trailing` 的默认样式，并使用动态系统颜色适配深色模式
+- 省略 `style:` 时，刷新和加载更多在 `.top`、`.bottom`、`.leading`、`.trailing` 都使用同一套分段式 spinner
+- 默认指示器没有箭头，不显示可见状态文案，并使用动态系统颜色适配深色模式
+- `RefreshableOptions.textConfiguration == nil` 时保持所有可见文案隐藏
+- `RefreshableTextConfiguration()` 启用按 edge、刷新/加载角色和状态区分的内置中文文案
+- 非 nil 配置中的状态字段只覆盖对应状态；nil 字段继续使用内置文案
+- 状态字段为空字符串 `""` 时，仅隐藏对应状态的可见文案
+- `textConfiguration` 只在省略 `style:` 时应用；显式传入的样式不读取该配置
 
 ### 3.6 通用性
 
@@ -115,8 +119,43 @@ RefreshableOptions(
     automaticallyEndRefreshing: true,
     allowsLoadMoreWhenContentFits: false,
     presentation: .contentInset, // 或 .overlay(spacing: 12, locksContentOffset: true)
+    textConfiguration: nil,
     onStateChange: nil
 )
+```
+
+默认控件的文案配置示例：
+
+```swift
+import UIKit
+import Refreshable
+
+// 启用所有内置中文文案
+@MainActor
+func enableBuiltInRefreshText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration()
+    )
+    scrollView.refreshable(options: options) {}
+}
+
+// 只覆盖 refreshing；其他状态继续使用内置中文文案
+@MainActor
+func overrideRefreshingText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration(refreshing: "正在同步...")
+    )
+    scrollView.refreshable(options: options) {}
+}
+
+// 只隐藏 ending；其他状态继续使用内置中文文案
+@MainActor
+func hideEndingText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration(ending: "")
+    )
+    scrollView.loadMoreable(options: options) {}
+}
 ```
 
 ## 5. 状态机
@@ -164,26 +203,30 @@ style.view 的 alpha 由组件自动管理，idle 时完全不可见，拖拽时
 
 ## 8. 默认样式行为
 
-### DefaultHeaderStyle（extent 54pt）
+### 省略 style 的统一默认控件
 
-| 状态 | 箭头 | 菊花 | 文案 |
-|------|------|------|------|
-| idle | ↓ 显示 | 停止 | 下拉刷新 |
-| pulling(p) | 旋转 p×180° | 停止 | 下拉刷新 |
-| triggered | ↑ 翻转 | 停止 | 释放刷新 |
-| refreshing | 隐藏 | 旋转 | 正在刷新... |
-| ending | 隐藏 | 停止 | 刷新完成 |
+| 状态 | 分段式 spinner | 默认可见文案 | 启用 `RefreshableTextConfiguration()` 后 |
+|------|----------------|--------------|------------------------------------------|
+| idle | 空进度，停止 | 隐藏 | 显示对应 edge / 角色的内置中文文案 |
+| pulling(p) | 跟随 p 填充，停止 | 隐藏 | 显示对应 edge / 角色的内置中文文案 |
+| triggered | 满进度，停止 | 隐藏 | 显示“释放刷新”或“释放加载” |
+| refreshing | 满进度，旋转 | 隐藏 | 显示“正在刷新...”或“正在加载...” |
+| ending | 满进度，停止 | 隐藏 | 显示“刷新完成”或“加载完成” |
+| noMoreData | 空进度，停止 | 隐藏 | 加载更多显示“没有更多数据” |
 
-### DefaultFooterStyle（extent 54pt）
+统一默认控件没有箭头。其文案解析规则为：非 nil 状态字段覆盖该状态，nil 字段保留内置中文文案，空字符串仅隐藏该状态。
 
-| 状态 | 菊花 | 文案 |
-|------|------|------|
-| idle | 停止 | 上拉加载更多 |
-| pulling | 停止 | 上拉加载更多 |
-| triggered | 停止 | 释放加载 |
-| refreshing | 旋转 | 正在加载... |
-| ending | 停止 | 加载完成 |
-| noMoreData | 停止 | 没有更多数据 |
+### 显式样式兼容性
+
+`DefaultTopRefreshStyle`、`DefaultBottomLoadMoreStyle` 和 `SystemNativeRefreshStyle` 仍可显式传入，并保留原有行为：
+
+```swift
+scrollView.refreshable(style: DefaultTopRefreshStyle()) {}
+scrollView.loadMoreable(style: DefaultBottomLoadMoreStyle()) {}
+scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
+```
+
+`RefreshableOptions.textConfiguration` 只供省略 `style:` 的统一默认控件使用。显式传入上述样式或任意自定义 `RefreshableStyle` 时，该字段不会改变样式行为。
 
 ## 9. 实现架构
 
@@ -225,7 +268,9 @@ Refreshable/
 │       │   ├── DefaultRefreshStyleConfiguration.swift
 │       │   ├── DefaultTopRefreshStyle.swift
 │       │   ├── DefaultBottomLoadMoreStyle.swift
-│       │   └── DefaultEdgeStyle.swift
+│       │   └── DefaultRefreshControlStyle.swift
+│       ├── Shared/
+│       │   └── SegmentedRefreshSpinnerView.swift
 │       └── Custom/
 │           ├── SystemNativeRefreshStyle.swift
 │           ├── TaijiRefreshStyle.swift
@@ -243,7 +288,9 @@ Refreshable/
 └── Demo/
     └── Demo/
         ├── TableViewDemoController.swift
-        └── CollectionViewDemoController.swift
+        ├── CollectionViewDemoController.swift
+        ├── CustomStylesDemoController.swift
+        └── DefaultRefreshControlPreviewController.swift
 ```
 
 ## 11. 测试覆盖
@@ -268,6 +315,7 @@ Refreshable/
 |------|---------|---------|
 | TableView Demo | UITableView | 下拉刷新 20 条文本 + 上拉分页加载 15 条/页，3 页后 noMoreData |
 | CollectionView Demo | UICollectionView | 3 列彩色方块网格，下拉刷新 18 个 + 上拉加载 12 个/页，3 页后 noMoreData |
+| 默认刷新控件预览 | UIScrollView | 从“样式”页点击右上角“默认预览”进入；可切换上、下、左、右四个方向、刷新/加载更多角色，并开关内置文案 |
 
 ## 13. 非需求（明确不做）
 

@@ -124,6 +124,61 @@ tableView.loadMoreable(options: options) {
 
 默认横向边缘样式会保留 8pt 外侧留白，让左右刷新控件不会贴住屏幕边缘；传入自定义 `placement` 时以调用方配置为准。
 
+## 默认刷新控件与文案
+
+省略 `style:` 时，`refreshable` 和 `loadMoreable` 在 `.top`、`.bottom`、`.leading`、`.trailing` 四个方向都使用同一套分段式 spinner。默认指示器没有箭头，也不显示可见状态文案。
+
+`RefreshableOptions.textConfiguration` 控制这套默认指示器的可见文案：
+
+- `nil`（默认值）保持所有可见文案隐藏
+- `RefreshableTextConfiguration()` 启用按 edge、刷新/加载角色和状态区分的内置中文文案
+- 非 nil 配置中的某个状态字段只覆盖该状态；其余 nil 字段继续使用对应的内置文案
+- 状态字段传入空字符串 `""` 时，仅隐藏该状态的可见文案
+
+以下示例可直接编译：
+
+```swift
+import UIKit
+import Refreshable
+
+// 启用所有内置中文文案
+@MainActor
+func enableBuiltInRefreshText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration()
+    )
+    scrollView.refreshable(options: options) {}
+}
+
+// 只覆盖 refreshing；其他状态继续使用内置中文文案
+@MainActor
+func overrideRefreshingText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration(refreshing: "正在同步...")
+    )
+    scrollView.refreshable(options: options) {}
+}
+
+// 只隐藏 ending；其他状态继续使用内置中文文案
+@MainActor
+func hideEndingText(on scrollView: UIScrollView) {
+    let options = RefreshableOptions(
+        textConfiguration: RefreshableTextConfiguration(ending: "")
+    )
+    scrollView.loadMoreable(options: options) {}
+}
+```
+
+显式传入 `DefaultTopRefreshStyle`、`DefaultBottomLoadMoreStyle` 或 `SystemNativeRefreshStyle` 仍然可用，并保留各自原有的箭头、指示器和文案行为：
+
+```swift
+scrollView.refreshable(style: DefaultTopRefreshStyle()) {}
+scrollView.loadMoreable(style: DefaultBottomLoadMoreStyle()) {}
+scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
+```
+
+`textConfiguration` 只在省略 `style:` 时应用；显式样式（包括上述样式和自定义 `RefreshableStyle`）不会读取它。
+
 ## 并发语义
 
 `refreshable` 和 `loadMoreable` 的 action 是 SwiftUI 风格的 `@Sendable () async -> Void`，不会默认隔离到 `@MainActor`。组件安装、状态查询、手动启停和移除 API 仍是 `@MainActor`，因为它们会同步读写 UIKit 状态。
@@ -190,7 +245,7 @@ tableView.refreshable(style: KineticRefreshStyle()) {
 }
 ```
 
-Demo App 的“样式”页可以在真实 `UITableView` 中切换和试用这三套刷新控件。
+Demo App 的“样式”页可以在真实 `UITableView` 中切换和试用这三套刷新控件。要查看统一默认控件，请进入“样式”页并点击右上角“默认预览”；该预览可切换上、下、左、右四个方向以及刷新/加载更多角色，并可开关内置文案。
 
 ## 兼容性
 
