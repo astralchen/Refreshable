@@ -295,19 +295,21 @@ Refreshable/
 
 ## 11. 测试覆盖
 
-110 个测试用例，9 个 Suite：
+192 个测试用例，11 个 Suite：
 
 | Suite | 数量 | 覆盖点 |
 |-------|------|--------|
 | RefreshState | 2 | isRefreshing、Equatable |
-| RefreshableOptions | 2 | 默认配置、自定义配置 |
-| DefaultHeaderStyle | 3 | extent、子视图、全状态 update |
-| DefaultFooterStyle | 2 | extent、全状态 update |
+| RefreshableOptions | 7 | 默认值、自定义配置、overlay、placement、文本配置 |
+| DefaultTopRefreshStyle | 7 | extent、子视图、全状态 update、文案、Dynamic Type、Reduce Motion |
+| DefaultBottomLoadMoreStyle | 5 | extent、全状态 update、文案、Reduce Transparency |
+| DefaultRefreshControlStyle | 8 | 四方向无文案布局、内置文案、状态映射、覆盖/隐藏规则、无障碍、动态颜色 |
+| Custom Refresh Styles | 21 | Video、System Native、Taiji、Kinetic 的结构、状态和视觉行为 |
 | RefreshComponent 基类 | 9 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、`@Sendable` action 存储、自动结束 |
-| EdgeRefreshComponent | 7 | leading/trailing 安装、RTL、水平 inset、noMoreData 语义、多 edge 隔离、水平短内容判断 |
-| EdgeRefreshComponent .top refresh | 25 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、action 执行、取消任务 |
-| EdgeRefreshComponent .bottom loadMore | 30 | 安装、状态机、防重入、noMoreData/reset、contentSize 变化、内容不足一屏、短内容加载选项 |
-| UIScrollView+Refreshable | 30 | 设置/替换/移除组件、`@Sendable` action 语义、显式 MainActor 回跳、手动控制、状态查询、启停控制、Header+Footer 共存、UITableView/UICollectionView 兼容 |
+| EdgeRefreshComponent | 29 | leading/trailing、RTL、安全区、placement、overlay、自动触发、noMoreData、多 edge 隔离 |
+| EdgeRefreshComponent .top refresh | 30 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、自动触发、action、取消任务 |
+| EdgeRefreshComponent .bottom loadMore | 38 | 安装、状态机、防重入、noMoreData/reset、inset、自动触发、contentSize、短内容加载 |
+| UIScrollView+Refreshable | 36 | 设置/替换/移除、八种默认路由、自定义样式隔离、action、手动控制、状态查询、启停及 UIKit 子类兼容 |
 
 ## 12. Demo 示例
 
