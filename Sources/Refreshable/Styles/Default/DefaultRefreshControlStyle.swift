@@ -9,29 +9,49 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
     private let edge: RefreshableEdge
     private let role: RefreshableRole
     private let textConfiguration: RefreshableTextConfiguration?
-    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    private let accessibilityEnvironmentProvider: @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment
+    private let accessibilityNotificationCenter: NotificationCenter?
     private let spinnerView = SegmentedRefreshSpinnerView()
     private let label = UILabel()
     private let contentStack = UIStackView()
+    private var reduceMotionObservation: DefaultRefreshControlNotificationObservation?
+    private var currentState: RefreshState = .idle
+    private var currentProgress: CGFloat = 0
 
     init(
         edge: RefreshableEdge,
         role: RefreshableRole,
         textConfiguration: RefreshableTextConfiguration?,
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment = .current
+        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment? = nil,
+        accessibilityEnvironmentProvider: (@MainActor () -> DefaultRefreshStyleAccessibilityEnvironment)? = nil,
+        accessibilityNotificationCenter: NotificationCenter = .default
     ) {
         self.edge = edge
         self.role = role
         self.textConfiguration = textConfiguration
-        self.accessibilityEnvironment = accessibilityEnvironment
         self.extent = textConfiguration != nil && edge.axis == .horizontal ? 72 : 54
+
+        if let accessibilityEnvironment {
+            self.accessibilityEnvironmentProvider = { accessibilityEnvironment }
+            self.accessibilityNotificationCenter = nil
+        } else {
+            self.accessibilityEnvironmentProvider = accessibilityEnvironmentProvider ?? { .current }
+            self.accessibilityNotificationCenter = accessibilityNotificationCenter
+        }
+
         setupUI()
+        observeReduceMotionChanges()
         update(state: .idle, progress: 0)
     }
 
     func update(state: RefreshState, progress: CGFloat) {
+        currentState = state
+        currentProgress = progress
         updateText(for: state)
+        updateSpinner(for: state, progress: progress)
+    }
 
+    private func updateSpinner(for state: RefreshState, progress: CGFloat) {
         switch state {
         case .idle:
             spinnerView.setProgress(0, animated: false)
@@ -44,7 +64,7 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
             spinnerView.stopSpinning()
         case .refreshing:
             spinnerView.setProgress(1, animated: false)
-            if accessibilityEnvironment.isReduceMotionEnabled {
+            if accessibilityEnvironmentProvider().isReduceMotionEnabled {
                 spinnerView.stopSpinning()
             } else {
                 spinnerView.startSpinning()
@@ -72,7 +92,9 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
         label.adjustsFontForContentSizeCategory = true
         label.textColor = .secondaryLabel
         label.textAlignment = .center
-        label.numberOfLines = 1
+        label.numberOfLines = edge.axis == .horizontal ? 0 : 1
+        label.lineBreakMode = edge.axis == .horizontal ? .byWordWrapping : .byTruncatingTail
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
         label.translatesAutoresizingMaskIntoConstraints = false
 
         contentStack.axis = edge.axis == .vertical ? .horizontal : .vertical
@@ -83,7 +105,7 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
         contentStack.addArrangedSubview(label)
         view.addSubview(contentStack)
 
-        NSLayoutConstraint.activate([
+        var constraints = [
             spinnerView.widthAnchor.constraint(equalToConstant: 24),
             spinnerView.heightAnchor.constraint(equalToConstant: 24),
             contentStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -92,7 +114,30 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
             contentStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor),
             contentStack.topAnchor.constraint(greaterThanOrEqualTo: view.topAnchor),
             contentStack.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor),
-        ])
+        ]
+        if edge.axis == .horizontal {
+            constraints.append(label.widthAnchor.constraint(equalTo: view.widthAnchor))
+        }
+        NSLayoutConstraint.activate(constraints)
+    }
+
+    private func observeReduceMotionChanges() {
+        guard let accessibilityNotificationCenter else { return }
+
+        let observer = accessibilityNotificationCenter.addObserver(
+            forName: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.updateSpinner(for: self.currentState, progress: self.currentProgress)
+            }
+        }
+        reduceMotionObservation = DefaultRefreshControlNotificationObservation(
+            center: accessibilityNotificationCenter,
+            observer: observer
+        )
     }
 
     private func updateText(for state: RefreshState) {
@@ -166,5 +211,19 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
 
     private func clamp(_ value: CGFloat) -> CGFloat {
         min(max(value, 0), 1)
+    }
+}
+
+private final class DefaultRefreshControlNotificationObservation: @unchecked Sendable {
+    private let center: NotificationCenter
+    private let observer: NSObjectProtocol
+
+    init(center: NotificationCenter, observer: NSObjectProtocol) {
+        self.center = center
+        self.observer = observer
+    }
+
+    deinit {
+        center.removeObserver(observer)
     }
 }

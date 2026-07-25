@@ -57,7 +57,7 @@ struct DefaultRefreshControlStyleTests {
         #expect(label.text == expectedText)
         #expect(label.isHidden == false)
         #expect(label.adjustsFontForContentSizeCategory)
-        #expect(label.numberOfLines == 1)
+        #expect(label.numberOfLines == (edge.axis == .vertical ? 1 : 0))
         #expect(label.transform == .identity)
         #expect(spinner.bounds.size == CGSize(width: 24, height: 24))
 
@@ -68,6 +68,40 @@ struct DefaultRefreshControlStyleTests {
             #expect(abs(spinnerFrame.maxY + 6 - labelFrame.minY) < 0.5)
             #expect(abs((spinnerFrame.minY + labelFrame.maxY) / 2 - style.view.bounds.midY) < 0.5)
         }
+    }
+
+    @Test(
+        "horizontal built-in copy wraps inside the 72pt extent instead of truncating",
+        arguments: [
+            (RefreshableEdge.leading, RefreshableRole.refresh, RefreshState.refreshing),
+            (.trailing, .loadMore, .noMoreData),
+        ]
+    )
+    func horizontalBuiltInCopyFits(
+        edge: RefreshableEdge,
+        role: RefreshableRole,
+        state: RefreshState
+    ) throws {
+        let style = DefaultRefreshControlStyle(
+            edge: edge,
+            role: role,
+            textConfiguration: RefreshableTextConfiguration()
+        )
+        let label = try #require(style.view.firstDefaultSubview(of: UILabel.self))
+
+        style.view.frame = CGRect(x: 0, y: 0, width: style.extent, height: 320)
+        style.update(state: state, progress: 1)
+        style.view.layoutIfNeeded()
+
+        let fittingSize = label.sizeThatFits(
+            CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)
+        )
+
+        #expect(style.extent == 72)
+        #expect(label.numberOfLines == 0)
+        #expect(label.bounds.width <= style.extent)
+        #expect(fittingSize.width <= label.bounds.width + 0.5)
+        #expect(fittingSize.height > label.font.lineHeight)
     }
 
     @Test("spinner maps every state and honors Reduce Motion")
@@ -126,6 +160,40 @@ struct DefaultRefreshControlStyleTests {
         reducedMotionStyle.update(state: .refreshing, progress: 0)
         #expect(reducedMotionSpinner.currentProgress == 1)
         #expect(reducedMotionSpinner.isSpinAnimationActive == false)
+    }
+
+    @Test("Reduce Motion changes update an already-refreshing spinner")
+    func liveReduceMotionChanges() throws {
+        var environment = DefaultRefreshStyleAccessibilityEnvironment(
+            isReduceMotionEnabled: false,
+            isReduceTransparencyEnabled: false
+        )
+        let notificationCenter = NotificationCenter()
+        let style = DefaultRefreshControlStyle(
+            edge: .top,
+            role: .refresh,
+            textConfiguration: nil,
+            accessibilityEnvironmentProvider: { environment },
+            accessibilityNotificationCenter: notificationCenter
+        )
+        let spinner = try #require(style.view.firstDefaultSubview(of: SegmentedRefreshSpinnerView.self))
+
+        style.update(state: .refreshing, progress: 0)
+        #expect(spinner.isSpinAnimationActive)
+
+        environment.isReduceMotionEnabled = true
+        notificationCenter.post(
+            name: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil
+        )
+        #expect(spinner.isSpinAnimationActive == false)
+
+        environment.isReduceMotionEnabled = false
+        notificationCenter.post(
+            name: UIAccessibility.reduceMotionStatusDidChangeNotification,
+            object: nil
+        )
+        #expect(spinner.isSpinAnimationActive)
     }
 
     @Test(

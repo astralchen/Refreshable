@@ -295,7 +295,7 @@ Refreshable/
 
 ## 11. 测试覆盖
 
-192 个测试用例，11 个 Suite：
+194 个测试用例，11 个 Suite：
 
 | Suite | 数量 | 覆盖点 |
 |-------|------|--------|
@@ -303,7 +303,7 @@ Refreshable/
 | RefreshableOptions | 7 | 默认值、自定义配置、overlay、placement、文本配置 |
 | DefaultTopRefreshStyle | 7 | extent、子视图、全状态 update、文案、Dynamic Type、Reduce Motion |
 | DefaultBottomLoadMoreStyle | 5 | extent、全状态 update、文案、Reduce Transparency |
-| DefaultRefreshControlStyle | 8 | 四方向无文案布局、内置文案、状态映射、覆盖/隐藏规则、无障碍、动态颜色 |
+| DefaultRefreshControlStyle | 10 | 四方向无文案布局、横向文案防截断、内置文案、状态映射、实时 Reduce Motion、覆盖/隐藏规则、无障碍、动态颜色 |
 | Custom Refresh Styles | 21 | Video、System Native、Taiji、Kinetic 的结构、状态和视觉行为 |
 | RefreshComponent 基类 | 9 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、`@Sendable` action 存储、自动结束 |
 | EdgeRefreshComponent | 29 | leading/trailing、RTL、安全区、placement、overlay、自动触发、noMoreData、多 edge 隔离 |
