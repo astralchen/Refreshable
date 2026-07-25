@@ -67,6 +67,35 @@ public struct RefreshablePlacement: Equatable {
     }
 }
 
+/// 刷新组件各状态的可选文本配置。
+public struct RefreshableTextConfiguration: Sendable, Equatable {
+    public var idle: String?
+    public var pulling: String?
+    public var triggered: String?
+    public var refreshing: String?
+    public var ending: String?
+    public var noMoreData: String?
+    public var accessibilityLabel: String?
+
+    public init(
+        idle: String? = nil,
+        pulling: String? = nil,
+        triggered: String? = nil,
+        refreshing: String? = nil,
+        ending: String? = nil,
+        noMoreData: String? = nil,
+        accessibilityLabel: String? = nil
+    ) {
+        self.idle = idle
+        self.pulling = pulling
+        self.triggered = triggered
+        self.refreshing = refreshing
+        self.ending = ending
+        self.noMoreData = noMoreData
+        self.accessibilityLabel = accessibilityLabel
+    }
+}
+
 /// 一组用于配置刷新和加载更多行为的选项。
 public struct RefreshableOptions {
     /// 自动触发刷新或加载更多的边缘距离配置。
@@ -125,6 +154,9 @@ public struct RefreshableOptions {
     /// 时显示在最后一屏之后。
     public var overlayAnchor: RefreshableOverlayAnchor
 
+    /// 刷新组件各状态的可选文本配置。
+    public var textConfiguration: RefreshableTextConfiguration?
+
     /// 状态变化时在主线程调用的闭包。
     ///
     /// 安装组件时对样式执行的初始 `idle` 更新不会触发此闭包。
@@ -142,6 +174,7 @@ public struct RefreshableOptions {
     ///   - placement: 样式视觉视图在组件宿主区域内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
     ///   - overlayAnchor: 浮层刷新视图的锚定方式。
+    ///   - textConfiguration: 刷新组件各状态的可选文本配置。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
         triggerOffset: CGFloat? = nil,
@@ -152,6 +185,7 @@ public struct RefreshableOptions {
         placement: RefreshablePlacement = RefreshablePlacement(),
         presentation: RefreshablePresentation = .contentInset,
         overlayAnchor: RefreshableOverlayAnchor = .viewport,
+        textConfiguration: RefreshableTextConfiguration? = nil,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
         self.triggerOffset = triggerOffset
@@ -162,6 +196,7 @@ public struct RefreshableOptions {
         self.placement = placement
         self.presentation = presentation
         self.overlayAnchor = overlayAnchor
+        self.textConfiguration = textConfiguration
         self.onStateChange = onStateChange
     }
 }

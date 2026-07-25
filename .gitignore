@@ -63,3 +63,5 @@ fastlane/test_output
 
 # Local Product Design / brainstorming previews
 .superpowers/
+
+.DS_Store

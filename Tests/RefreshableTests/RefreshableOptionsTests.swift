@@ -20,6 +20,7 @@ struct RefreshableOptionsTests {
         #expect(options.placement.crossAxisInset == 0)
         #expect(options.presentation == .contentInset)
         #expect(options.overlayAnchor == .viewport)
+        #expect(options.textConfiguration == nil)
         #expect(!storedPropertyNames(in: options).contains("keepsRefreshViewVisibleDuringAction"))
         #expect(!storedPropertyNames(in: options).contains("keepsRefreshViewVisibleAfterTrigger"))
     }
@@ -76,6 +77,42 @@ struct RefreshableOptionsTests {
         #expect(options.placement.contentSpacing == 12)
         #expect(options.placement.outerSpacing == 8)
         #expect(options.placement.crossAxisInset == 20)
+    }
+
+    @Test("文本配置可完整保存")
+    func textConfigurationStoresAllValues() {
+        let configuration = RefreshableTextConfiguration(
+            idle: "Idle",
+            pulling: "Pulling",
+            triggered: "Triggered",
+            refreshing: "Refreshing",
+            ending: "Ending",
+            noMoreData: "No more data",
+            accessibilityLabel: "Refresh control"
+        )
+        let options = RefreshableOptions(textConfiguration: configuration)
+
+        #expect(options.textConfiguration?.idle == "Idle")
+        #expect(options.textConfiguration?.pulling == "Pulling")
+        #expect(options.textConfiguration?.triggered == "Triggered")
+        #expect(options.textConfiguration?.refreshing == "Refreshing")
+        #expect(options.textConfiguration?.ending == "Ending")
+        #expect(options.textConfiguration?.noMoreData == "No more data")
+        #expect(options.textConfiguration?.accessibilityLabel == "Refresh control")
+    }
+
+    @Test("空文本配置所有值均为 nil 且相等")
+    func emptyTextConfigurationDefaultsToNilAndIsEquatable() {
+        let configuration = RefreshableTextConfiguration()
+
+        #expect(configuration.idle == nil)
+        #expect(configuration.pulling == nil)
+        #expect(configuration.triggered == nil)
+        #expect(configuration.refreshing == nil)
+        #expect(configuration.ending == nil)
+        #expect(configuration.noMoreData == nil)
+        #expect(configuration.accessibilityLabel == nil)
+        #expect(configuration == RefreshableTextConfiguration())
     }
 
     private func storedPropertyNames(in options: RefreshableOptions) -> [String] {
