@@ -1,3 +1,4 @@
+import Refreshable
 import UIKit
 
 /// `TaijiRefreshStyle` 使用的主题选项。
@@ -98,6 +99,42 @@ public struct TaijiRefreshPalette: Equatable, @unchecked Sendable {
 @MainActor
 public final class TaijiRefreshStyle: RefreshableStyle {
 
+    /// 刷新视图沿滚动轴占用的尺寸。
+    public let extent: CGFloat
+
+    /// 当前主题选项。
+    public private(set) var theme: TaijiRefreshTheme
+    private var renderers: [WeakTaijiRefreshRenderer] = []
+
+    /// 创建太极刷新样式。
+    public init(extent: CGFloat = 92, theme: TaijiRefreshTheme = .system) {
+        self.extent = extent
+        self.theme = theme
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        let renderer = TaijiRefreshRenderer(extent: extent, theme: theme)
+        renderers.removeAll { $0.value == nil }
+        renderers.append(WeakTaijiRefreshRenderer(renderer))
+        return renderer
+    }
+
+    /// 切换主题，并立即应用到此 factory 创建的所有存活 renderer。
+    public func setTheme(_ theme: TaijiRefreshTheme, animated: Bool = true) {
+        self.theme = theme
+        renderers.removeAll { $0.value == nil }
+        renderers.forEach { $0.value?.setTheme(theme, animated: animated) }
+    }
+}
+
+@MainActor
+protocol TaijiRefreshSystemAppearanceRendering: RefreshableStyleRenderer {
+    func applySystemAppearance(traitCollection: UITraitCollection)
+}
+
+@MainActor
+private final class TaijiRefreshRenderer: TaijiRefreshSystemAppearanceRendering {
+
     /// 安装到滚动视图中的根视图。
     public let view: UIView
 
@@ -114,7 +151,7 @@ public final class TaijiRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - extent: 刷新视图沿滚动轴占用的尺寸。
     ///   - theme: 初始主题选项。
-    public init(
+    init(
         extent: CGFloat = 92,
         theme: TaijiRefreshTheme = .system
     ) {
@@ -125,8 +162,12 @@ public final class TaijiRefreshStyle: RefreshableStyle {
         self.view.frame.size.height = extent
         self.view.isAccessibilityElement = true
         self.view.accessibilityLabel = "刷新"
+        self.taijiView.onColorAppearanceChange = { [weak self] in
+            guard let self else { return }
+            self.applySystemAppearance(traitCollection: self.taijiView.traitCollection)
+        }
         self.taijiView.apply(palette: Self.palette(for: theme, traitCollection: taijiView.traitCollection))
-        update(state: .idle, progress: 0)
+        render(state: .idle, pullProgress: 0)
     }
 
     /// 切换主题，不重置当前刷新状态。
@@ -134,10 +175,15 @@ public final class TaijiRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - theme: 新的主题选项。
     ///   - animated: 是否使用过渡动画应用新颜色。
-    public func setTheme(_ theme: TaijiRefreshTheme, animated: Bool = true) {
+    func setTheme(_ theme: TaijiRefreshTheme, animated: Bool = true) {
         self.theme = theme
         let palette = Self.palette(for: theme, traitCollection: taijiView.traitCollection)
         taijiView.apply(palette: palette, animated: animated)
+    }
+
+    func applySystemAppearance(traitCollection: UITraitCollection) {
+        guard theme == .system else { return }
+        taijiView.apply(palette: Self.palette(for: theme, traitCollection: traitCollection))
     }
 
     /// 根据当前状态更新太极刷新控件。
@@ -145,11 +191,15 @@ public final class TaijiRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - state: 当前刷新状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
-    public func update(state: RefreshState, progress: CGFloat) {
+    func render(_ context: RefreshableStyleContext) {
+        render(state: context.state, pullProgress: context.pullProgress)
+    }
+
+    private func render(state: RefreshState, pullProgress: CGFloat) {
         let palette = Self.palette(for: theme, traitCollection: taijiView.traitCollection)
         taijiView.render(
             state: state,
-            progress: state.normalizedProgress(fallback: progress),
+            progress: state.normalizedProgress(fallback: pullProgress),
             palette: palette,
             reduceMotion: UIAccessibility.isReduceMotionEnabled,
             reduceTransparency: UIAccessibility.isReduceTransparencyEnabled
@@ -192,7 +242,18 @@ public final class TaijiRefreshStyle: RefreshableStyle {
 }
 
 @MainActor
+private final class WeakTaijiRefreshRenderer {
+    weak var value: TaijiRefreshRenderer?
+
+    init(_ value: TaijiRefreshRenderer) {
+        self.value = value
+    }
+}
+
+@MainActor
 private final class TaijiRefreshView: UIView {
+
+    var onColorAppearanceChange: (@MainActor () -> Void)?
 
     private let glassBaseLayer = CAShapeLayer()
     private let mistLayer = CAGradientLayer()
@@ -209,6 +270,14 @@ private final class TaijiRefreshView: UIView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupLayers()
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) else {
+            return
+        }
+        onColorAppearanceChange?()
     }
 
     override func layoutSubviews() {

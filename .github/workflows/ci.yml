@@ -1,0 +1,87 @@
+name: Release Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: refreshable-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DERIVED_DATA_PATH: ${{ runner.temp }}/RefreshableDerivedData
+      DESTINATION: platform=iOS Simulator,name=iPhone 17 Pro,OS=latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+
+      - name: Core and styles unit tests
+        run: |
+          xcodebuild test \
+            -scheme Refreshable-Package \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -quiet
+
+      - name: iOS 13 generic Release build
+        run: |
+          xcodebuild build \
+            -scheme Refreshable-Package \
+            -destination "generic/platform=iOS" \
+            -configuration Release \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
+
+      - name: Public API baselines
+        run: bash Scripts/check-api-baselines.sh check
+
+      - name: Demo Swift 6 build-for-testing
+        run: |
+          xcodebuild build-for-testing \
+            -project Demo/Demo.xcodeproj \
+            -scheme Demo \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -quiet
+
+      - name: Pull request UI smoke tests
+        if: github.event_name == 'pull_request'
+        run: |
+          xcodebuild test-without-building \
+            -project Demo/Demo.xcodeproj \
+            -scheme Demo \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            -only-testing:DemoUITests/DemoUITests/testDefaultRefreshPreviewPhysicallyRefreshesAtEveryEdge \
+            -only-testing:DemoUITests/DemoUITests/testDefaultRefreshPreviewTextAndNoMoreDataControls \
+            -only-testing:DemoUITests/DemoUITests/testCustomRefreshStylesTriggerFromDemo \
+            -quiet
+
+      - name: Full Demo UI tests
+        if: github.event_name != 'pull_request'
+        run: |
+          xcodebuild test-without-building \
+            -project Demo/Demo.xcodeproj \
+            -scheme Demo \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -parallel-testing-enabled NO \
+            -maximum-parallel-testing-workers 1 \
+            -only-testing:DemoUITests/DemoUITests \
+            -quiet

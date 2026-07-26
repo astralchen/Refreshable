@@ -3,25 +3,11 @@ import UIKit
 /// 一种包含箭头、进度环、活动指示器和状态文案的紧凑系统风格刷新样式。
 @MainActor
 public final class SystemNativeRefreshStyle: RefreshableStyle {
-
-    /// 安装到滚动视图中的根视图。
-    public let view: UIView = UIView()
-
     /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
-
     private let texts: DefaultTopRefreshTexts
     private let configuration: DefaultRefreshStyleConfiguration
     private let lastUpdatedText: String
-    private let hintContainer = UIView()
-    private let hintArrowView = UIImageView()
-    private let hintDotView = UIView()
-    private let iconContainer = UIView()
-    private let spinnerView = SegmentedRefreshSpinnerView()
-    private let arrowView = UIImageView()
-    private let textStack = UIStackView()
-    private let label = UILabel()
-    private let subtitleLabel = UILabel()
 
     /// 创建系统风格刷新样式。
     ///
@@ -43,8 +29,48 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
         self.texts = texts
         self.configuration = configuration
         self.lastUpdatedText = lastUpdatedText
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        SystemNativeRefreshRenderer(
+            extent: extent,
+            texts: texts,
+            configuration: configuration,
+            lastUpdatedText: lastUpdatedText
+        )
+    }
+}
+
+@MainActor
+private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
+    let view = UIView()
+
+    private let extent: CGFloat
+    private let texts: DefaultTopRefreshTexts
+    private let configuration: DefaultRefreshStyleConfiguration
+    private let lastUpdatedText: String
+    private let hintContainer = UIView()
+    private let hintArrowView = UIImageView()
+    private let hintDotView = UIView()
+    private let iconContainer = UIView()
+    private let spinnerView = SegmentedRefreshSpinnerView()
+    private let arrowView = UIImageView()
+    private let textStack = UIStackView()
+    private let label = UILabel()
+    private let subtitleLabel = UILabel()
+
+    init(
+        extent: CGFloat,
+        texts: DefaultTopRefreshTexts,
+        configuration: DefaultRefreshStyleConfiguration,
+        lastUpdatedText: String
+    ) {
+        self.extent = extent
+        self.texts = texts
+        self.configuration = configuration
+        self.lastUpdatedText = lastUpdatedText
         setupUI()
-        update(state: .idle, progress: 0)
+        render(RefreshableStyleContext(state: .idle, pullProgress: 0))
     }
 
     /// 根据当前状态更新系统风格刷新控件。
@@ -52,12 +78,12 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - state: 当前刷新状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
-    public func update(state: RefreshState, progress: CGFloat) {
+    func render(_ context: RefreshableStyleContext) {
         label.textColor = currentTextColor()
         subtitleLabel.textColor = currentSecondaryTextColor()
         spinnerView.tintColor = currentAccentColor()
 
-        switch state {
+        switch context.state {
         case .idle:
             label.text = texts.idle
             updateAccessibilityValue(texts.idleAccessibilityValue)
@@ -72,7 +98,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
         case .pulling(let p):
             label.text = texts.pulling
             updateAccessibilityValue(texts.pullingAccessibilityValue)
-            spinnerView.setProgress(min(max(p, progress), 1), animated: false)
+            spinnerView.setProgress(min(max(p, context.pullProgress), 1), animated: false)
             spinnerView.stopSpinning()
             arrowView.isHidden = true
             arrowView.transform = .identity
@@ -83,7 +109,7 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
         case .triggered:
             label.text = texts.triggered
             updateAccessibilityValue(texts.triggeredAccessibilityValue)
-            spinnerView.setProgress(progress > 0 ? progress : 1, animated: true)
+            spinnerView.setProgress(context.pullProgress > 0 ? context.pullProgress : 1, animated: true)
             spinnerView.stopSpinning()
             arrowView.isHidden = true
             arrowView.transform = .identity

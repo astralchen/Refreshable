@@ -1,3 +1,4 @@
+import Refreshable
 import UIKit
 
 /// `KineticRefreshStyle` 使用的可见文案和 VoiceOver 文案。
@@ -138,22 +139,13 @@ public struct KineticRefreshPalette {
 @MainActor
 public final class KineticRefreshStyle: RefreshableStyle {
 
-    /// 安装到滚动视图中的根视图。
-    public let view: UIView
-
     /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
-
     private let texts: KineticRefreshTexts
     private let palette: KineticRefreshPalette
-    private let kineticView: KineticRefreshView
+    private let reduceMotionProvider: @MainActor () -> Bool
 
     /// 创建动感刷新样式。
-    ///
-    /// - Parameters:
-    ///   - extent: 刷新视图沿滚动轴占用的尺寸。
-    ///   - texts: 可见文案和 VoiceOver 文案配置。
-    ///   - palette: 颜色配置。
     public init(
         extent: CGFloat = 82,
         texts: KineticRefreshTexts = KineticRefreshTexts(),
@@ -162,13 +154,68 @@ public final class KineticRefreshStyle: RefreshableStyle {
         self.extent = extent
         self.texts = texts
         self.palette = palette
+        self.reduceMotionProvider = { UIAccessibility.isReduceMotionEnabled }
+    }
+
+    init(
+        extent: CGFloat = 82,
+        texts: KineticRefreshTexts = KineticRefreshTexts(),
+        palette: KineticRefreshPalette = KineticRefreshPalette(),
+        reduceMotionProvider: @escaping @MainActor () -> Bool
+    ) {
+        self.extent = extent
+        self.texts = texts
+        self.palette = palette
+        self.reduceMotionProvider = reduceMotionProvider
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        KineticRefreshRenderer(
+            extent: extent,
+            texts: texts,
+            palette: palette,
+            reduceMotionProvider: reduceMotionProvider
+        )
+    }
+}
+
+@MainActor
+private final class KineticRefreshRenderer: RefreshableStyleRenderer {
+
+    /// 安装到滚动视图中的根视图。
+    public let view: UIView
+
+    /// 刷新视图沿滚动轴占用的尺寸。
+    public let extent: CGFloat
+
+    private let texts: KineticRefreshTexts
+    private let palette: KineticRefreshPalette
+    private let reduceMotionProvider: @MainActor () -> Bool
+    private let kineticView: KineticRefreshView
+
+    /// 创建动感刷新样式。
+    ///
+    /// - Parameters:
+    ///   - extent: 刷新视图沿滚动轴占用的尺寸。
+    ///   - texts: 可见文案和 VoiceOver 文案配置。
+    ///   - palette: 颜色配置。
+    init(
+        extent: CGFloat = 82,
+        texts: KineticRefreshTexts = KineticRefreshTexts(),
+        palette: KineticRefreshPalette = KineticRefreshPalette(),
+        reduceMotionProvider: @escaping @MainActor () -> Bool
+    ) {
+        self.extent = extent
+        self.texts = texts
+        self.palette = palette
+        self.reduceMotionProvider = reduceMotionProvider
         self.kineticView = KineticRefreshView(frame: CGRect(x: 0, y: 0, width: 320, height: extent))
         self.view = kineticView
         self.view.frame.size.height = extent
         self.view.isAccessibilityElement = true
         self.view.accessibilityLabel = texts.accessibilityLabel
         kineticView.apply(palette: palette)
-        update(state: .idle, progress: 0)
+        render(state: .idle, pullProgress: 0)
     }
 
     /// 根据当前状态更新动感刷新控件。
@@ -176,14 +223,18 @@ public final class KineticRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - state: 当前刷新状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
-    public func update(state: RefreshState, progress: CGFloat) {
-        let normalizedProgress = state.normalizedKineticProgress(fallback: progress)
+    func render(_ context: RefreshableStyleContext) {
+        render(state: context.state, pullProgress: context.pullProgress)
+    }
+
+    private func render(state: RefreshState, pullProgress: CGFloat) {
+        let normalizedProgress = state.normalizedKineticProgress(fallback: pullProgress)
         kineticView.render(
             state: state,
             progress: normalizedProgress,
             text: visibleText(for: state, progress: normalizedProgress),
             palette: palette,
-            reduceMotion: UIAccessibility.isReduceMotionEnabled
+            reduceMotion: reduceMotionProvider()
         )
         view.accessibilityValue = accessibilityValue(for: state)
     }
@@ -341,8 +392,12 @@ private final class KineticRefreshView: UIView {
             layer.opacity = 1
             glyphContainer.transform = .identity
             pillView.transform = .identity
-            reduceMotion ? startPulse() : startSpin()
-            startTickDance()
+            if reduceMotion {
+                stopMotion()
+            } else {
+                startSpin()
+                startTickDance()
+            }
 
         case .ending:
             stopMotion()
@@ -536,18 +591,6 @@ private final class KineticRefreshView: UIView {
         animation.duration = 0.72
         animation.repeatCount = .infinity
         glyphContainer.layer.add(animation, forKey: "kineticSpin")
-    }
-
-    private func startPulse() {
-        glyphContainer.layer.removeAnimation(forKey: "kineticSpin")
-        guard glyphContainer.layer.animation(forKey: "kineticPulse") == nil else { return }
-        let animation = CABasicAnimation(keyPath: "transform.scale")
-        animation.fromValue = 0.94
-        animation.toValue = 1.05
-        animation.duration = 0.62
-        animation.autoreverses = true
-        animation.repeatCount = .infinity
-        glyphContainer.layer.add(animation, forKey: "kineticPulse")
     }
 
     private func startTickDance() {

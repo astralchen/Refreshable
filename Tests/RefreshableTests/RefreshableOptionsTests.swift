@@ -14,10 +14,7 @@ struct RefreshableOptionsTests {
         #expect(options.automaticallyEndRefreshing == true)
         #expect(options.allowsLoadMoreWhenContentFits == false)
         #expect(options.automaticTriggerOffset == .default)
-        #expect(options.placement == RefreshablePlacement())
-        #expect(options.placement.outerSpacing == 0)
-        #expect(options.placement.contentSpacing == 0)
-        #expect(options.placement.crossAxisInset == 0)
+        #expect(options.placement == nil)
         #expect(options.presentation == .contentInset)
         #expect(options.overlayAnchor == .viewport)
         #expect(options.textConfiguration == nil)
@@ -26,7 +23,7 @@ struct RefreshableOptionsTests {
     }
 
     @Test("可配置触发距离、动画时长、自动结束、内容不足一屏加载和展示方式")
-    func customValues() {
+    func customValues() throws {
         let options = RefreshableOptions(
             triggerOffset: 80,
             animationDuration: 0.4,
@@ -43,9 +40,10 @@ struct RefreshableOptionsTests {
         #expect(options.automaticallyEndRefreshing == false)
         #expect(options.allowsLoadMoreWhenContentFits == true)
         #expect(options.automaticTriggerOffset == .offset(120))
-        #expect(options.placement.contentSpacing == 12)
-        #expect(options.placement.outerSpacing == 8)
-        #expect(options.placement.crossAxisInset == 20)
+        let placement = try #require(options.placement)
+        #expect(placement.contentSpacing == 12)
+        #expect(placement.outerSpacing == 8)
+        #expect(placement.crossAxisInset == 20)
         #expect(options.presentation == .overlay(spacing: 12, locksContentOffset: true))
         #expect(options.overlayAnchor == .contentBoundary)
     }
@@ -58,25 +56,67 @@ struct RefreshableOptionsTests {
         #expect(options.overlayAnchor == .viewport)
     }
 
-    @Test("placement 默认不增加额外间距")
-    func placementDefaultsToNoExtraSpacing() {
+    @Test("placement 默认为 nil 以使用 style 默认值")
+    func placementDefaultsToStyleConfiguration() {
         let options = RefreshableOptions()
 
-        #expect(options.placement == RefreshablePlacement())
-        #expect(options.placement.outerSpacing == 0)
-        #expect(options.placement.contentSpacing == 0)
-        #expect(options.placement.crossAxisInset == 0)
+        #expect(options.placement == nil)
     }
 
     @Test("placement 可配置刷新轴间距、外侧间距和交叉轴 inset")
-    func placementStoresContentSpacingOuterSpacingAndCrossAxisInset() {
+    func placementStoresContentSpacingOuterSpacingAndCrossAxisInset() throws {
         let options = RefreshableOptions(
             placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20)
         )
 
-        #expect(options.placement.contentSpacing == 12)
-        #expect(options.placement.outerSpacing == 8)
-        #expect(options.placement.crossAxisInset == 20)
+        let placement = try #require(options.placement)
+        #expect(placement.contentSpacing == 12)
+        #expect(placement.outerSpacing == 8)
+        #expect(placement.crossAxisInset == 20)
+    }
+
+    @Test("统一解析清理非法尺寸、间距、动画和自动触发距离")
+    func resolvedOptionsSanitizeInvalidValues() {
+        let resolved = ResolvedRefreshableOptions(
+            options: RefreshableOptions(
+                triggerOffset: .infinity,
+                animationDuration: -.infinity,
+                automaticTriggerOffset: .offset(-1),
+                placement: RefreshablePlacement(
+                    contentSpacing: -2,
+                    outerSpacing: .nan,
+                    crossAxisInset: .infinity
+                ),
+                presentation: .overlay(spacing: -.infinity, locksContentOffset: true)
+            ),
+            styleExtent: -.infinity,
+            styleTriggerOffset: 0,
+            stylePlacement: RefreshablePlacement(contentSpacing: 5, outerSpacing: 6, crossAxisInset: 7)
+        )
+
+        #expect(resolved.extent == 1)
+        #expect(resolved.triggerOffset == 1)
+        #expect(resolved.placement == RefreshablePlacement())
+        #expect(resolved.animationDuration == 0)
+        #expect(resolved.automaticTriggerOffset == nil)
+        #expect(resolved.presentation == .overlay(spacing: 0, locksContentOffset: true))
+    }
+
+    @Test("未指定 placement 时采用并清理 style placement")
+    func resolvedOptionsUseStylePlacement() {
+        let resolved = ResolvedRefreshableOptions(
+            options: RefreshableOptions(),
+            styleExtent: 54,
+            styleTriggerOffset: 44,
+            stylePlacement: RefreshablePlacement(contentSpacing: 3, outerSpacing: 8, crossAxisInset: 4)
+        )
+
+        #expect(resolved.extent == 54)
+        #expect(resolved.triggerOffset == 44)
+        #expect(
+            resolved.placement
+                == RefreshablePlacement(contentSpacing: 3, outerSpacing: 8, crossAxisInset: 4)
+        )
     }
 
     @Test("文本配置可完整保存")

@@ -22,7 +22,7 @@ struct UIScrollViewExtensionTests {
         let style = MockStyle()
         scrollView.refreshable(style: style) { }
         #expect(scrollView.headerComponent != nil)
-        #expect(scrollView.headerComponent?.style === style)
+        #expect((scrollView.headerComponent?.style as? MockStyle) === style)
     }
 
     @Test("重复调用 refreshable 替换旧组件")
@@ -37,7 +37,7 @@ struct UIScrollViewExtensionTests {
         let second = scrollView.headerComponent
 
         #expect(first !== second)
-        #expect(scrollView.headerComponent?.style === style2)
+        #expect((scrollView.headerComponent?.style as? MockStyle) === style2)
         // 旧 style view 应已从 superview 移除
         #expect(style1.view.superview == nil)
     }
@@ -62,7 +62,7 @@ struct UIScrollViewExtensionTests {
 
         #expect(style1.view.superview == nil)
         #expect(scrollView.contentInset.top == 20)
-        #expect(scrollView.headerComponent?.originalInset.top == 20)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.top == 20)
     }
 
     @Test("beginRefreshing 转发到 headerComponent")
@@ -102,10 +102,12 @@ struct UIScrollViewExtensionTests {
         ) {}
 
         let component = scrollView.component(for: .leading)
-        #expect(component?.options.triggerOffset == 54)
-        #expect(component?.options.placement.outerSpacing == 8)
+        #expect(component?.options.triggerOffset == nil)
+        #expect(component?.resolvedOptions.triggerOffset == 54)
+        #expect(component?.options.placement == nil)
+        #expect(component?.resolvedOptions.placement.outerSpacing == 8)
         #expect(component?.style.extent == 54)
-        let styleView = try #require(component?.style.view)
+        let styleView = try #require(component?.renderer.view)
         let hostView = try #require(styleView.superview)
         #expect(hostView.frame == CGRect(x: -62, y: 0, width: 844, height: 390))
         #expect(styleView.frame == CGRect(x: 8, y: 0, width: 54, height: 390))
@@ -124,18 +126,18 @@ struct UIScrollViewExtensionTests {
                 edge: edge,
                 options: RefreshableOptions(textConfiguration: RefreshableTextConfiguration(idle: "Refresh"))
             ) {}
-            let refreshStyle = refreshScrollView.component(for: edge)?.style as? DefaultRefreshControlStyle
-            #expect(refreshStyle != nil)
-            #expect(refreshStyle?.view.firstDefaultRouteLabel?.text == "Refresh")
+            let refreshComponent = refreshScrollView.component(for: edge)
+            #expect(refreshComponent?.style is DefaultRefreshControlStyle)
+            #expect(refreshComponent?.renderer.view.firstDefaultRouteLabel?.text == "Refresh")
 
             let loadMoreScrollView = UIScrollView()
             loadMoreScrollView.loadMoreable(
                 edge: edge,
                 options: RefreshableOptions(textConfiguration: RefreshableTextConfiguration(idle: "Load"))
             ) {}
-            let loadMoreStyle = loadMoreScrollView.component(for: edge)?.style as? DefaultRefreshControlStyle
-            #expect(loadMoreStyle != nil)
-            #expect(loadMoreStyle?.view.firstDefaultRouteLabel?.text == "Load")
+            let loadMoreComponent = loadMoreScrollView.component(for: edge)
+            #expect(loadMoreComponent?.style is DefaultRefreshControlStyle)
+            #expect(loadMoreComponent?.renderer.view.firstDefaultRouteLabel?.text == "Load")
         }
     }
 
@@ -151,8 +153,8 @@ struct UIScrollViewExtensionTests {
         scrollView.refreshable(edge: .leading, style: refreshStyle, options: options) {}
         scrollView.loadMoreable(edge: .trailing, style: loadMoreStyle, options: options) {}
 
-        #expect(scrollView.component(for: .leading)?.style === refreshStyle)
-        #expect(scrollView.component(for: .trailing)?.style === loadMoreStyle)
+        #expect((scrollView.component(for: .leading)?.style as? MockStyle) === refreshStyle)
+        #expect((scrollView.component(for: .trailing)?.style as? MockStyle) === loadMoreStyle)
     }
 
     @Test("endRefreshing 转发到 headerComponent")
@@ -196,7 +198,7 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         scrollView.loadMoreable(style: style) { }
-        #expect(scrollView.footerComponent?.style === style)
+        #expect((scrollView.footerComponent?.style as? MockStyle) === style)
     }
 
     @Test("重复调用 loadMoreable 替换旧组件")
@@ -208,7 +210,7 @@ struct UIScrollViewExtensionTests {
         let style2 = MockStyle()
         scrollView.loadMoreable(style: style2) { }
 
-        #expect(scrollView.footerComponent?.style === style2)
+        #expect((scrollView.footerComponent?.style as? MockStyle) === style2)
         #expect(style1.view.superview == nil)
     }
 
@@ -233,7 +235,7 @@ struct UIScrollViewExtensionTests {
 
         #expect(style1.view.superview == nil)
         #expect(scrollView.contentInset.bottom == 12)
-        #expect(scrollView.footerComponent?.originalInset.bottom == 12)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
     }
 
     @Test("noMoreData 状态替换 footer 会恢复 bottom inset")
@@ -258,7 +260,7 @@ struct UIScrollViewExtensionTests {
 
         #expect(style1.view.superview == nil)
         #expect(scrollView.contentInset.bottom == 12)
-        #expect(scrollView.footerComponent?.originalInset.bottom == 12)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
     }
 
     @Test("beginLoadingMore 转发到 footerComponent")
@@ -312,6 +314,73 @@ struct UIScrollViewExtensionTests {
         scrollView.loadMoreable { }
         scrollView.noMoreData()
         #expect(scrollView.footerComponent?.state == .noMoreData)
+    }
+
+    @Test("默认无文案 noMoreData 不保留不可见的 bottom inset")
+    func defaultNoTextNoMoreDataDoesNotReserveInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.loadMoreable(
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                placement: RefreshablePlacement(contentSpacing: 6)
+            )
+        ) {}
+
+        scrollView.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 72)
+
+        scrollView.noMoreData()
+
+        #expect(scrollView.loadMoreState == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 12)
+        #expect(scrollView.contentOffset.y == 1345)
+    }
+
+    @Test("显式隐藏 noMoreData 文案不保留不可见的 bottom inset")
+    func emptyNoMoreDataTextDoesNotReserveInset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.loadMoreable(
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                placement: RefreshablePlacement(contentSpacing: 6),
+                textConfiguration: RefreshableTextConfiguration(noMoreData: "")
+            )
+        ) {}
+
+        scrollView.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 72)
+
+        scrollView.noMoreData()
+
+        #expect(scrollView.loadMoreState == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 12)
+    }
+
+    @Test("开启默认文案时 noMoreData 继续保留终态区域")
+    func configuredNoMoreDataTextKeepsInsetVisible() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.loadMoreable(
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                placement: RefreshablePlacement(contentSpacing: 6),
+                textConfiguration: RefreshableTextConfiguration()
+            )
+        ) {}
+
+        scrollView.beginLoadingMore()
+        scrollView.noMoreData()
+
+        #expect(scrollView.loadMoreState == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 72)
     }
 
     @Test("resetNoMoreData 转发到 footerComponent")

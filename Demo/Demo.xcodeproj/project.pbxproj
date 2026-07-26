@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		333D5EE02F7C102A0029B36C /* Refreshable in Frameworks */ = {isa = PBXBuildFile; productRef = 333D5EDF2F7C102A0029B36C /* Refreshable */; };
+		333D5EE22F7C102A0029B36C /* RefreshableStyles in Frameworks */ = {isa = PBXBuildFile; productRef = 333D5EE12F7C102A0029B36C /* RefreshableStyles */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				333D5EE02F7C102A0029B36C /* Refreshable in Frameworks */,
+				333D5EE22F7C102A0029B36C /* RefreshableStyles in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +111,7 @@
 			name = Demo;
 			packageProductDependencies = (
 				333D5EDF2F7C102A0029B36C /* Refreshable */,
+				333D5EE12F7C102A0029B36C /* RefreshableStyles */,
 			);
 			productName = Demo;
 			productReference = 333D5EC62F7C0FFC0029B36C /* Demo.app */;
@@ -248,7 +251,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -279,7 +282,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -344,6 +347,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -399,6 +403,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -417,7 +422,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Demo;
 			};
@@ -437,7 +442,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Demo;
 			};
@@ -486,6 +491,10 @@
 		333D5EDF2F7C102A0029B36C /* Refreshable */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Refreshable;
+		};
+		333D5EE12F7C102A0029B36C /* RefreshableStyles */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RefreshableStyles;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

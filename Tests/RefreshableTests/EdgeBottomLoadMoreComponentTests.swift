@@ -114,8 +114,20 @@ struct EdgeBottomLoadMoreComponentTests {
 
     @Test("beginLoadingMore: ending 时忽略")
     func beginLoadingMoreWhenEnding() {
-        let (_, component, style) = makeSUT()
-        component.setState(.ending)
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        let style = MockStyle()
+        let component = makeBottomLoadMoreComponent(
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 60,
+                automaticallyEndRefreshing: false
+            )
+        )
+        component.scrollView = scrollView
+        component.beginLoadingMore()
+        component.endRefreshing()
+        #expect(component.state == .ending)
         style.reset()
 
         component.beginLoadingMore()
@@ -187,14 +199,64 @@ struct EdgeBottomLoadMoreComponentTests {
         component.scrollView = scrollView
 
         component.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 66)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
         component.setNoMoreData()
 
         #expect(component.state == .noMoreData)
         #expect(scrollView.contentInset.bottom == 66)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
 
         component.resetNoMoreData()
 
+        #expect(component.state == .idle)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).contribution(for: component) == 0)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
         #expect(scrollView.contentInset.bottom == 12)
+    }
+
+    @Test("非边界进入 noMoreData 只增加自身 inset，不移动用户位置")
+    func noMoreDataAwayFromBoundaryDoesNotMoveContentOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.contentOffset.y = 320
+        let component = makeBottomLoadMoreComponent(
+            style: MockStyle(extent: 54),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticTriggerOffset: nil
+            )
+        )
+        component.scrollView = scrollView
+
+        component.setNoMoreData()
+
+        #expect(component.state == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 66)
+        #expect(scrollView.contentOffset.y == 320)
+    }
+
+    @Test("位于边界进入 noMoreData 时同步露出终态")
+    func noMoreDataAtBoundaryRevealsTerminalState() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 2000)
+        scrollView.contentInset.bottom = 12
+        scrollView.contentOffset.y = 1345
+        let component = makeBottomLoadMoreComponent(
+            style: MockStyle(extent: 54),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticTriggerOffset: nil
+            )
+        )
+        component.scrollView = scrollView
+
+        component.setNoMoreData()
+
+        #expect(component.state == .noMoreData)
+        #expect(scrollView.contentInset.bottom == 66)
+        #expect(scrollView.contentOffset.y == 1399)
     }
 
     @Test("overlay contentBoundary 底部结束刷新不占用 contentSize")
@@ -269,17 +331,17 @@ struct EdgeBottomLoadMoreComponentTests {
 
     @Test("进入 refreshing 后 contentInset.bottom 增加")
     func insetOnRefreshing() {
-        let (_, component, _) = makeSUT()
-        component.stateDidChange(from: .triggered, to: .refreshing)
-        // 验证调用不 crash 即可
+        let (scrollView, component, _) = makeSUT()
+        component.beginLoadingMore()
+        #expect(scrollView.contentInset.bottom == 54)
     }
 
-    @Test("resetInset 恢复 bottom inset")
-    func resetInset() {
+    @Test("移除 contribution 恢复 bottom baseline")
+    func removesInsetContribution() {
         let (scrollView, component, _) = makeSUT()
-        scrollView.contentInset.bottom = 100
-        component.originalInset = UIEdgeInsets(top: 0, left: 0, bottom: 10, right: 0)
-        component.resetInset(for: scrollView)
+        scrollView.contentInset.bottom = 10
+        component.beginLoadingMore()
+        component.removeInset(animated: false) {}
         #expect(scrollView.contentInset.bottom == 10)
     }
 
@@ -297,7 +359,7 @@ struct EdgeBottomLoadMoreComponentTests {
         scrollView.contentInset.bottom = 30
         component.beginLoadingMore()
 
-        #expect(component.originalInset.bottom == 30)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 30)
         #expect(scrollView.contentInset.bottom == 84)
     }
 
@@ -514,7 +576,7 @@ struct EdgeBottomLoadMoreComponentTests {
 
         component.beginLoadingMore()
 
-        #expect(component.originalInset.bottom == 16)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 16)
         #expect(scrollView.contentInset.bottom == 70)
     }
 

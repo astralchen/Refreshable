@@ -51,9 +51,12 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 
 ### 3.4 自定义 UI
 
-- 提供 `RefreshableStyle` 协议，实现即可替换默认视图
-- 协议要求：`view`（UIView）、`extent`（CGFloat）、`update(state:progress:)`
+- 提供 `RefreshableStyle` 配置/工厂协议和 `RefreshableStyleRenderer` 渲染协议
+- 同一 style 每次安装必须创建独立 renderer 和 UIView，避免多 scroll view 共享渲染状态
+- `RefreshableStyleContext` 由组件创建并提供状态与归一化拖动进度
 - 通过 `scrollView.refreshable(style:action:)` 传入自定义样式
+- 核心产品 `Refreshable` 保留默认 spinner、DefaultTop、DefaultBottom 和 SystemNative
+- Taiji、Kinetic、Video 展示型样式由独立产品 `RefreshableStyles` 提供，并依赖核心产品
 
 ### 3.5 默认 UI
 
@@ -118,6 +121,8 @@ RefreshableOptions(
     animationDuration: 0.25,
     automaticallyEndRefreshing: true,
     allowsLoadMoreWhenContentFits: false,
+    automaticTriggerOffset: .default,
+    placement: nil,
     presentation: .contentInset, // 或 .overlay(spacing: 12, locksContentOffset: true)
     textConfiguration: nil,
     onStateChange: nil
@@ -179,12 +184,27 @@ LoadMore: idle → pulling(progress) → triggered → refreshing → ending →
 
 ```swift
 @MainActor
-public protocol RefreshableStyle: AnyObject {
-    var view: UIView { get }
+public protocol RefreshableStyle {
     var extent: CGFloat { get }
-    func update(state: RefreshState, progress: CGFloat)
+    var defaultTriggerOffset: CGFloat { get }
+    var defaultPlacement: RefreshablePlacement { get }
+    func makeRenderer() -> any RefreshableStyleRenderer
+}
+
+@MainActor
+public protocol RefreshableStyleRenderer: AnyObject {
+    var view: UIView { get }
+    func render(_ context: RefreshableStyleContext)
+}
+
+public struct RefreshableStyleContext: Sendable, Equatable {
+    public let state: RefreshState
+    public let pullProgress: CGFloat
 }
 ```
+
+`defaultTriggerOffset` 默认等于 `extent`，`defaultPlacement` 默认是 `.init()`。
+`RefreshableOptions.placement` 默认 `nil`，表示采用 style 默认 placement；显式 `.init()` 表示真正全零布局。
 
 ## 7. 视图可见性（借鉴 UIRefreshControl）
 
@@ -233,19 +253,22 @@ scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
 ```
 UIScrollView+Refreshable.swift    公开 API（associated object 持有 edge store）
         │
-        └── EdgeRefreshComponent      edge/role 几何、inset 和触发逻辑
-                  │
-            RefreshComponent          基类（状态机 + KVO + task 管理）
-                  │
-            RefreshableStyle          样式协议（默认 / 自定义）
+        └── EdgeRefreshComponent      UIKit 事件、几何与副作用适配
+              ├── RefreshEventReducer         纯 Swift 状态与 generation
+              ├── RefreshableInsetCoordinator scroll-view 级增量 inset
+              ├── EdgeRefreshGeometry         四方向纯几何
+              └── RefreshableStyleRenderer    独立 UIView 渲染器
 ```
 
 **关键实现细节：**
 
 - **关联存储**：`objc_setAssociatedObject` 存放 edge store，scrollView 强引用 component，component weak 引用 scrollView
-- **KVO 监听**：`contentOffset`（滚动）、`contentSize`（bottom/trailing 位置跟随）、`panGestureRecognizer.state`（松手检测）
-- **inset 管理**：记录原始 `contentInset`，只修改和恢复当前 edge 对应的方向
-- **线程安全**：所有组件安装、状态控制和样式更新标记 `@MainActor`；action 闭包为 SwiftUI 风格的 `@Sendable () async -> Void`，需要更新 UI 时由调用方显式回到主 actor
+- **事件 Reducer**：拖动、手势结束/取消、自动/手动触发、action/animation completion、noMoreData、启停和挂载都经 reducer；旧 generation completion 不得修改新状态
+- **固定执行顺序**：提交状态 → inset/布局副作用 → renderer/可见性 → `onStateChange` → generation 校验后启动 action
+- **KVO 监听**：`contentOffset`、`contentSize`、`bounds`、`contentInset` 和 `panGestureRecognizer.state`；host 在 layout、安全区、trait、RTL 和几何变化时失效
+- **inset 管理**：coordinator 维护 baseline 和逐 owner/物理边贡献；外部 inset 修改更新 baseline，组件移除只减去自身贡献
+- **生命周期**：替换、移除、禁用会取消任务并使旧命令失效；renderer 和 host 闭包可释放。Demo 与 README 的存储闭包统一弱捕获
+- **线程安全**：options、placement 和自动触发配置为 `Sendable`；安装、状态控制、renderer 和 `onStateChange` 为 `@MainActor`，action 为 `@Sendable () async -> Void`
 
 ## 10. 文件结构
 
@@ -257,10 +280,15 @@ Refreshable/
 │   │   ├── RefreshState.swift
 │   │   ├── RefreshableEdge.swift
 │   │   ├── RefreshableStyle.swift
-│   │   └── RefreshableOptions.swift
+│   │   ├── RefreshableOptions.swift
+│   │   ├── ResolvedRefreshableOptions.swift
+│   │   ├── RefreshEventReducer.swift
+│   │   ├── RefreshableInsetCoordinator.swift
+│   │   └── EdgeRefreshGeometry.swift
 │   ├── Components/
 │   │   ├── RefreshComponent.swift
-│   │   └── EdgeRefreshComponent.swift
+│   │   ├── EdgeRefreshComponent.swift
+│   │   └── RefreshHostView.swift
 │   ├── Extensions/
 │   │   └── UIScrollView+Refreshable.swift
 │   └── Styles/
@@ -272,19 +300,13 @@ Refreshable/
 │       ├── Shared/
 │       │   └── SegmentedRefreshSpinnerView.swift
 │       └── Custom/
-│           ├── SystemNativeRefreshStyle.swift
-│           ├── TaijiRefreshStyle.swift
-│           └── KineticRefreshStyle.swift
+│           └── SystemNativeRefreshStyle.swift
+├── Sources/RefreshableStyles/
+│   ├── TaijiRefreshStyle.swift
+│   ├── KineticRefreshStyle.swift
+│   └── VideoRefreshStyles.swift
 ├── Tests/RefreshableTests/
-│   ├── MockStyle.swift
-│   ├── RefreshStateTests.swift
-│   ├── RefreshableOptionsTests.swift
-│   ├── DefaultStyleTests.swift
-│   ├── RefreshComponentTests.swift
-│   ├── EdgeRefreshComponentTests.swift
-│   ├── EdgeTopRefreshComponentTests.swift
-│   ├── EdgeBottomLoadMoreComponentTests.swift
-│   └── UIScrollViewExtensionTests.swift
+├── Tests/RefreshableStylesTests/
 └── Demo/
     └── Demo/
         ├── TableViewDemoController.swift
@@ -293,23 +315,15 @@ Refreshable/
         └── DefaultRefreshControlPreviewController.swift
 ```
 
-## 11. 测试覆盖
+## 11. 测试与发布门禁
 
-195 个测试用例，11 个 Suite：
-
-| Suite | 数量 | 覆盖点 |
-|-------|------|--------|
-| RefreshState | 2 | isRefreshing、Equatable |
-| RefreshableOptions | 7 | 默认值、自定义配置、overlay、placement、文本配置 |
-| DefaultTopRefreshStyle | 7 | extent、子视图、全状态 update、文案、Dynamic Type、Reduce Motion |
-| DefaultBottomLoadMoreStyle | 5 | extent、全状态 update、文案、Reduce Transparency |
-| DefaultRefreshControlStyle | 10 | 四方向无文案布局、横向文案防截断、内置文案、状态映射、实时 Reduce Motion、覆盖/隐藏规则、无障碍、动态颜色 |
-| Custom Refresh Styles | 21 | Video、System Native、Taiji、Kinetic 的结构、状态和视觉行为 |
-| RefreshComponent 基类 | 9 | originalInset、setState 去重、scrollView 替换、完整流转、状态回调、`@Sendable` action 存储、自动结束 |
-| EdgeRefreshComponent | 30 | leading/trailing、双轴可见区域跟随、RTL、安全区、placement、overlay、自动触发、noMoreData、多 edge 隔离 |
-| EdgeRefreshComponent .top refresh | 30 | 安装、状态机、endDragging、防重入、手动触发/结束、inset、自动触发、action、取消任务 |
-| EdgeRefreshComponent .bottom loadMore | 38 | 安装、状态机、防重入、noMoreData/reset、inset、自动触发、contentSize、短内容加载 |
-| UIScrollView+Refreshable | 36 | 设置/替换/移除、八种默认路由、自定义样式隔离、action、手动控制、状态查询、启停及 UIKit 子类兼容 |
+- Reducer：完整状态流、progress 归零、ended/cancelled/failed、手动/自动触发、旧 generation、disable/detach/noMoreData
+- Inset：外部修改、活跃增量、多 owner 同边叠加、物理边切换和逐 owner 移除
+- Geometry：四个物理方向、reveal、host/renderer frame、安全区、bounds/contentSize/RTL 变化
+- Renderer：独立 UIView/状态、Taiji 多 renderer 主题同步、Reduce Motion 和动态颜色
+- 生命周期：controller、scroll view、component、renderer 可释放，存储闭包使用弱捕获
+- UI：四方向真实拖拽、默认无文案、内置文案、noMoreData/reset 和三套自定义样式
+- CI 使用官方 `macos-26`，执行核心/样式单测、iOS 13 generic Release 编译、Demo Swift 6 build-for-testing、UI smoke/full 测试和两产品 API baseline 检查
 
 ## 12. Demo 示例
 

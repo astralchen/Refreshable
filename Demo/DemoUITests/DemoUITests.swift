@@ -7,15 +7,14 @@
 
 import XCTest
 
+@MainActor
 final class DemoUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+        MainActor.assumeIsolated {
+            XCUIDevice.shared.orientation = .portrait
+        }
     }
 
     override func tearDownWithError() throws {
@@ -323,6 +322,47 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testGridLoadMoreUsesDefaultIndicatorWithoutCoveringCells() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["GridRefresh.UITestActionDuration"] = "30"
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+
+        let indicator = app.descendants(matching: .any)
+            .matching(identifier: "Refreshable.DefaultIndicator")
+            .firstMatch
+        for _ in 0..<4 where !indicator.exists {
+            collectionView.swipeUp()
+        }
+        XCTAssertTrue(
+            indicator.waitForExistence(timeout: 2),
+            "The loading-more indicator should be visible while the action is running"
+        )
+        XCTAssertEqual(indicator.value as? String, "正在加载")
+        XCTAssertFalse(app.staticTexts["正在加载..."].exists)
+        let indicatorFrame = indicator.frame
+        XCTAssertLessThanOrEqual(
+            indicatorFrame.maxY,
+            app.tabBars.firstMatch.frame.minY,
+            "The loading-more indicator must stay above the floating tab bar"
+        )
+        let overlappingCells = collectionView.cells.allElementsBoundByIndex.filter {
+            $0.frame.intersects(indicatorFrame)
+        }
+        XCTAssertTrue(
+            overlappingCells.isEmpty,
+            "The loading-more indicator must use its own space instead of covering grid cells"
+        )
+        addPreviewScreenshot(named: "网格-安全区域内加载更多", app: app)
+    }
+
+    @MainActor
     func testGridRefreshShowsNoMoreDataFooter() throws {
         let app = XCUIApplication()
         app.launch()
@@ -351,6 +391,22 @@ final class DemoUITests: XCTestCase {
         XCTAssertLessThan(title.frame.maxY, message.frame.minY)
         XCTAssertLessThanOrEqual(message.frame.maxY + 8, count.frame.minY)
         XCTAssertGreaterThan(footer.frame.height, 108)
+        let lastCellBottom = try XCTUnwrap(
+            collectionView.cells.allElementsBoundByIndex.map(\.frame.maxY).max()
+        )
+        let footerTopGap = footer.frame.minY - lastCellBottom
+        XCTAssertLessThanOrEqual(
+            footerTopGap,
+            8,
+            "No-more-data footer should stay close to the final row; actual gap: \(footerTopGap)"
+        )
+        let visibleBottom = app.tabBars.firstMatch.frame.minY
+        let footerBottomGap = visibleBottom - footer.frame.maxY
+        XCTAssertLessThanOrEqual(
+            footerBottomGap,
+            36,
+            "No-more-data footer should not keep an extra bottom inset; actual gap: \(footerBottomGap)"
+        )
         let noMoreDataTexts = app.staticTexts.matching(NSPredicate(format: "label == %@", "没有更多数据"))
         XCTAssertEqual(noMoreDataTexts.count, 1)
     }

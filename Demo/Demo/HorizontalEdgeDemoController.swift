@@ -248,9 +248,10 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
     }
 
     private func installEdgeControls() {
-        collectionView.refreshable(edge: .leading) {
+        collectionView.refreshable(edge: .leading) { [weak self] in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             await MainActor.run {
+                guard let self else { return }
                 self.page = 0
                 self.items = self.makeItems(start: self.currentContentStartIndex, count: 8)
                 self.collectionView.reloadData()
@@ -261,9 +262,10 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
         collectionView.loadMoreable(
             edge: .trailing,
             options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
-        ) {
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 800_000_000)
             await MainActor.run {
+                guard let self else { return }
                 self.page += 1
                 guard self.page < 3 else {
                     self.collectionView.noMoreData(edge: .trailing)

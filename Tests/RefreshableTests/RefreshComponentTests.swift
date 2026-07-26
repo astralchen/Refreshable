@@ -6,16 +6,19 @@ import UIKit
 @MainActor
 struct RefreshComponentTests {
 
-    // MARK: - originalInset
+    // MARK: - baseline inset
 
-    @Test("设置 scrollView 时记录 originalInset")
-    func capturesOriginalInset() {
+    @Test("设置 scrollView 时 coordinator 记录 baseline inset")
+    func capturesBaselineInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset = UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
         let style = MockStyle()
         let component = makeTopRefreshComponent(style: style)
         component.scrollView = scrollView
-        #expect(component.originalInset == UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0))
+        #expect(
+            RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset
+                == UIEdgeInsets(top: 44, left: 0, bottom: 34, right: 0)
+        )
     }
 
     // MARK: - setState 去重
@@ -150,6 +153,55 @@ struct RefreshComponentTests {
         #expect(await waitForState(.idle, in: component) == true)
     }
 
+    @Test("refreshing 回调重入结束后不会启动已失效 action")
+    func callbackReentrancyInvalidatesDeferredActionStart() async {
+        let holder = ComponentHolder()
+        let actionCounter = ActionCounter()
+        let component = makeTopRefreshComponent(
+            style: MockStyle(),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                onStateChange: { state in
+                    guard state == .refreshing else { return }
+                    holder.component?.endRefreshing()
+                }
+            ),
+            action: {
+                await actionCounter.increment()
+            }
+        )
+        holder.component = component
+        component.scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+
+        component.trigger()
+        try? await Task.sleep(nanoseconds: 30_000_000)
+
+        #expect(await actionCounter.value == 0)
+        #expect(component.state == .idle)
+    }
+
+    @Test("禁用后立即启用仍会完成当前 ending 动画")
+    func reenableDuringDisabledEndingReturnsToIdle() async {
+        let component = makeTopRefreshComponent(
+            style: MockStyle(),
+            options: RefreshableOptions(
+                animationDuration: 0.01,
+                automaticallyEndRefreshing: false
+            )
+        )
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        component.scrollView = scrollView
+
+        component.trigger()
+        component.setEnabled(false)
+        component.setEnabled(true)
+
+        #expect(await waitForState(.idle, in: component))
+        component.trigger()
+        #expect(component.state == .refreshing)
+    }
+
     private func makeTopRefreshComponent(
         style: MockStyle,
         options: RefreshableOptions = RefreshableOptions(),
@@ -170,4 +222,17 @@ private func waitForState(_ expectedState: RefreshState, in component: RefreshCo
 
 private func expectSendableAction(_ action: (@Sendable () async -> Void)?) {
     #expect(action != nil)
+}
+
+@MainActor
+private final class ComponentHolder {
+    weak var component: EdgeRefreshComponent?
+}
+
+private actor ActionCounter {
+    private(set) var value = 0
+
+    func increment() {
+        value += 1
+    }
 }

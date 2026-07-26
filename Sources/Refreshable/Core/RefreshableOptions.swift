@@ -44,7 +44,7 @@ extension RefreshablePresentation {
 }
 
 /// 控制刷新样式视觉视图在组件布局区域内的位置。
-public struct RefreshablePlacement: Equatable {
+public struct RefreshablePlacement: Sendable, Equatable {
     /// 刷新轴方向上，视觉控件与内容边缘之间的间距。
     public var contentSpacing: CGFloat
 
@@ -97,9 +97,9 @@ public struct RefreshableTextConfiguration: Sendable, Equatable {
 }
 
 /// 一组用于配置刷新和加载更多行为的选项。
-public struct RefreshableOptions {
+public struct RefreshableOptions: Sendable {
     /// 自动触发刷新或加载更多的边缘距离配置。
-    public enum AutomaticTriggerOffset: Equatable {
+    public enum AutomaticTriggerOffset: Sendable, Equatable {
         /// 使用组件的内置自动触发策略。
         ///
         /// 目前无配置的底部加载更多会在滚到底部时自动触发；其他方向默认不自动触发。
@@ -137,7 +137,7 @@ public struct RefreshableOptions {
     public var automaticTriggerOffset: AutomaticTriggerOffset?
 
     /// 组件宿主布局应用到样式视觉视图周围的位置配置。
-    public var placement: RefreshablePlacement
+    public var placement: RefreshablePlacement?
 
     /// 刷新视图的展示方式。
     ///
@@ -160,7 +160,7 @@ public struct RefreshableOptions {
     /// 状态变化时在主线程调用的闭包。
     ///
     /// 安装组件时对样式执行的初始 `idle` 更新不会触发此闭包。
-    public var onStateChange: (@MainActor (RefreshState) -> Void)?
+    public var onStateChange: (@MainActor @Sendable (RefreshState) -> Void)?
 
     /// 创建一组刷新行为配置。
     ///
@@ -182,11 +182,11 @@ public struct RefreshableOptions {
         automaticallyEndRefreshing: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
         automaticTriggerOffset: AutomaticTriggerOffset? = .default,
-        placement: RefreshablePlacement = RefreshablePlacement(),
+        placement: RefreshablePlacement? = nil,
         presentation: RefreshablePresentation = .contentInset,
         overlayAnchor: RefreshableOverlayAnchor = .viewport,
         textConfiguration: RefreshableTextConfiguration? = nil,
-        onStateChange: (@MainActor (RefreshState) -> Void)? = nil
+        onStateChange: (@MainActor @Sendable (RefreshState) -> Void)? = nil
     ) {
         self.triggerOffset = triggerOffset
         self.animationDuration = animationDuration

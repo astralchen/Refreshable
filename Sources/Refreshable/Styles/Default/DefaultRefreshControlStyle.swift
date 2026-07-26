@@ -1,22 +1,28 @@
 import UIKit
 
 @MainActor
-final class DefaultRefreshControlStyle: RefreshableStyle {
-
-    let view = UIView()
+final class DefaultRefreshControlStyle: RefreshableStyle, RefreshableNoMoreDataInsetProviding {
     let extent: CGFloat
-
     private let edge: RefreshableEdge
     private let role: RefreshableRole
     private let textConfiguration: RefreshableTextConfiguration?
     private let accessibilityEnvironmentProvider: @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment
     private let accessibilityNotificationCenter: NotificationCenter?
-    private let spinnerView = SegmentedRefreshSpinnerView()
-    private let label = UILabel()
-    private let contentStack = UIStackView()
-    private var reduceMotionObservation: DefaultRefreshControlNotificationObservation?
-    private var currentState: RefreshState = .idle
-    private var currentProgress: CGFloat = 0
+
+    var defaultTriggerOffset: CGFloat {
+        edge.axis == .horizontal ? 54 : extent
+    }
+
+    var defaultPlacement: RefreshablePlacement {
+        edge.axis == .horizontal
+            ? RefreshablePlacement(outerSpacing: 8)
+            : RefreshablePlacement()
+    }
+
+    var reservesInsetForNoMoreData: Bool {
+        guard let textConfiguration else { return false }
+        return textConfiguration.noMoreData != ""
+    }
 
     init(
         edge: RefreshableEdge,
@@ -38,17 +44,61 @@ final class DefaultRefreshControlStyle: RefreshableStyle {
             self.accessibilityEnvironmentProvider = accessibilityEnvironmentProvider ?? { .current }
             self.accessibilityNotificationCenter = accessibilityNotificationCenter
         }
+    }
+
+    func makeRenderer() -> any RefreshableStyleRenderer {
+        DefaultRefreshControlRenderer(
+            edge: edge,
+            role: role,
+            textConfiguration: textConfiguration,
+            extent: extent,
+            accessibilityEnvironmentProvider: accessibilityEnvironmentProvider,
+            accessibilityNotificationCenter: accessibilityNotificationCenter
+        )
+    }
+}
+
+@MainActor
+private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
+    let view = UIView()
+    private let edge: RefreshableEdge
+    private let role: RefreshableRole
+    private let textConfiguration: RefreshableTextConfiguration?
+    private let extent: CGFloat
+    private let accessibilityEnvironmentProvider: @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment
+    private let accessibilityNotificationCenter: NotificationCenter?
+    private let spinnerView = SegmentedRefreshSpinnerView()
+    private let label = UILabel()
+    private let contentStack = UIStackView()
+    private var reduceMotionObservation: DefaultRefreshControlNotificationObservation?
+    private var currentState: RefreshState = .idle
+    private var currentProgress: CGFloat = 0
+
+    init(
+        edge: RefreshableEdge,
+        role: RefreshableRole,
+        textConfiguration: RefreshableTextConfiguration?,
+        extent: CGFloat,
+        accessibilityEnvironmentProvider: @escaping @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment,
+        accessibilityNotificationCenter: NotificationCenter?
+    ) {
+        self.edge = edge
+        self.role = role
+        self.textConfiguration = textConfiguration
+        self.extent = extent
+        self.accessibilityEnvironmentProvider = accessibilityEnvironmentProvider
+        self.accessibilityNotificationCenter = accessibilityNotificationCenter
 
         setupUI()
         observeReduceMotionChanges()
-        update(state: .idle, progress: 0)
+        render(RefreshableStyleContext(state: .idle, pullProgress: 0))
     }
 
-    func update(state: RefreshState, progress: CGFloat) {
-        currentState = state
-        currentProgress = progress
-        updateText(for: state)
-        updateSpinner(for: state, progress: progress)
+    func render(_ context: RefreshableStyleContext) {
+        currentState = context.state
+        currentProgress = context.pullProgress
+        updateText(for: context.state)
+        updateSpinner(for: context.state, progress: context.pullProgress)
     }
 
     private func updateSpinner(for state: RefreshState, progress: CGFloat) {

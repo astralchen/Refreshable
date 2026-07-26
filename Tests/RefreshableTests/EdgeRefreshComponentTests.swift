@@ -182,8 +182,9 @@ struct EdgeRefreshComponentTests {
         scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
         let leadingStyle = MockStyle(extent: 54)
         let trailingStyle = MockStyle(extent: 54)
-        let leadingMargins = leadingStyle.view.layoutMargins
-        let trailingMargins = trailingStyle.view.layoutMargins
+        let preservedMargins = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        leadingStyle.rendererLayoutMargins = preservedMargins
+        trailingStyle.rendererLayoutMargins = preservedMargins
 
         scrollView.refreshable(
             edge: .leading,
@@ -203,8 +204,8 @@ struct EdgeRefreshComponentTests {
         #expect(trailingHost.frame == CGRect(x: 904, y: 0, width: 750, height: 390))
         #expect(leadingStyle.view.frame == CGRect(x: 0, y: 0, width: 54, height: 390))
         #expect(trailingStyle.view.frame == CGRect(x: 696, y: 0, width: 54, height: 390))
-        #expect(leadingStyle.view.layoutMargins == leadingMargins)
-        #expect(trailingStyle.view.layoutMargins == trailingMargins)
+        #expect(leadingStyle.view.layoutMargins == preservedMargins)
+        #expect(trailingStyle.view.layoutMargins == preservedMargins)
 
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 54)
@@ -225,8 +226,9 @@ struct EdgeRefreshComponentTests {
         scrollView.safeAreaInsetOverride = UIEdgeInsets(top: 0, left: 47, bottom: 0, right: 47)
         let leadingStyle = MockStyle(extent: 130)
         let trailingStyle = MockStyle(extent: 130)
-        let leadingMargins = leadingStyle.view.layoutMargins
-        let trailingMargins = trailingStyle.view.layoutMargins
+        let preservedMargins = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        leadingStyle.rendererLayoutMargins = preservedMargins
+        trailingStyle.rendererLayoutMargins = preservedMargins
 
         scrollView.refreshable(
             edge: .leading,
@@ -246,8 +248,8 @@ struct EdgeRefreshComponentTests {
         #expect(trailingHost.frame == CGRect(x: 980, y: 0, width: 750, height: 390))
         #expect(leadingStyle.view.frame == CGRect(x: 0, y: 0, width: 130, height: 390))
         #expect(trailingStyle.view.frame == CGRect(x: 620, y: 0, width: 130, height: 390))
-        #expect(leadingStyle.view.layoutMargins == leadingMargins)
-        #expect(trailingStyle.view.layoutMargins == trailingMargins)
+        #expect(leadingStyle.view.layoutMargins == preservedMargins)
+        #expect(trailingStyle.view.layoutMargins == preservedMargins)
 
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 130)
@@ -266,7 +268,7 @@ struct EdgeRefreshComponentTests {
         scrollView.contentSize = CGSize(width: 1600, height: 390)
         let style = MockStyle(extent: 54)
         let preservedMargins = UIEdgeInsets(top: 1, left: 2, bottom: 3, right: 4)
-        style.view.layoutMargins = preservedMargins
+        style.rendererLayoutMargins = preservedMargins
 
         scrollView.refreshable(edge: .leading, style: style) {}
 
@@ -713,7 +715,13 @@ struct EdgeRefreshComponentTests {
             options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
         ) {}
         scrollView.beginRefreshing(edge: .leading)
+        #expect(scrollView.contentInset.left == 50)
+        #expect(scrollView.contentInset.right == 8)
+
         scrollView.semanticContentAttribute = .forceRightToLeft
+        #expect(scrollView.contentInset.left == 6)
+        #expect(scrollView.contentInset.right == 52)
+
         scrollView.endRefreshing(edge: .leading)
 
         #expect(scrollView.contentInset.left == 6)

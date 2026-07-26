@@ -1,43 +1,56 @@
 import UIKit
 
-/// 一个用于提供刷新组件外观和状态更新逻辑的协议。
-///
-/// 实现此协议可以替换默认的边缘刷新视图。刷新组件会自动安装 `view`，
-/// 并在状态变化时调用 `update(state:progress:)`。
-///
-/// 下面的示例展示了如何提供自定义刷新样式：
-///
-/// ```swift
-/// final class MyRefreshStyle: RefreshableStyle {
-///     let view: UIView = MyCustomView()
-///     let extent: CGFloat = 56
-///
-///     func update(state: RefreshState, progress: CGFloat) {
-///         // 根据状态更新 UI
-///     }
-/// }
-///
-/// scrollView.refreshable(style: MyRefreshStyle()) { await vm.fetch() }
-/// ```
+/// 传递给刷新样式 renderer 的不可变渲染上下文。
+public struct RefreshableStyleContext: Sendable, Equatable {
+    /// 当前公开刷新状态。
+    public let state: RefreshState
+
+    /// 当前拖动进度。pulling 为 `0...1`，triggered 可继续增长到 `2`。
+    public let pullProgress: CGFloat
+
+    /// 创建渲染上下文。组件运行时会自动创建它；自定义 renderer 的测试和预览也可直接构造。
+    public init(state: RefreshState, pullProgress: CGFloat) {
+        self.state = state
+        self.pullProgress = pullProgress
+    }
+}
+
+/// 单次刷新组件安装所独占的视图 renderer。
 @MainActor
-public protocol RefreshableStyle: AnyObject {
-    /// 渲染刷新控件视觉内容的视图。
-    ///
-    /// 组件可能会将此视图安装在内部宿主视图中。样式应基于此视图自身的
-    /// `bounds` 布局，不应依赖 `superview` 或 `layoutMargins` 获取组件几何信息。
+public protocol RefreshableStyleRenderer: AnyObject {
+    /// 由当前 renderer 独占的根视图。
     var view: UIView { get }
 
+    /// 使用最新状态更新视图。
+    func render(_ context: RefreshableStyleContext)
+}
+
+/// 可重复用于多个刷新组件的样式工厂。
+@MainActor
+public protocol RefreshableStyle {
     /// 刷新视图沿滚动轴占用的尺寸。
-    ///
-    /// 对 `.top` 和 `.bottom` 边缘，此值表示高度；对 `.leading` 和 `.trailing`
-    /// 边缘，此值表示宽度。当 `RefreshableOptions.triggerOffset` 为 `nil` 时，
-    /// 此值也会作为触发距离。
     var extent: CGFloat { get }
 
-    /// 通知样式对象根据最新状态更新界面。
-    ///
-    /// - Parameters:
-    ///   - state: 当前刷新状态。
-    ///   - progress: `pulling` 阶段的归一化拖动进度。其他状态通常可以忽略此值。
-    func update(state: RefreshState, progress: CGFloat)
+    /// 未显式配置触发距离时使用的距离。
+    var defaultTriggerOffset: CGFloat { get }
+
+    /// 未显式配置 placement 时使用的位置。
+    var defaultPlacement: RefreshablePlacement { get }
+
+    /// 创建一次安装所独占的 renderer。
+    func makeRenderer() -> any RefreshableStyleRenderer
+}
+
+public extension RefreshableStyle {
+    var defaultTriggerOffset: CGFloat { extent }
+
+    var defaultPlacement: RefreshablePlacement { RefreshablePlacement() }
+}
+
+/// 内部样式能力：声明无更多数据终态是否需要继续占用 content inset。
+///
+/// 未实现此能力的公开/自定义样式保持原有行为，默认继续展示终态区域。
+@MainActor
+protocol RefreshableNoMoreDataInsetProviding {
+    var reservesInsetForNoMoreData: Bool { get }
 }

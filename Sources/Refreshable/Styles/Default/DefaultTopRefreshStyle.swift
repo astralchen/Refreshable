@@ -5,16 +5,8 @@ import UIKit
 /// 此样式使用系统符号、文本标签和活动指示器展示下拉刷新状态。
 @MainActor
 public final class DefaultTopRefreshStyle: RefreshableStyle {
-
-    /// 显示下拉刷新内容的容器视图。
-    public let view: UIView = UIView()
-
     /// 默认顶部刷新轴向尺寸。
     public let extent: CGFloat = 54
-
-    private let indicator = UIActivityIndicatorView(style: .medium)
-    private let label = UILabel()
-    private let arrowView = UIImageView()
     private let texts: DefaultTopRefreshTexts
     private let configuration: DefaultRefreshStyleConfiguration
     private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
@@ -31,7 +23,6 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
         self.texts = texts
         self.configuration = configuration
         self.accessibilityEnvironment = .current
-        setupUI()
     }
 
     init(
@@ -39,6 +30,40 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
         configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(),
         accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
     ) {
+        self.texts = texts
+        self.configuration = configuration
+        self.accessibilityEnvironment = accessibilityEnvironment
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        DefaultTopRefreshRenderer(
+            extent: extent,
+            texts: texts,
+            configuration: configuration,
+            accessibilityEnvironment: accessibilityEnvironment
+        )
+    }
+}
+
+@MainActor
+private final class DefaultTopRefreshRenderer: RefreshableStyleRenderer {
+    let view = UIView()
+
+    private let extent: CGFloat
+    private let indicator = UIActivityIndicatorView(style: .medium)
+    private let label = UILabel()
+    private let arrowView = UIImageView()
+    private let texts: DefaultTopRefreshTexts
+    private let configuration: DefaultRefreshStyleConfiguration
+    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+
+    init(
+        extent: CGFloat,
+        texts: DefaultTopRefreshTexts,
+        configuration: DefaultRefreshStyleConfiguration,
+        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    ) {
+        self.extent = extent
         self.texts = texts
         self.configuration = configuration
         self.accessibilityEnvironment = accessibilityEnvironment
@@ -87,10 +112,10 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
     /// - Parameters:
     ///   - state: 当前下拉刷新状态。
     ///   - progress: `pulling` 阶段的归一化拖动进度。
-    public func update(state: RefreshState, progress: CGFloat) {
+    func render(_ context: RefreshableStyleContext) {
         label.textColor = currentTextColor()
 
-        switch state {
+        switch context.state {
         case .idle:
             label.text = texts.idle
             updateAccessibilityValue(texts.idleAccessibilityValue)

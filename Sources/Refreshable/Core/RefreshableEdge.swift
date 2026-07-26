@@ -23,12 +23,12 @@ enum RefreshableRole: Sendable, Equatable {
     case loadMore
 }
 
-enum RefreshableAxis {
+enum RefreshableAxis: Sendable {
     case vertical
     case horizontal
 }
 
-enum RefreshablePhysicalEdge {
+enum RefreshablePhysicalEdge: Sendable, Equatable {
     case top
     case bottom
     case left

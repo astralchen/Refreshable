@@ -1,5 +1,6 @@
 import UIKit
 import Refreshable
+import RefreshableStyles
 
 final class CustomStylesDemoController: UIViewController, UITableViewDataSource {
 
@@ -152,10 +153,10 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
             }
         }
 
-        tableView.loadMoreable {
+        tableView.loadMoreable { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
             await MainActor.run {
-                self.appendMoreRows()
+                self?.appendMoreRows()
             }
         }
     }

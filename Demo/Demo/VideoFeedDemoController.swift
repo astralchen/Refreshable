@@ -1,6 +1,7 @@
 import AVFoundation
 import UIKit
 import Refreshable
+import RefreshableStyles
 
 final class VideoFeedDemoController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
 
@@ -61,9 +62,10 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 triggerOffset: refreshTriggerOffset,
                 presentation: .overlay(spacing: refreshOverlayTopSpacing, locksContentOffset: true)
             )
-        ) {
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 1_000_000)
             await MainActor.run {
+                guard let self else { return }
                 self.refreshSeed += 1
                 self.page = 0
                 let previousCount = self.items.count
@@ -84,9 +86,10 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 presentation: .overlay(spacing: loadMoreContentBoundarySpacing),
                 overlayAnchor: .contentBoundary
             )
-        ) {
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 900_000_000)
             await MainActor.run {
+                guard let self else { return }
                 let nextPage = self.page + 1
                 guard nextPage < self.maxPage else {
                     self.collectionView.noMoreData(edge: .bottom)

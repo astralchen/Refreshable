@@ -90,8 +90,6 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
         collectionView.backgroundColor = .systemGroupedBackground
         collectionView.dataSource = self
         collectionView.showsVerticalScrollIndicator = false
-        collectionView.contentInset.bottom = 116
-        collectionView.verticalScrollIndicatorInsets.bottom = 116
         collectionView.register(GridUpdateCell.self, forCellWithReuseIdentifier: GridUpdateCell.reuseIdentifier)
         collectionView.register(
             GridHeaderView.self,
@@ -127,28 +125,23 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
 
     private func installBottomLoadMore() {
         collectionView.loadMoreable(
-            style: DefaultBottomLoadMoreStyle(
-                texts: DefaultBottomLoadMoreTexts(
-                    idle: "继续向上滑动",
-                    pulling: "继续向上滑动",
-                    triggered: "释放加载",
-                    refreshing: "正在加载...",
-                    ending: "加载完成",
-                    noMoreData: "",
-                    noMoreDataAccessibilityValue: ""
-                )
-            ),
             options: RefreshableOptions(
                 animationDuration: 0.28,
                 automaticTriggerOffset: 120,
-                placement: RefreshablePlacement(contentSpacing: 0),
-                presentation: .overlay(spacing: 0),
-                overlayAnchor: .contentBoundary
+                placement: RefreshablePlacement(contentSpacing: 0)
             )
         ) { [weak self] in
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            try? await Task.sleep(nanoseconds: self?.loadMoreActionDurationNanoseconds ?? 700_000_000)
             await self?.appendNextPage()
         }
+    }
+
+    private var loadMoreActionDurationNanoseconds: UInt64 {
+        let environmentValue = ProcessInfo.processInfo.environment[
+            "GridRefresh.UITestActionDuration"
+        ]
+        let seconds = environmentValue.flatMap(Double.init) ?? 0.7
+        return UInt64(max(seconds, 0) * 1_000_000_000)
     }
 
     private func makeLayout() -> UICollectionViewCompositionalLayout {
@@ -176,7 +169,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 2)
 
         let section = NSCollectionLayoutSection(group: group)
-        section.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 18, bottom: 10, trailing: 18)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 18, bottom: 0, trailing: 18)
 
         let headerSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),

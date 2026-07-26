@@ -187,8 +187,19 @@ struct EdgeTopRefreshComponentTests {
 
     @Test("beginRefreshing 在 ending 时忽略")
     func beginRefreshingWhenEnding() {
-        let (_, component, style) = makeSUT()
-        component.setState(.ending)
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 60,
+                automaticallyEndRefreshing: false
+            )
+        )
+        component.scrollView = scrollView
+        component.beginRefreshing()
+        component.endRefreshing()
+        #expect(component.state == .ending)
         style.reset()
 
         component.beginRefreshing()
@@ -211,12 +222,21 @@ struct EdgeTopRefreshComponentTests {
 
     @Test("回到 idle 前先隐藏刷新视图以避免完成态闪烁")
     func hidesRefreshViewBeforeIdleStyleUpdate() {
-        let (_, component, style) = makeSUT()
-        component.setState(.ending)
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        let style = MockStyle()
+        let component = makeTopRefreshComponent(
+            style: style,
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false
+            )
+        )
+        component.scrollView = scrollView
+        component.beginRefreshing()
         style.view.alpha = 1
         style.reset()
 
-        component.setState(.idle)
+        component.endRefreshing()
 
         let idleRecord = style.records.first { $0.state == .idle }
         #expect(idleRecord?.viewAlpha == 0)
@@ -237,19 +257,17 @@ struct EdgeTopRefreshComponentTests {
 
     @Test("进入 refreshing 后 contentInset.top 增加")
     func insetIncreasedOnRefreshing() {
-        let (_, component, _) = makeSUT()
-        component.stateDidChange(from: .triggered, to: .refreshing)
-        // animate 是异步的，但在测试中 UIView.animate 在无 window 时同步执行
-        // 验证意图：调用不 crash
-        // 验证调用不 crash 即可
+        let (scrollView, component, _) = makeSUT()
+        component.beginRefreshing()
+        #expect(scrollView.contentInset.top == 54)
     }
 
-    @Test("resetInset 恢复原始 inset")
-    func resetInset() {
+    @Test("移除 contribution 恢复 coordinator baseline")
+    func removesInsetContribution() {
         let (scrollView, component, _) = makeSUT()
-        scrollView.contentInset.top = 100
-        component.originalInset = UIEdgeInsets(top: 20, left: 0, bottom: 0, right: 0)
-        component.resetInset(for: scrollView)
+        scrollView.contentInset.top = 20
+        component.beginRefreshing()
+        component.removeInset(animated: false) {}
         #expect(scrollView.contentInset.top == 20)
     }
 
@@ -266,7 +284,7 @@ struct EdgeTopRefreshComponentTests {
         scrollView.contentInset.top = 40
         component.beginRefreshing()
 
-        #expect(component.originalInset.top == 40)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.top == 40)
         #expect(scrollView.contentInset.top == 94)
     }
 
@@ -366,7 +384,7 @@ struct EdgeTopRefreshComponentTests {
 
         component.beginRefreshing()
 
-        #expect(component.originalInset.top == 12)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.top == 12)
         #expect(scrollView.contentInset.top == 66)
     }
 
@@ -383,7 +401,7 @@ struct EdgeTopRefreshComponentTests {
 
         component.beginRefreshing()
 
-        #expect(component.originalInset.top == 12)
+        #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.top == 12)
         #expect(scrollView.contentInset.top == 13)
     }
 
@@ -420,7 +438,7 @@ struct EdgeTopRefreshComponentTests {
 
         component.trigger()
         #expect(await taskProbe.waitUntilStarted() == true)
-        component.cancelCurrentTask(resetState: true)
+        component.setEnabled(false)
 
         #expect(await taskProbe.waitUntilCancellationObserved() == true)
         #expect([RefreshState.ending, .idle].contains(component.state))

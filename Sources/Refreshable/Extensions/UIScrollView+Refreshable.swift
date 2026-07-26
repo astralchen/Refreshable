@@ -7,9 +7,6 @@ private enum AssociatedKeys {
     nonisolated(unsafe) static let componentStore = malloc(1)!
 }
 
-private let defaultHorizontalEdgeTriggerOffset: CGFloat = 54
-private let defaultHorizontalEdgeOuterSpacing: CGFloat = 8
-
 @MainActor
 private final class RefreshableComponentStore {
     var components: [RefreshableEdge: EdgeRefreshComponent] = [:]
@@ -33,7 +30,7 @@ extension UIScrollView {
         edge: RefreshableEdge = .top,
         action: @escaping @Sendable () async -> Void
     ) {
-        let resolvedOptions = defaultOptions(for: edge, options: RefreshableOptions())
+        let resolvedOptions = RefreshableOptions()
         installRefreshable(
             edge: edge,
             style: DefaultRefreshControlStyle(
@@ -58,7 +55,7 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        let resolvedOptions = defaultOptions(for: edge, options: options)
+        let resolvedOptions = options
         installRefreshable(
             edge: edge,
             style: DefaultRefreshControlStyle(
@@ -139,7 +136,7 @@ extension UIScrollView {
         edge: RefreshableEdge = .bottom,
         action: @escaping @Sendable () async -> Void
     ) {
-        let resolvedOptions = defaultOptions(for: edge, options: RefreshableOptions())
+        let resolvedOptions = RefreshableOptions()
         installLoadMoreable(
             edge: edge,
             style: DefaultRefreshControlStyle(
@@ -164,7 +161,7 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        let resolvedOptions = defaultOptions(for: edge, options: options)
+        let resolvedOptions = options
         installLoadMoreable(
             edge: edge,
             style: DefaultRefreshControlStyle(
@@ -442,16 +439,4 @@ extension UIScrollView {
         return component?.role == .loadMore ? component : nil
     }
 
-    private func defaultOptions(for edge: RefreshableEdge, options: RefreshableOptions) -> RefreshableOptions {
-        var resolvedOptions = options
-        guard edge.axis == .horizontal else { return resolvedOptions }
-
-        if resolvedOptions.triggerOffset == nil {
-            resolvedOptions.triggerOffset = defaultHorizontalEdgeTriggerOffset
-        }
-        if resolvedOptions.placement == RefreshablePlacement() {
-            resolvedOptions.placement.outerSpacing = defaultHorizontalEdgeOuterSpacing
-        }
-        return resolvedOptions
-    }
 }

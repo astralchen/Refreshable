@@ -1,3 +1,4 @@
+import Refreshable
 import UIKit
 
 /// 全屏视频流顶部下拉刷新文案。
@@ -91,24 +92,40 @@ public struct VideoBottomLoadMoreTexts: Equatable {
 /// 全屏视频流顶部 overlay 下拉刷新样式。
 @MainActor
 public final class VideoTopRefreshStyle: RefreshableStyle {
-    public let view: UIView
     public let extent: CGFloat
-
     private let texts: VideoTopRefreshTexts
-    private let overlayView: VideoTopRefreshView
 
     public init(extent: CGFloat = 44, texts: VideoTopRefreshTexts = VideoTopRefreshTexts()) {
         self.extent = extent
+        self.texts = texts
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        VideoTopRefreshRenderer(extent: extent, texts: texts)
+    }
+}
+
+@MainActor
+private final class VideoTopRefreshRenderer: RefreshableStyleRenderer {
+    let view: UIView
+    private let texts: VideoTopRefreshTexts
+    private let overlayView: VideoTopRefreshView
+
+    init(extent: CGFloat, texts: VideoTopRefreshTexts) {
         self.texts = texts
         self.overlayView = VideoTopRefreshView()
         self.view = overlayView
         view.frame.size.height = extent
         view.isAccessibilityElement = true
         view.accessibilityLabel = texts.accessibilityLabel
-        update(state: .idle, progress: 0)
+        render(state: .idle)
     }
 
-    public func update(state: RefreshState, progress: CGFloat) {
+    func render(_ context: RefreshableStyleContext) {
+        render(state: context.state)
+    }
+
+    private func render(state: RefreshState) {
         switch state {
         case .idle:
             overlayView.update(iconSystemName: "arrow.down.circle", text: texts.idle, isRefreshing: false)
@@ -135,24 +152,40 @@ public final class VideoTopRefreshStyle: RefreshableStyle {
 /// 全屏视频流底部 overlay 上拉加载样式。
 @MainActor
 public final class VideoBottomLoadMoreStyle: RefreshableStyle {
-    public let view: UIView
     public let extent: CGFloat
-
     private let texts: VideoBottomLoadMoreTexts
-    private let overlayView: VideoBottomLoadMoreView
 
     public init(extent: CGFloat = 76, texts: VideoBottomLoadMoreTexts = VideoBottomLoadMoreTexts()) {
         self.extent = extent
+        self.texts = texts
+    }
+
+    public func makeRenderer() -> any RefreshableStyleRenderer {
+        VideoBottomLoadMoreRenderer(extent: extent, texts: texts)
+    }
+}
+
+@MainActor
+private final class VideoBottomLoadMoreRenderer: RefreshableStyleRenderer {
+    let view: UIView
+    private let texts: VideoBottomLoadMoreTexts
+    private let overlayView: VideoBottomLoadMoreView
+
+    init(extent: CGFloat, texts: VideoBottomLoadMoreTexts) {
         self.texts = texts
         self.overlayView = VideoBottomLoadMoreView()
         self.view = overlayView
         view.frame.size.height = extent
         view.isAccessibilityElement = true
         view.accessibilityLabel = texts.accessibilityLabel
-        update(state: .idle, progress: 0)
+        render(state: .idle)
     }
 
-    public func update(state: RefreshState, progress: CGFloat) {
+    func render(_ context: RefreshableStyleContext) {
+        render(state: context.state)
+    }
+
+    private func render(state: RefreshState) {
         switch state {
         case .idle:
             overlayView.update(iconSystemName: "arrow.up.circle", text: texts.idle, isRefreshing: false)
