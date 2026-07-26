@@ -58,14 +58,14 @@ class EdgeRefreshComponent: RefreshComponent {
         guard let scrollView else { return }
 
         if isLockingOverlayContentOffset {
-            updateOverlayFrameIfNeeded(in: scrollView)
+            updatePresentationFrameForScrolling(in: scrollView)
             return
         }
 
         if role == .loadMore && state == .noMoreData {
             let distance = pullDistance(in: scrollView, contentOffset: contentOffset)
             lockOverlayContentOffsetIfNeeded(in: scrollView, distance: distance)
-            updateOverlayFrameIfNeeded(in: scrollView)
+            updatePresentationFrameForScrolling(in: scrollView)
             return
         }
 
@@ -79,7 +79,7 @@ class EdgeRefreshComponent: RefreshComponent {
 
         let distance = pullDistance(in: scrollView, contentOffset: contentOffset)
         lockOverlayContentOffsetIfNeeded(in: scrollView, distance: distance)
-        updateOverlayFrameIfNeeded(in: scrollView)
+        updatePresentationFrameForScrolling(in: scrollView)
 
         let rawProgress = distance / triggerThreshold
 
@@ -249,13 +249,23 @@ class EdgeRefreshComponent: RefreshComponent {
 
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            return CGRect(x: 0, y: -extent, width: scrollView.bounds.width, height: extent)
+            return CGRect(
+                x: scrollView.bounds.minX,
+                y: -extent,
+                width: scrollView.bounds.width,
+                height: extent
+            )
         case .bottom:
-            return CGRect(x: 0, y: contentSize.height, width: scrollView.bounds.width, height: extent)
+            return CGRect(
+                x: scrollView.bounds.minX,
+                y: contentSize.height,
+                width: scrollView.bounds.width,
+                height: extent
+            )
         case .left:
             return CGRect(
                 x: -originalInset.left - extent,
-                y: 0,
+                y: scrollView.bounds.minY,
                 width: horizontalViewportWidth(in: scrollView),
                 height: scrollView.bounds.height
             )
@@ -268,7 +278,7 @@ class EdgeRefreshComponent: RefreshComponent {
                     + adjustment.left
                     + adjustment.right
                     + extent,
-                y: 0,
+                y: scrollView.bounds.minY,
                 width: horizontalViewportWidth(in: scrollView),
                 height: scrollView.bounds.height
             )
@@ -336,13 +346,33 @@ class EdgeRefreshComponent: RefreshComponent {
 
         switch edge.physicalEdge(in: scrollView) {
         case .top:
-            return CGRect(x: 0, y: -spacing - extent, width: scrollView.bounds.width, height: extent)
+            return CGRect(
+                x: scrollView.bounds.minX,
+                y: -spacing - extent,
+                width: scrollView.bounds.width,
+                height: extent
+            )
         case .bottom:
-            return CGRect(x: 0, y: contentSize.height + spacing, width: scrollView.bounds.width, height: extent)
+            return CGRect(
+                x: scrollView.bounds.minX,
+                y: contentSize.height + spacing,
+                width: scrollView.bounds.width,
+                height: extent
+            )
         case .left:
-            return CGRect(x: -spacing - extent, y: 0, width: extent, height: scrollView.bounds.height)
+            return CGRect(
+                x: -spacing - extent,
+                y: scrollView.bounds.minY,
+                width: extent,
+                height: scrollView.bounds.height
+            )
         case .right:
-            return CGRect(x: contentSize.width + spacing, y: 0, width: extent, height: scrollView.bounds.height)
+            return CGRect(
+                x: contentSize.width + spacing,
+                y: scrollView.bounds.minY,
+                width: extent,
+                height: scrollView.bounds.height
+            )
         }
     }
 
@@ -590,9 +620,19 @@ class EdgeRefreshComponent: RefreshComponent {
         return max(rawLength - insetLength, 0)
     }
 
-    private func updateOverlayFrameIfNeeded(in scrollView: UIScrollView) {
-        guard !options.presentation.usesContentInset else { return }
-        updateRefreshViewFrame(in: scrollView)
+    private func updatePresentationFrameForScrolling(in scrollView: UIScrollView) {
+        if options.presentation.usesContentInset {
+            var frame = refreshHostView.frame
+            switch edge.physicalEdge(in: scrollView).axis {
+            case .vertical:
+                frame.origin.x = scrollView.bounds.minX
+            case .horizontal:
+                frame.origin.y = scrollView.bounds.minY
+            }
+            refreshHostView.frame = frame
+        } else {
+            updateRefreshViewFrame(in: scrollView)
+        }
     }
 
     private func lockOverlayContentOffsetIfNeeded(in scrollView: UIScrollView, distance: CGFloat) {

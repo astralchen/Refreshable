@@ -150,6 +150,30 @@ struct EdgeRefreshComponentTests {
         #expect(trailingStyle.view.frame == CGRect(x: 790, y: 0, width: 54, height: 390))
     }
 
+    @Test(
+        "左右刷新控件在纵向滚动后仍居中于可见区域",
+        arguments: [RefreshableEdge.leading, .trailing]
+    )
+    func horizontalIndicatorFollowsVerticalViewport(edge: RefreshableEdge) throws {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        scrollView.semanticContentAttribute = .forceLeftToRight
+        scrollView.contentSize = CGSize(width: 900, height: 1_200)
+        let style = MockStyle(extent: 72)
+
+        scrollView.refreshable(edge: edge, style: style) {}
+        scrollView.contentOffset = CGPoint(x: 0, y: 360)
+        scrollView.component(for: edge)?.scrollViewDidScroll(contentOffset: scrollView.contentOffset)
+
+        let hostView = try #require(style.view.superview)
+        let indicatorCenter = style.view.convert(
+            CGPoint(x: style.view.bounds.midX, y: style.view.bounds.midY),
+            to: scrollView
+        )
+
+        #expect(hostView.frame.minY == scrollView.bounds.minY)
+        #expect(abs(indicatorCenter.y - scrollView.bounds.midY) < 0.5)
+    }
+
     @Test("横向 edge 在关闭自动 inset 调整时仍避开 safe area")
     func horizontalEdgeFrameUsesSafeAreaInsetsWhenAdjustmentIsDisabled() throws {
         let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
