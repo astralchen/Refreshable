@@ -43,6 +43,18 @@ struct RefreshEventReducerTests {
         #expect(reducer.canStartAction(generation: actionGeneration))
     }
 
+    @Test("自动触发 action 时保留用户当前位置")
+    func automaticTriggerDoesNotRevealInset() {
+        var reducer = RefreshEventReducer(role: .loadMore, automaticallyEnds: true)
+        _ = reducer.reduce(.attach)
+
+        let reduction = reducer.reduce(.automaticTrigger)
+
+        #expect(reducer.publicState == .refreshing)
+        #expect(reduction.effects.contains(.setInsetVisible(reveal: false)))
+        #expect(reduction.effects.contains(.setInsetVisible(reveal: true)) == false)
+    }
+
     @Test("回调重入 detach 后旧 action token 失效")
     func detachedReducerRejectsDeferredActionStart() throws {
         var reducer = RefreshEventReducer(role: .refresh, automaticallyEnds: true)

@@ -598,6 +598,98 @@ struct EdgeRefreshComponentTests {
         #expect(style.view.frame == CGRect(x: 0, y: 0, width: 320, height: 44))
     }
 
+    @Test("锁定 overlay 刷新在内容布局变化后仍保持 adjusted 顶部边界")
+    func lockedOverlayRefreshPreservesAdjustedTopBoundaryAcrossContentLayoutChanges() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentSize = CGSize(width: 600, height: 1_688)
+        scrollView.contentInset.top = 8
+        scrollView.automaticInsetAdjustment.top = 96
+        scrollView.contentOffset = CGPoint(x: 17, y: -104)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: MockStyle(extent: 44),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 12, locksContentOffset: true)
+            )
+        ) {}
+
+        scrollView.beginRefreshing(edge: .top)
+        #expect(scrollView.refreshState(edge: .top) == .refreshing)
+
+        scrollView.contentOffset = CGPoint(x: 17, y: 132)
+        scrollView.contentSize.height = 1_900
+        scrollView.component(for: .top)?
+            .scrollViewContentSizeDidChange(contentSize: scrollView.contentSize)
+
+        #expect(scrollView.contentOffset == CGPoint(x: 17, y: -104))
+    }
+
+    @Test("默认 contentInset 顶部刷新在布局重载后结束仍恢复 adjusted 顶部边界")
+    func contentInsetTopRefreshRestoresAdjustedBoundaryAfterContentLayoutReload() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentSize = CGSize(width: 600, height: 1_688)
+        scrollView.contentInset.top = 8
+        scrollView.automaticInsetAdjustment.top = 96
+        scrollView.contentOffset = CGPoint(x: 17, y: -104)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: MockStyle(extent: 44),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false
+            )
+        ) {}
+
+        scrollView.beginRefreshing(edge: .top)
+        #expect(scrollView.contentInset.top == 52)
+        #expect(scrollView.contentOffset == CGPoint(x: 17, y: -148))
+
+        scrollView.contentOffset = CGPoint(x: 17, y: 214)
+        scrollView.contentSize.height = 1_900
+        scrollView.component(for: .top)?
+            .scrollViewContentSizeDidChange(contentSize: scrollView.contentSize)
+        #expect(scrollView.contentOffset == CGPoint(x: 17, y: -148))
+
+        scrollView.endRefreshing(edge: .top)
+        #expect(scrollView.refreshState(edge: .top) == .idle)
+        #expect(scrollView.contentInset.top == 8)
+        #expect(scrollView.contentOffset == CGPoint(x: 17, y: -104))
+    }
+
+    @Test("锁定 overlay 刷新结束后不再恢复旧边界")
+    func endedLockedOverlayRefreshStopsMaintainingItsBoundary() {
+        let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentSize = CGSize(width: 600, height: 1_688)
+        scrollView.contentInset.top = 8
+        scrollView.automaticInsetAdjustment.top = 96
+        scrollView.contentOffset = CGPoint(x: 17, y: -104)
+
+        scrollView.refreshable(
+            edge: .top,
+            style: MockStyle(extent: 44),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                presentation: .overlay(spacing: 12, locksContentOffset: true)
+            )
+        ) {}
+
+        scrollView.beginRefreshing(edge: .top)
+        scrollView.endRefreshing(edge: .top)
+        #expect(scrollView.refreshState(edge: .top) == .idle)
+
+        scrollView.contentOffset = CGPoint(x: 17, y: 132)
+        scrollView.contentSize.height = 1_900
+        scrollView.component(for: .top)?
+            .scrollViewContentSizeDidChange(contentSize: scrollView.contentSize)
+
+        #expect(scrollView.contentOffset == CGPoint(x: 17, y: 132))
+    }
+
     @Test("overlay 锁定全屏视频下拉时不把内容推到 safe area 下方")
     func overlayLockDoesNotMoveFullscreenTopContentBelowSafeArea() throws {
         let scrollView = SafeAreaInsetScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))

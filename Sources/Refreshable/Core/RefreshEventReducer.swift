@@ -162,7 +162,7 @@ struct RefreshEventReducer {
         case .panEnded:
             switch phase {
             case .triggered:
-                effects = beginActionIfPossible()
+                effects = beginActionIfPossible(revealInset: true)
             case .pulling:
                 setPhase(.idle, progress: 0)
             case .idle, .refreshing, .ending, .noMoreData:
@@ -174,8 +174,11 @@ struct RefreshEventReducer {
                 setPhase(.idle, progress: 0)
             }
 
-        case .automaticTrigger, .begin:
-            effects = beginActionIfPossible()
+        case .automaticTrigger:
+            effects = beginActionIfPossible(revealInset: false)
+
+        case .begin:
+            effects = beginActionIfPossible(revealInset: true)
 
         case .actionCompleted(let generation):
             guard activeActionGeneration == generation else { return RefreshReduction() }
@@ -232,7 +235,7 @@ struct RefreshEventReducer {
         )
     }
 
-    private mutating func beginActionIfPossible() -> [RefreshEffect] {
+    private mutating func beginActionIfPossible(revealInset: Bool) -> [RefreshEffect] {
         guard isAttached, isEnabled else { return [] }
         guard phase != .refreshing, phase != .ending else { return [] }
         guard !(role == .loadMore && phase == .noMoreData) else { return [] }
@@ -242,7 +245,7 @@ struct RefreshEventReducer {
         activeActionGeneration = nextActionGeneration
         setPhase(.refreshing, progress: 1)
         return [
-            .setInsetVisible(reveal: true),
+            .setInsetVisible(reveal: revealInset),
             .startAction(generation: nextActionGeneration),
         ]
     }

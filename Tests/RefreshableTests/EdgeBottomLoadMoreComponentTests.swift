@@ -466,6 +466,34 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(style.records.contains { $0.state == .refreshing })
     }
 
+    @Test("自动加载预取不把用户位置强制滚到底部")
+    func automaticLoadMorePreservesCurrentContentOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+        scrollView.contentSize = CGSize(width: 375, height: 800)
+        let nearBottomOffset = CGPoint(x: 0, y: 20)
+        scrollView.contentOffset = nearBottomOffset
+        let component = makeBottomLoadMoreComponent(
+            style: MockStyle(extent: 54),
+            options: RefreshableOptions(
+                animationDuration: 0,
+                automaticallyEndRefreshing: false,
+                automaticTriggerOffset: 120
+            )
+        )
+        component.scrollView = scrollView
+
+        component.scrollViewDidScroll(contentOffset: nearBottomOffset)
+
+        #expect(component.state == .refreshing)
+        #expect(scrollView.contentOffset == nearBottomOffset)
+        #expect(scrollView.contentInset.bottom == 54)
+
+        component.endRefreshing()
+
+        #expect(scrollView.contentOffset == nearBottomOffset)
+        #expect(scrollView.contentInset.bottom == 0)
+    }
+
     @Test("未滚动到自动触发距离内时不开始加载更多")
     func automaticLoadMoreWaitsUntilNearBottom() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))

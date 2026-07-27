@@ -302,6 +302,33 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testGridHeaderIsVisibleOnFirstPresentedFrame() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+
+        // Capture the first presented frame before resolving any Header descendant.
+        addPreviewScreenshot(named: "网格-首次进入-查询Header前", app: app)
+
+        let headerTitle = app.staticTexts["最近更新"]
+        let navigationBar = app.navigationBars["刷新网格"]
+        XCTAssertTrue(headerTitle.exists)
+        XCTAssertGreaterThanOrEqual(
+            headerTitle.frame.minY,
+            navigationBar.frame.maxY,
+            "GridHeaderView must start below the navigation bar. "
+                + "header=\(headerTitle.frame), navigationBar=\(navigationBar.frame), "
+                + "collection=\(collectionView.frame)"
+        )
+    }
+
+    @MainActor
     func testGridRefreshDoesNotInsertStatusCard() throws {
         let app = XCUIApplication()
         app.launch()
@@ -322,6 +349,87 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
+    func testGridRefreshAdvancesToRefreshingWhenFingerLifts() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["GridRefresh.UITestRefreshActionDuration"] = "30"
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+
+        let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        let end = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
+        start.press(forDuration: 0.08, thenDragTo: end)
+
+        let indicator = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "刷新"))
+            .firstMatch
+        XCTAssertTrue(indicator.waitForExistence(timeout: 1))
+
+        XCTAssertEqual(
+            indicator.value as? String,
+            "正在刷新",
+            "Releasing a triggered pull must advance the component from “释放刷新” to “正在刷新”"
+        )
+    }
+
+    @MainActor
+    func testGridHeaderRemainsVisibleAfterTopRefreshCompletes() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["GridRefresh.UITestRefreshActionDuration"] = "5"
+        app.launch()
+
+        let gridTab = app.tabBars.buttons["网格"]
+        XCTAssertTrue(gridTab.waitForExistence(timeout: 5))
+        gridTab.tap()
+
+        let collectionView = app.collectionViews.firstMatch
+        let headerTitle = app.staticTexts["最近更新"]
+        let firstCell = collectionView.cells["GridUpdateCell.版本 2.1.0 发布"]
+        XCTAssertTrue(collectionView.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForIntersection(of: headerTitle, with: collectionView, timeout: 3),
+            "The grid header should be visible when the screen first opens"
+        )
+        XCTAssertTrue(firstCell.waitForExistence(timeout: 3))
+
+        let start = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
+        let end = collectionView.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.74))
+        start.press(forDuration: 0.08, thenDragTo: end)
+
+        let indicator = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "刷新"))
+            .firstMatch
+        XCTAssertTrue(indicator.waitForExistence(timeout: 1))
+        XCTAssertEqual(indicator.value as? String, "正在刷新")
+        XCTAssertLessThanOrEqual(
+            indicator.frame.maxY,
+            headerTitle.frame.minY,
+            "The grid refresh control should occupy space above GridHeaderView instead of covering it"
+        )
+
+        let refreshFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in !indicator.exists },
+            object: indicator
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [refreshFinished], timeout: 8),
+            .completed,
+            "The top refresh should finish and hide its indicator"
+        )
+        XCTAssertTrue(
+            waitForIntersection(of: headerTitle, with: collectionView, timeout: 3),
+            "Completing a top refresh must keep the grid header inside the viewport"
+        )
+        XCTAssertTrue(firstCell.exists)
+        XCTAssertFalse(app.staticTexts["刚刚刷新完成"].exists)
+    }
+
+    @MainActor
     func testGridLoadMoreUsesDefaultIndicatorWithoutCoveringCells() throws {
         let app = XCUIApplication()
         app.launchEnvironment["GridRefresh.UITestActionDuration"] = "30"
@@ -337,7 +445,11 @@ final class DemoUITests: XCTestCase {
         let indicator = app.descendants(matching: .any)
             .matching(identifier: "Refreshable.DefaultIndicator")
             .firstMatch
-        for _ in 0..<4 where !indicator.exists {
+        let tabBar = app.tabBars.firstMatch
+        for _ in 0..<4 {
+            if indicator.exists, indicator.frame.maxY <= tabBar.frame.minY {
+                break
+            }
             collectionView.swipeUp()
         }
         XCTAssertTrue(
@@ -349,7 +461,7 @@ final class DemoUITests: XCTestCase {
         let indicatorFrame = indicator.frame
         XCTAssertLessThanOrEqual(
             indicatorFrame.maxY,
-            app.tabBars.firstMatch.frame.minY,
+            tabBar.frame.minY,
             "The loading-more indicator must stay above the floating tab bar"
         )
         let overlappingCells = collectionView.cells.allElementsBoundByIndex.filter {

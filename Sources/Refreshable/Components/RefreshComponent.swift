@@ -39,7 +39,6 @@ class RefreshComponent: NSObject {
     private var sizeObservation: NSKeyValueObservation?
     private var boundsObservation: NSKeyValueObservation?
     private var insetObservation: NSKeyValueObservation?
-    private var panStateObservation: NSKeyValueObservation?
     private var semanticContentObservation: NSKeyValueObservation?
     private var currentTask: Task<Void, Never>?
     private var currentActionGeneration: UInt?
@@ -293,21 +292,10 @@ class RefreshComponent: NSObject {
             }
         }
 
-        panStateObservation = scrollView.observe(
-            \.panGestureRecognizer.state,
-            options: [.new]
-        ) { [weak self] gesture, _ in
-            MainActor.assumeIsolated {
-                switch gesture.panGestureRecognizer.state {
-                case .ended:
-                    self?.scrollViewDidEndDragging()
-                case .cancelled, .failed:
-                    self?.scrollViewDidCancelDragging()
-                default:
-                    break
-                }
-            }
-        }
+        scrollView.panGestureRecognizer.addTarget(
+            self,
+            action: #selector(handlePanGestureStateChange(_:))
+        )
 
         semanticContentObservation = scrollView.observe(
             \.semanticContentAttribute,
@@ -319,18 +307,32 @@ class RefreshComponent: NSObject {
         }
     }
 
+    @objc
+    private func handlePanGestureStateChange(_ gestureRecognizer: UIPanGestureRecognizer) {
+        switch gestureRecognizer.state {
+        case .ended:
+            scrollViewDidEndDragging()
+        case .cancelled, .failed:
+            scrollViewDidCancelDragging()
+        default:
+            break
+        }
+    }
+
     private func removeObservers() {
+        scrollView?.panGestureRecognizer.removeTarget(
+            self,
+            action: #selector(handlePanGestureStateChange(_:))
+        )
         offsetObservation?.invalidate()
         sizeObservation?.invalidate()
         boundsObservation?.invalidate()
         insetObservation?.invalidate()
-        panStateObservation?.invalidate()
         semanticContentObservation?.invalidate()
         offsetObservation = nil
         sizeObservation = nil
         boundsObservation = nil
         insetObservation = nil
-        panStateObservation = nil
         semanticContentObservation = nil
     }
 }

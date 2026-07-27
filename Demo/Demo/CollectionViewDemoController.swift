@@ -111,12 +111,12 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
             options: RefreshableOptions(
                 triggerOffset: 72,
                 animationDuration: 0.3,
-                placement: RefreshablePlacement(contentSpacing: 0),
-                presentation: .overlay(spacing: 12, locksContentOffset: true),
-                overlayAnchor: .viewport
+                placement: RefreshablePlacement(contentSpacing: 0)
             )
         ) { [weak self] in
-            try? await Task.sleep(nanoseconds: 900_000_000)
+            try? await Task.sleep(
+                nanoseconds: self?.refreshActionDurationNanoseconds ?? 900_000_000
+            )
             await self?.performRefresh()
         }
 
@@ -141,6 +141,14 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
             "GridRefresh.UITestActionDuration"
         ]
         let seconds = environmentValue.flatMap(Double.init) ?? 0.7
+        return UInt64(max(seconds, 0) * 1_000_000_000)
+    }
+
+    private var refreshActionDurationNanoseconds: UInt64 {
+        let environmentValue = ProcessInfo.processInfo.environment[
+            "GridRefresh.UITestRefreshActionDuration"
+        ]
+        let seconds = environmentValue.flatMap(Double.init) ?? 0.9
         return UInt64(max(seconds, 0) * 1_000_000_000)
     }
 

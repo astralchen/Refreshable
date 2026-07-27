@@ -50,3 +50,14 @@
 - 不在每次 `viewWillAppear` 时滚回顶部。
 - 不改变用户主动滚动后的 Tab 状态保留行为。
 - 不通过 Demo 专用补丁掩盖核心偏移生命周期问题。
+
+## 最终 Demo 展示策略
+
+网格页的顶部刷新使用 `RefreshableOptions` 默认的 `.contentInset`，使刷新控件在
+`GridHeaderView` 上方占用独立空间；不再显式传入 `presentation` 或 `overlayAnchor`。
+只有视频页继续使用 overlay，把刷新反馈覆盖在视频内容上。核心的锁定 overlay
+生命周期修复仍保留给视频页和其他显式选择该展示方式的调用方。
+
+默认 `.contentInset` 刷新同样维护刷新生命周期边界：刷新中发生内容重载或布局失效时，
+组件恢复完整露出刷新控件的边界；结束动画同时移除自身 inset 贡献并恢复 baseline
+边界。这样异步 compositional layout 不能把 `GridHeaderView` 留在 viewport 上方。

@@ -9,6 +9,9 @@ final class EdgeRefreshComponent: RefreshComponent {
     private var insetCoordinator: RefreshableInsetCoordinator?
     private var isLockingOverlayContentOffset = false
     private var isApplyingInsetEffect = false
+    private var maintainsLockedOverlayBoundary = false
+    private var maintainsContentInsetRefreshBoundary = false
+    private var preservesContentOffsetAcrossInsetChanges = false
     private let refreshHostView = RefreshHostView()
 
     init(
@@ -28,6 +31,9 @@ final class EdgeRefreshComponent: RefreshComponent {
     }
 
     override func removeInstalledView() {
+        maintainsLockedOverlayBoundary = false
+        maintainsContentInsetRefreshBoundary = false
+        preservesContentOffsetAcrossInsetChanges = false
         insetCoordinator?.removeContribution(owner: self)
         insetCoordinator = nil
         refreshHostView.onEnvironmentChange = nil
@@ -59,16 +65,19 @@ final class EdgeRefreshComponent: RefreshComponent {
     override func scrollViewContentSizeDidChange(contentSize: CGSize) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView, contentSize: contentSize)
+        restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
     override func scrollViewBoundsDidChange(bounds: CGRect) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView)
+        restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
     override func scrollViewContentInsetDidChange(contentInset: UIEdgeInsets) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView)
+        restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
     override func scrollViewEnvironmentDidChange() {
@@ -130,9 +139,17 @@ final class EdgeRefreshComponent: RefreshComponent {
     }
 
     override func setInsetVisible(reveal: Bool) {
-        guard resolvedOptions.presentation.usesContentInset else { return }
+        guard resolvedOptions.presentation.usesContentInset else {
+            establishLockedOverlayBoundaryIfNeeded(reveal: reveal)
+            return
+        }
         guard let scrollView, let insetCoordinator else { return }
         updateRefreshViewFrame(in: scrollView)
+        if reveal, role == .refresh, state == .refreshing {
+            maintainsContentInsetRefreshBoundary = true
+        }
+        preservesContentOffsetAcrossInsetChanges = !reveal
+        let preservedContentOffset = scrollView.contentOffset
         let shouldReserveInset = shouldReserveInsetForCurrentState
         let changes = {
             self.isApplyingInsetEffect = true
@@ -142,6 +159,8 @@ final class EdgeRefreshComponent: RefreshComponent {
                 insetCoordinator.removeContribution(owner: self)
                 if reveal {
                     scrollView.contentOffset = self.lockedOverlayContentOffset(in: scrollView)
+                } else {
+                    self.applyMaintainedContentOffset(preservedContentOffset, in: scrollView)
                 }
                 return
             }
@@ -153,6 +172,8 @@ final class EdgeRefreshComponent: RefreshComponent {
             )
             if reveal {
                 self.adjustContentOffsetForStartEdgeIfNeeded(in: scrollView)
+            } else {
+                self.applyMaintainedContentOffset(preservedContentOffset, in: scrollView)
             }
         }
         if resolvedOptions.animationDuration > 0 {
@@ -164,24 +185,47 @@ final class EdgeRefreshComponent: RefreshComponent {
 
     override func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void) {
         guard resolvedOptions.presentation.usesContentInset, let insetCoordinator else {
+            if let scrollView {
+                restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
+            }
+            maintainsLockedOverlayBoundary = false
             completion()
             return
         }
 
+        let shouldRestoreRefreshBoundary = maintainsContentInsetRefreshBoundary
+        let shouldPreserveContentOffset = preservesContentOffsetAcrossInsetChanges
+        let preservedContentOffset = scrollView?.contentOffset
         let changes = {
             self.isApplyingInsetEffect = true
             defer { self.isApplyingInsetEffect = false }
             insetCoordinator.removeContribution(owner: self)
+            if shouldRestoreRefreshBoundary, let scrollView = self.scrollView {
+                self.applyMaintainedContentOffset(
+                    self.lockedOverlayContentOffset(in: scrollView),
+                    in: scrollView
+                )
+            } else if shouldPreserveContentOffset,
+                      let scrollView = self.scrollView,
+                      let preservedContentOffset {
+                self.applyMaintainedContentOffset(preservedContentOffset, in: scrollView)
+            }
         }
         guard animated, resolvedOptions.animationDuration > 0 else {
             changes()
+            maintainsContentInsetRefreshBoundary = false
+            preservesContentOffsetAcrossInsetChanges = false
             completion()
             return
         }
         UIView.animate(
             withDuration: resolvedOptions.animationDuration,
             animations: changes,
-            completion: { _ in completion() }
+            completion: { _ in
+                self.maintainsContentInsetRefreshBoundary = false
+                self.preservesContentOffsetAcrossInsetChanges = false
+                completion()
+            }
         )
     }
 
@@ -266,6 +310,7 @@ final class EdgeRefreshComponent: RefreshComponent {
 
     private func updateForEnvironmentChange(in scrollView: UIScrollView) {
         updateRefreshViewFrame(in: scrollView)
+        restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
         guard resolvedOptions.presentation.usesContentInset,
               let insetCoordinator,
               insetCoordinator.contribution(for: self) > 0
@@ -379,12 +424,7 @@ final class EdgeRefreshComponent: RefreshComponent {
             return false
         }
 
-        switch role {
-        case .refresh:
-            beginRefreshing()
-        case .loadMore:
-            beginLoadingMore()
-        }
+        dispatch(.automaticTrigger)
         return state.isRefreshing
     }
 
@@ -468,6 +508,40 @@ final class EdgeRefreshComponent: RefreshComponent {
 
         isLockingOverlayContentOffset = true
         scrollView.contentOffset = lockedOffset
+        isLockingOverlayContentOffset = false
+    }
+
+    private func establishLockedOverlayBoundaryIfNeeded(reveal: Bool) {
+        guard reveal, state == .refreshing else { return }
+        guard resolvedOptions.presentation.locksContentOffset else { return }
+        guard let scrollView, isAtTargetBoundary(in: scrollView) else { return }
+
+        maintainsLockedOverlayBoundary = true
+        restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
+    }
+
+    private func restoreMaintainedRefreshBoundaryIfNeeded(in scrollView: UIScrollView) {
+        let maintainedOffset: CGPoint
+        if maintainsLockedOverlayBoundary {
+            maintainedOffset = lockedOverlayContentOffset(in: scrollView)
+        } else if maintainsContentInsetRefreshBoundary {
+            switch state {
+            case .refreshing:
+                maintainedOffset = geometry(in: scrollView).revealContentOffset
+            case .idle, .pulling, .triggered, .ending, .noMoreData:
+                maintainedOffset = lockedOverlayContentOffset(in: scrollView)
+            }
+        } else {
+            return
+        }
+
+        applyMaintainedContentOffset(maintainedOffset, in: scrollView)
+    }
+
+    private func applyMaintainedContentOffset(_ contentOffset: CGPoint, in scrollView: UIScrollView) {
+        guard contentOffset != scrollView.contentOffset else { return }
+        isLockingOverlayContentOffset = true
+        scrollView.contentOffset = contentOffset
         isLockingOverlayContentOffset = false
     }
 
