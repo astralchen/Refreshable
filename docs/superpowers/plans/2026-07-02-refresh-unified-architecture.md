@@ -94,7 +94,7 @@ private func makeSUT() -> (UIScrollView, EdgeRefreshComponent, MockStyle) {
         edge: .top,
         role: .refresh,
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
     return (scrollView, component, style)
@@ -139,7 +139,7 @@ private func makeSUT() -> (UIScrollView, EdgeRefreshComponent, MockStyle) {
         edge: .bottom,
         role: .loadMore,
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
     return (scrollView, component, style)

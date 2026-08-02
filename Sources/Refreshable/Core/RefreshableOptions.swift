@@ -72,7 +72,7 @@ public struct RefreshableTextConfiguration: Sendable, Equatable {
     public var idle: String?
     public var pulling: String?
     public var triggered: String?
-    public var refreshing: String?
+    public var active: String?
     public var ending: String?
     public var noMoreData: String?
     public var accessibilityLabel: String?
@@ -81,7 +81,7 @@ public struct RefreshableTextConfiguration: Sendable, Equatable {
         idle: String? = nil,
         pulling: String? = nil,
         triggered: String? = nil,
-        refreshing: String? = nil,
+        active: String? = nil,
         ending: String? = nil,
         noMoreData: String? = nil,
         accessibilityLabel: String? = nil
@@ -89,7 +89,7 @@ public struct RefreshableTextConfiguration: Sendable, Equatable {
         self.idle = idle
         self.pulling = pulling
         self.triggered = triggered
-        self.refreshing = refreshing
+        self.active = active
         self.ending = ending
         self.noMoreData = noMoreData
         self.accessibilityLabel = accessibilityLabel
@@ -99,14 +99,14 @@ public struct RefreshableTextConfiguration: Sendable, Equatable {
 /// 一组用于配置刷新和加载更多行为的选项。
 public struct RefreshableOptions: Sendable {
     /// 自动触发刷新或加载更多的边缘距离配置。
-    public enum AutomaticTriggerOffset: Sendable, Equatable {
+    public enum AutomaticTriggerDistance: Sendable, Equatable {
         /// 使用组件的内置自动触发策略。
         ///
         /// 目前无配置的底部加载更多会在滚到底部时自动触发；其他方向默认不自动触发。
         case `default`
 
         /// 在距离对应边缘小于等于指定值时自动触发。
-        case offset(CGFloat)
+        case distance(CGFloat)
     }
 
     /// 触发刷新动作所需的拖动距离。
@@ -114,7 +114,7 @@ public struct RefreshableOptions: Sendable {
     /// 当此值为 `nil` 时，组件使用当前 `RefreshableStyle.extent` 作为触发距离。
     /// 进入刷新中后，`contentInset` 保持的可见范围由样式的 `extent`、
     /// `placement.outerSpacing` 和 `placement.contentSpacing` 决定。
-    public var triggerOffset: CGFloat?
+    public var triggerDistance: CGFloat?
 
     /// 展开和恢复 `contentInset` 时使用的动画时长。
     public var animationDuration: TimeInterval
@@ -123,18 +123,18 @@ public struct RefreshableOptions: Sendable {
     ///
     /// 默认值为 `true`。如果设置为 `false`，需要在 `action` 完成后手动调用
     /// `endRefreshing()` 或 `endLoadingMore()`。
-    public var automaticallyEndRefreshing: Bool
+    public var automaticallyEnds: Bool
 
     /// 一个布尔值，指示内容未填满当前滚动轴时是否仍允许触发加载更多。
     ///
-    /// 此选项仅影响通过 `loadMoreable` 安装的组件。
+    /// 此选项仅影响通过 `onLoadMore` 安装的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
     /// 自动触发刷新或加载更多的边缘距离。
     ///
     /// 默认值为 `.default`，表示使用组件内置自动触发策略。传入 `0` 时滚动到对应边缘自动开始刷新
     /// 或加载更多；传入正值时会在距离对应边缘小于等于该距离时提前触发；传入 `nil` 时关闭自动触发。
-    public var automaticTriggerOffset: AutomaticTriggerOffset?
+    public var automaticTriggerDistance: AutomaticTriggerDistance?
 
     /// 组件宿主布局应用到样式视觉视图周围的位置配置。
     public var placement: RefreshablePlacement?
@@ -165,34 +165,34 @@ public struct RefreshableOptions: Sendable {
     /// 创建一组刷新行为配置。
     ///
     /// - Parameters:
-    ///   - triggerOffset: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度；刷新中的停留范围由样式高度、
+    ///   - triggerDistance: 触发刷新动作所需的拖动距离。传入 `nil` 时使用样式高度；刷新中的停留范围由样式高度、
     ///     `placement.outerSpacing` 和 `placement.contentSpacing` 决定。
     ///   - animationDuration: 展开和恢复 `contentInset` 时使用的动画时长。
-    ///   - automaticallyEndRefreshing: 刷新动作结束后是否自动收起刷新组件。
+    ///   - automaticallyEnds: 刷新动作结束后是否自动收起刷新组件。
     ///   - allowsLoadMoreWhenContentFits: 内容未填满当前滚动轴时是否仍允许触发加载更多。
-    ///   - automaticTriggerOffset: 自动触发刷新或加载更多的边缘距离。默认 `.default`，传入 `nil` 时关闭自动触发。
+    ///   - automaticTriggerDistance: 自动触发刷新或加载更多的边缘距离。默认 `.default`，传入 `nil` 时关闭自动触发。
     ///   - placement: 样式视觉视图在组件宿主区域内的位置配置。
     ///   - presentation: 刷新视图的展示方式。
     ///   - overlayAnchor: 浮层刷新视图的锚定方式。
     ///   - textConfiguration: 刷新组件各状态的可选文本配置。
     ///   - onStateChange: 状态变化时在主线程调用的闭包。
     public init(
-        triggerOffset: CGFloat? = nil,
+        triggerDistance: CGFloat? = nil,
         animationDuration: TimeInterval = 0.25,
-        automaticallyEndRefreshing: Bool = true,
+        automaticallyEnds: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
-        automaticTriggerOffset: AutomaticTriggerOffset? = .default,
+        automaticTriggerDistance: AutomaticTriggerDistance? = .default,
         placement: RefreshablePlacement? = nil,
         presentation: RefreshablePresentation = .contentInset,
         overlayAnchor: RefreshableOverlayAnchor = .viewport,
         textConfiguration: RefreshableTextConfiguration? = nil,
         onStateChange: (@MainActor @Sendable (RefreshState) -> Void)? = nil
     ) {
-        self.triggerOffset = triggerOffset
+        self.triggerDistance = triggerDistance
         self.animationDuration = animationDuration
-        self.automaticallyEndRefreshing = automaticallyEndRefreshing
+        self.automaticallyEnds = automaticallyEnds
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
-        self.automaticTriggerOffset = automaticTriggerOffset
+        self.automaticTriggerDistance = automaticTriggerDistance
         self.placement = placement
         self.presentation = presentation
         self.overlayAnchor = overlayAnchor
@@ -201,14 +201,14 @@ public struct RefreshableOptions: Sendable {
     }
 }
 
-extension RefreshableOptions.AutomaticTriggerOffset: ExpressibleByIntegerLiteral {
+extension RefreshableOptions.AutomaticTriggerDistance: ExpressibleByIntegerLiteral {
     public init(integerLiteral value: Int) {
-        self = .offset(CGFloat(value))
+        self = .distance(CGFloat(value))
     }
 }
 
-extension RefreshableOptions.AutomaticTriggerOffset: ExpressibleByFloatLiteral {
+extension RefreshableOptions.AutomaticTriggerDistance: ExpressibleByFloatLiteral {
     public init(floatLiteral value: Double) {
-        self = .offset(CGFloat(value))
+        self = .distance(CGFloat(value))
     }
 }

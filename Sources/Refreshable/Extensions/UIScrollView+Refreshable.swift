@@ -119,7 +119,7 @@ extension UIScrollView {
     /// - Parameter edge: 要结束刷新的语义边缘。默认值为 `.top`。
     @MainActor
     public func endRefreshing(edge: RefreshableEdge = .top) {
-        refreshComponent(for: edge)?.endRefreshing()
+        refreshComponent(for: edge)?.endAction()
     }
 
     // MARK: - 加载更多
@@ -132,12 +132,12 @@ extension UIScrollView {
     ///   - edge: 安装加载更多组件的语义边缘。默认值为 `.bottom`。
     ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(
+    public func onLoadMore(
         edge: RefreshableEdge = .bottom,
         action: @escaping @Sendable () async -> Void
     ) {
         let resolvedOptions = RefreshableOptions()
-        installLoadMoreable(
+        installLoadMore(
             edge: edge,
             style: DefaultRefreshControlStyle(
                 edge: edge,
@@ -156,13 +156,13 @@ extension UIScrollView {
     ///   - options: 控制触发距离、动画和状态回调的配置。
     ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(
+    public func onLoadMore(
         edge: RefreshableEdge = .bottom,
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
         let resolvedOptions = options
-        installLoadMoreable(
+        installLoadMore(
             edge: edge,
             style: DefaultRefreshControlStyle(
                 edge: edge,
@@ -181,12 +181,12 @@ extension UIScrollView {
     ///   - style: 显示加载更多状态的样式对象。
     ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(
+    public func onLoadMore(
         edge: RefreshableEdge = .bottom,
         style: some RefreshableStyle,
         action: @escaping @Sendable () async -> Void
     ) {
-        installLoadMoreable(edge: edge, style: style, options: RefreshableOptions(), action: action)
+        installLoadMore(edge: edge, style: style, options: RefreshableOptions(), action: action)
     }
 
     /// 使用自定义样式和指定配置为滚动视图添加加载更多组件。
@@ -199,13 +199,13 @@ extension UIScrollView {
     ///   - options: 控制触发距离、动画和状态回调的配置。
     ///   - action: 触发加载更多时执行的可发送异步操作；更新 UI 时需显式回到主 actor。
     @MainActor
-    public func loadMoreable(
+    public func onLoadMore(
         edge: RefreshableEdge = .bottom,
         style: some RefreshableStyle,
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        installLoadMoreable(edge: edge, style: style, options: options, action: action)
+        installLoadMore(edge: edge, style: style, options: options, action: action)
     }
 
     /// 以编程方式开始指定边缘的加载更多。
@@ -226,17 +226,17 @@ extension UIScrollView {
     /// - Parameter edge: 要结束加载更多的语义边缘。默认值为 `.bottom`。
     @MainActor
     public func endLoadingMore(edge: RefreshableEdge = .bottom) {
-        loadMoreComponent(for: edge)?.endRefreshing()
+        loadMoreComponent(for: edge)?.endAction()
     }
 
     /// 将指定边缘的加载更多组件标记为没有更多数据。
     ///
-    /// 只有通过 `loadMoreable` 安装的组件会响应此方法；刷新组件会忽略该调用。
+    /// 只有通过 `onLoadMore` 安装的组件会响应此方法；刷新组件会忽略该调用。
     ///
     /// - Parameter edge: 要标记的语义边缘。默认值为 `.bottom`。
     @MainActor
-    public func noMoreData(edge: RefreshableEdge = .bottom) {
-        loadMoreComponent(for: edge)?.setNoMoreData()
+    public func markNoMoreData(edge: RefreshableEdge = .bottom) {
+        loadMoreComponent(for: edge)?.markNoMoreData()
     }
 
     /// 重置指定边缘的没有更多数据状态。
@@ -296,7 +296,7 @@ extension UIScrollView {
     /// - Parameter edge: 要查询的语义边缘。
     @MainActor
     public func isRefreshActive(edge: RefreshableEdge) -> Bool {
-        refreshState(edge: edge).isRefreshing
+        refreshState(edge: edge).isActive
     }
 
     /// 一个布尔值，指示默认底部加载更多组件当前是否正在加载。
@@ -310,7 +310,7 @@ extension UIScrollView {
     /// - Parameter edge: 要查询的语义边缘。
     @MainActor
     public func isLoadMoreActive(edge: RefreshableEdge) -> Bool {
-        loadMoreState(edge: edge).isRefreshing
+        loadMoreState(edge: edge).isActive
     }
 
     // MARK: - 运行时控制
@@ -356,7 +356,7 @@ extension UIScrollView {
     ///
     /// - Parameter edge: 要移除的语义边缘。默认值为 `.bottom`。
     @MainActor
-    public func removeLoadMoreable(edge: RefreshableEdge = .bottom) {
+    public func removeLoadMore(edge: RefreshableEdge = .bottom) {
         guard component(for: edge)?.role == .loadMore else { return }
         setComponent(nil, for: edge)
     }
@@ -409,7 +409,7 @@ extension UIScrollView {
         component.scrollView = self
     }
 
-    private func installLoadMoreable(
+    private func installLoadMore(
         edge: RefreshableEdge,
         style: any RefreshableStyle,
         options: RefreshableOptions,

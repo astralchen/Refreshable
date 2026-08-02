@@ -109,7 +109,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
                 lastUpdatedText: "刷新后重置加载状态"
             ),
             options: RefreshableOptions(
-                triggerOffset: 72,
+                triggerDistance: 72,
                 animationDuration: 0.3,
                 placement: RefreshablePlacement(contentSpacing: 0)
             )
@@ -124,10 +124,10 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
     }
 
     private func installBottomLoadMore() {
-        collectionView.loadMoreable(
+        collectionView.onLoadMore(
             options: RefreshableOptions(
                 animationDuration: 0.28,
-                automaticTriggerOffset: 120,
+                automaticTriggerDistance: 120,
                 placement: RefreshablePlacement(contentSpacing: 0)
             )
         ) { [weak self] in
@@ -297,7 +297,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
         var pageItems = [
             GridUpdateItem(
                 title: "自动加载批次 \(base + 1)",
-                source: "loadMoreable",
+                source: "onLoadMore",
                 time: "第 \(page) 页",
                 chip: "加载",
                 chipStyle: .update,
@@ -307,7 +307,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
             ),
             GridUpdateItem(
                 title: "边缘触发记录 \(base + 2)",
-                source: "automaticTriggerOffset",
+                source: "automaticTriggerDistance",
                 time: "120pt",
                 chip: "触发",
                 chipStyle: .article,
@@ -405,7 +405,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self, self.hasLoadedAllPages else { return }
-            self.collectionView.removeLoadMoreable()
+            self.collectionView.removeLoadMore()
         }
     }
 

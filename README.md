@@ -11,7 +11,7 @@ dependencies: [
 ]
 ```
 
-app target 至少依赖核心产品 `Refreshable`；需要太极、动感或视频样式时，再加入
+app target 至少依赖核心产品 `Refreshable`；需要动感或视频样式时，再加入
 `RefreshableStyles` 产品。
 
 ## 快速上手
@@ -30,7 +30,7 @@ tableView.refreshable { [weak self] in
 }
 
 // 上拉加载
-tableView.loadMoreable { [weak self] in
+tableView.onLoadMore { [weak self] in
     guard let self else { return }
     let nextPage = await service.fetchNextPage()
     await MainActor.run {
@@ -54,17 +54,17 @@ scrollView.beginRefreshing(edge: .leading)
 scrollView.endRefreshing()
 
 // 上拉加载
-scrollView.loadMoreable { /* async */ }
-scrollView.loadMoreable(edge: .trailing) { /* async */ }
-scrollView.loadMoreable(options: options) { /* async */ }
-scrollView.loadMoreable(style: MyStyle()) { /* async */ }
-scrollView.loadMoreable(style: MyStyle(), options: options) { /* async */ }
+scrollView.onLoadMore { /* async */ }
+scrollView.onLoadMore(edge: .trailing) { /* async */ }
+scrollView.onLoadMore(options: options) { /* async */ }
+scrollView.onLoadMore(style: MyStyle()) { /* async */ }
+scrollView.onLoadMore(style: MyStyle(), options: options) { /* async */ }
 scrollView.beginLoadingMore()
 scrollView.beginLoadingMore(edge: .trailing)
 scrollView.endLoadingMore()
 
 // 没有更多数据
-scrollView.noMoreData()
+scrollView.markNoMoreData()
 scrollView.resetNoMoreData()
 
 // 状态查询
@@ -79,7 +79,7 @@ scrollView.isLoadMoreActive
 scrollView.setRefreshEnabled(false)
 scrollView.setLoadMoreEnabled(false)
 scrollView.removeRefreshable()
-scrollView.removeLoadMoreable()
+scrollView.removeLoadMore()
 ```
 
 `leading` 和 `trailing` 是语义方向，会根据 `UIScrollView.effectiveUserInterfaceLayoutDirection` 在 LTR/RTL 下自动映射到物理 left/right。
@@ -90,11 +90,11 @@ scrollView.removeLoadMoreable()
 
 ```swift
 let options = RefreshableOptions(
-    triggerOffset: 80,
+    triggerDistance: 80,
     animationDuration: 0.35,
-    automaticallyEndRefreshing: false,
+    automaticallyEnds: false,
     allowsLoadMoreWhenContentFits: true,
-    automaticTriggerOffset: 120,
+    automaticTriggerDistance: 120,
     placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
     presentation: .contentInset,
     onStateChange: { [weak self] state in
@@ -109,7 +109,7 @@ tableView.refreshable(options: options) { [weak self, weak tableView] in
     }
 }
 
-tableView.loadMoreable(options: options) { [weak self, weak tableView] in
+tableView.onLoadMore(options: options) { [weak self, weak tableView] in
     await self?.viewModel.fetchNextPage()
     await MainActor.run {
         tableView?.endLoadingMore()
@@ -119,11 +119,11 @@ tableView.loadMoreable(options: options) { [weak self, weak tableView] in
 
 选项默认值保持一行接入行为：
 
-- `triggerOffset: nil` 使用 `style.extent` 作为触发距离；自定义 `triggerOffset` 只改变触发阈值，不改变刷新中保留的视觉占位
+- `triggerDistance: nil` 使用 `style.extent` 作为触发距离；自定义 `triggerDistance` 只改变触发阈值，不改变刷新中保留的视觉占位
 - `animationDuration: 0.25`
-- `automaticallyEndRefreshing: true`，action 完成后自动收起
+- `automaticallyEnds: true`，action 完成后自动收起
 - `allowsLoadMoreWhenContentFits: false`，内容未填满当前滚动轴时默认不触发加载更多
-- `automaticTriggerOffset: .default`，使用内置策略：底部 `loadMoreable` 默认滚到底部自动触发，其他方向默认不自动触发；设置为 `0` 或正值时，`refreshable` / `loadMoreable` 可在任意方向滚到对应边缘或提前距离内自动开始；设置为 `nil` 时关闭自动触发
+- `automaticTriggerDistance: .default`，使用内置策略：底部 `onLoadMore` 默认滚到底部自动触发，其他方向默认不自动触发；设置为 `0` 或正值时，`refreshable` / `onLoadMore` 可在任意方向滚到对应边缘或提前距离内自动开始；设置为 `nil` 时关闭自动触发
 - `placement: nil`，使用 style 的 `defaultPlacement`；显式传入 `RefreshablePlacement()` 才表示真正的全零布局。`outerSpacing` 沿刷新方向增加视觉控件与可见外侧边缘之间的距离，`contentSpacing` 增加视觉控件与内容之间的距离，`crossAxisInset` 在垂直于刷新方向的轴上收缩视觉控件
 - `presentation: .contentInset`，默认通过 inset 保持刷新视图；全屏视频流可使用 `.overlay(spacing:locksContentOffset:)` 浮在可见区域边缘，并可在边界拖动时保持视频画面不移动
 
@@ -131,7 +131,7 @@ tableView.loadMoreable(options: options) { [weak self, weak tableView] in
 
 ## 默认刷新控件与文案
 
-省略 `style:` 时，`refreshable` 和 `loadMoreable` 在 `.top`、`.bottom`、`.leading`、`.trailing` 四个方向都使用同一套分段式 spinner。默认指示器没有箭头，也不显示可见状态文案。
+省略 `style:` 时，`refreshable` 和 `onLoadMore` 在 `.top`、`.bottom`、`.leading`、`.trailing` 四个方向都使用同一套分段式 spinner。默认指示器没有箭头，也不显示可见状态文案。
 
 `RefreshableOptions.textConfiguration` 控制这套默认指示器的可见文案：
 
@@ -155,11 +155,11 @@ func enableBuiltInRefreshText(on scrollView: UIScrollView) {
     scrollView.refreshable(options: options) {}
 }
 
-// 只覆盖 refreshing；其他状态继续使用内置中文文案
+// 只覆盖 active；其他状态继续使用内置中文文案
 @MainActor
-func overrideRefreshingText(on scrollView: UIScrollView) {
+func overrideActiveText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
-        textConfiguration: RefreshableTextConfiguration(refreshing: "正在同步...")
+        textConfiguration: RefreshableTextConfiguration(active: "正在同步...")
     )
     scrollView.refreshable(options: options) {}
 }
@@ -170,15 +170,15 @@ func hideEndingText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
         textConfiguration: RefreshableTextConfiguration(ending: "")
     )
-    scrollView.loadMoreable(options: options) {}
+    scrollView.onLoadMore(options: options) {}
 }
 ```
 
-显式传入 `DefaultTopRefreshStyle`、`DefaultBottomLoadMoreStyle` 或 `SystemNativeRefreshStyle` 仍然可用，并保留各自原有的箭头、指示器和文案行为：
+显式传入 `ClassicTopRefreshStyle`、`ClassicBottomLoadMoreStyle` 或 `SystemNativeRefreshStyle` 仍然可用，并保留各自原有的箭头、指示器和文案行为：
 
 ```swift
-scrollView.refreshable(style: DefaultTopRefreshStyle()) {}
-scrollView.loadMoreable(style: DefaultBottomLoadMoreStyle()) {}
+scrollView.refreshable(style: ClassicTopRefreshStyle()) {}
+scrollView.onLoadMore(style: ClassicBottomLoadMoreStyle()) {}
 scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
 ```
 
@@ -186,7 +186,7 @@ scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
 
 ## 并发语义
 
-`refreshable` 和 `loadMoreable` 的 action 是 SwiftUI 风格的 `@Sendable () async -> Void`，不会默认隔离到 `@MainActor`。组件安装、状态查询、手动启停和移除 API 仍是 `@MainActor`，因为它们会同步读写 UIKit 状态。
+`refreshable` 和 `onLoadMore` 的 action 是 SwiftUI 风格的 `@Sendable () async -> Void`，不会默认隔离到 `@MainActor`。组件安装、状态查询、手动启停和移除 API 仍是 `@MainActor`，因为它们会同步读写 UIKit 状态。
 
 如果 action 内需要更新 UI 或主 actor 状态，请显式切回主 actor：
 
@@ -225,9 +225,9 @@ final class MyHeaderRenderer: RefreshableStyleRenderer {
         case .idle:           // 空闲
         case .pulling:        // context.pullProgress 为 0...1
         case .triggered:      // 达到阈值，松手即触发
-        case .refreshing:     // 刷新中
+        case .active:         // 刷新或加载动作执行中
         case .ending:         // 收起动画中
-        case .noMoreData:     // 没有更多数据（仅 loadMoreable）
+        case .noMoreData:     // 没有更多数据（仅 onLoadMore）
         }
     }
 }
@@ -240,7 +240,7 @@ tableView.refreshable(style: MyHeaderStyle()) { [weak self] in
 > 无需管理 `view.alpha`，组件会自动处理（idle 透明，拖拽渐显，刷新时完全显示）。
 > 自定义样式应按 `view.bounds` 布局。组件内部会处理滚动视图 host 几何、安全区和横向/纵向间距，不会改写样式视图的 `layoutMargins`。
 
-`defaultTriggerOffset` 默认等于 `extent`，`defaultPlacement` 默认是全零配置；只有样式确实需要不同默认值时才需要覆盖。非正的 extent/trigger 会安全回退到 1pt，负数或非有限的间距和动画时长会归零。
+`defaultTriggerDistance` 默认等于 `extent`，`defaultPlacement` 默认是全零配置；只有样式确实需要不同默认值时才需要覆盖。非正的 extent/trigger 会安全回退到 1pt，负数或非有限的间距和动画时长会归零。
 
 ### 内置自定义样式
 
@@ -261,18 +261,13 @@ tableView.refreshable(style: SystemNativeRefreshStyle()) { [weak self] in
 import Refreshable
 import RefreshableStyles
 
-// 高级玻璃太极：无可见文案，用旋转、辉光和粒子表达状态
-tableView.refreshable(style: TaijiRefreshStyle()) { [weak self] in
-    await self?.viewModel.fetchLatest()
-}
-
 // 动感彩带：弹性路径 + 彩色 tick + 状态胶囊
 tableView.refreshable(style: KineticRefreshStyle()) { [weak self] in
     await self?.viewModel.fetchLatest()
 }
 ```
 
-Demo App 的“样式”页可以在真实 `UITableView` 中切换和试用这三套刷新控件。要查看统一默认控件，请进入“样式”页并点击右上角“默认预览”；该预览可切换上、下、左、右四个方向以及刷新/加载更多角色，并可开关内置文案。
+Demo App 的“样式”页可以在真实 `UITableView` 中切换和试用系统感与动感两套刷新控件。要查看统一默认控件，请进入“样式”页并点击右上角“默认预览”；该预览可切换上、下、左、右四个方向以及刷新/加载更多角色，并可开关内置文案。
 
 ## 生命周期
 

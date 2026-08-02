@@ -12,7 +12,7 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
         return (scrollView, component, style)
@@ -65,12 +65,12 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(component.state == .triggered)
     }
 
-    @Test("scrollViewDidEndDragging: triggered → refreshing")
+    @Test("scrollViewDidEndDragging: triggered → active")
     func endDraggingTriggersLoading() {
         let (_, component, _) = makeSUT()
         component.setState(.triggered)
         component.scrollViewDidEndDragging()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     @Test("scrollViewDidEndDragging: idle 不触发")
@@ -82,28 +82,28 @@ struct EdgeBottomLoadMoreComponentTests {
 
     // MARK: - 防重入
 
-    @Test("refreshing 状态下不重复触发")
+    @Test("active 状态下不重复触发")
     func preventReentry() {
         let (_, component, _) = makeSUT()
         component.trigger()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
         component.trigger()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     // MARK: - beginLoadingMore
 
-    @Test("beginLoadingMore 从 idle 进入 refreshing")
+    @Test("beginLoadingMore 从 idle 进入 active")
     func beginLoadingMore() {
         let (scrollView, component, style) = makeSUT()
         #expect(component.scrollView === scrollView)
         style.reset()
         component.beginLoadingMore()
-        #expect(style.records.contains { $0.state == .refreshing })
+        #expect(style.records.contains { $0.state == .active })
     }
 
-    @Test("beginLoadingMore: 已在 refreshing 时忽略")
-    func beginLoadingMoreWhenRefreshing() {
+    @Test("beginLoadingMore: 已在 active 时忽略")
+    func beginLoadingMoreWhenActive() {
         let (scrollView, component, style) = makeSUT()
         #expect(component.scrollView === scrollView)
         component.beginLoadingMore()
@@ -121,12 +121,12 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 animationDuration: 60,
-                automaticallyEndRefreshing: false
+                automaticallyEnds: false
             )
         )
         component.scrollView = scrollView
         component.beginLoadingMore()
-        component.endRefreshing()
+        component.endAction()
         #expect(component.state == .ending)
         style.reset()
 
@@ -139,53 +139,53 @@ struct EdgeBottomLoadMoreComponentTests {
     @Test("beginLoadingMore: noMoreData 时忽略")
     func beginLoadingMoreWhenNoMoreData() {
         let (_, component, _) = makeSUT()
-        component.setNoMoreData()
+        component.markNoMoreData()
         #expect(component.state == .noMoreData)
 
         component.beginLoadingMore()
         #expect(component.state == .noMoreData)
     }
 
-    // MARK: - endRefreshing
+    // MARK: - endAction
 
-    @Test("endRefreshing: refreshing 进入收尾流程")
-    func endRefreshing() {
+    @Test("endAction: active 进入收尾流程")
+    func endAction() {
         let (_, component, _) = makeSUT()
-        component.setState(.refreshing)
-        component.endRefreshing()
+        component.setState(.active)
+        component.endAction()
         // 无 window 时动画同步完成，可能已到 idle
         let validStates: [RefreshState] = [.ending, .idle]
         #expect(validStates.contains(component.state))
     }
 
-    @Test("endRefreshing: idle 时忽略")
-    func endRefreshingWhenIdle() {
+    @Test("endAction: idle 时忽略")
+    func endActionWhenIdle() {
         let (_, component, style) = makeSUT()
         style.reset()
-        component.endRefreshing()
+        component.endAction()
         #expect(component.state == .idle)
         #expect(style.records.isEmpty)
     }
 
     // MARK: - noMoreData
 
-    @Test("setNoMoreData 从 idle 直接进入 noMoreData")
-    func setNoMoreDataFromIdle() {
+    @Test("markNoMoreData 从 idle 直接进入 noMoreData")
+    func markNoMoreDataFromIdle() {
         let (_, component, _) = makeSUT()
-        component.setNoMoreData()
+        component.markNoMoreData()
         #expect(component.state == .noMoreData)
     }
 
-    @Test("setNoMoreData 重复调用无副作用")
-    func setNoMoreDataIdempotent() {
+    @Test("markNoMoreData 重复调用无副作用")
+    func markNoMoreDataIdempotent() {
         let (_, component, style) = makeSUT()
-        component.setNoMoreData()
+        component.markNoMoreData()
         style.reset()
-        component.setNoMoreData()
+        component.markNoMoreData()
         #expect(style.records.isEmpty)
     }
 
-    @Test("refreshing 转 noMoreData 时保留 bottom inset 让提示停在安全区域内")
+    @Test("active 转 noMoreData 时保留 bottom inset 让提示停在安全区域内")
     func noMoreDataRetainsBottomInsetUntilReset() {
         let scrollView = AdjustedInsetScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
@@ -194,14 +194,14 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle(extent: 54)
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
         component.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 66)
         #expect(RefreshableInsetCoordinator.coordinator(for: scrollView).baselineInset.bottom == 12)
-        component.setNoMoreData()
+        component.markNoMoreData()
 
         #expect(component.state == .noMoreData)
         #expect(scrollView.contentInset.bottom == 66)
@@ -225,12 +225,12 @@ struct EdgeBottomLoadMoreComponentTests {
             style: MockStyle(extent: 54),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticTriggerOffset: nil
+                automaticTriggerDistance: nil
             )
         )
         component.scrollView = scrollView
 
-        component.setNoMoreData()
+        component.markNoMoreData()
 
         #expect(component.state == .noMoreData)
         #expect(scrollView.contentInset.bottom == 66)
@@ -247,12 +247,12 @@ struct EdgeBottomLoadMoreComponentTests {
             style: MockStyle(extent: 54),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticTriggerOffset: nil
+                automaticTriggerDistance: nil
             )
         )
         component.scrollView = scrollView
 
-        component.setNoMoreData()
+        component.markNoMoreData()
 
         #expect(component.state == .noMoreData)
         #expect(scrollView.contentInset.bottom == 66)
@@ -271,7 +271,7 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 placement: RefreshablePlacement(contentSpacing: 0),
                 presentation: .overlay(spacing: 0),
                 overlayAnchor: .contentBoundary
@@ -284,12 +284,12 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(scrollView.contentSize == originalContentSize)
         #expect(scrollView.contentInset == originalContentInset)
 
-        component.endRefreshing()
+        component.endAction()
 
         #expect(scrollView.contentSize == originalContentSize)
         #expect(scrollView.contentInset == originalContentInset)
 
-        component.setNoMoreData()
+        component.markNoMoreData()
 
         #expect(scrollView.contentSize == originalContentSize)
         #expect(scrollView.contentInset == originalContentInset)
@@ -301,7 +301,7 @@ struct EdgeBottomLoadMoreComponentTests {
     @Test("resetNoMoreData 从 noMoreData → idle")
     func resetNoMoreData() {
         let (_, component, _) = makeSUT()
-        component.setNoMoreData()
+        component.markNoMoreData()
         component.resetNoMoreData()
         #expect(component.state == .idle)
     }
@@ -329,8 +329,8 @@ struct EdgeBottomLoadMoreComponentTests {
 
     // MARK: - inset
 
-    @Test("进入 refreshing 后 contentInset.bottom 增加")
-    func insetOnRefreshing() {
+    @Test("进入 active 后 contentInset.bottom 增加")
+    func insetWhileActive() {
         let (scrollView, component, _) = makeSUT()
         component.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 54)
@@ -352,7 +352,7 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -372,7 +372,7 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle(extent: 54)
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         )
         component.scrollView = scrollView
         let expectedOffsetY = CGFloat(2000 - 667 + 30 + 54)
@@ -384,12 +384,12 @@ struct EdgeBottomLoadMoreComponentTests {
 
     // MARK: - scrollView 释放
 
-    @Test("scrollView 为 nil 时 endRefreshing 回到 idle")
-    func endRefreshingWithoutScrollView() {
+    @Test("scrollView 为 nil 时 endAction 回到 idle")
+    func endActionWithoutScrollView() {
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(style: style)
-        component.setState(.refreshing)
-        component.endRefreshing()
+        component.setState(.active)
+        component.endAction()
         #expect(component.state == .idle)
     }
 
@@ -414,27 +414,27 @@ struct EdgeBottomLoadMoreComponentTests {
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
         let bottomOffset = CGPoint(x: 0, y: 2000 - 667)
         component.scrollViewDidScroll(contentOffset: bottomOffset)
 
-        #expect(component.state == .refreshing)
-        #expect(style.records.contains { $0.state == .refreshing })
+        #expect(component.state == .active)
+        #expect(style.records.contains { $0.state == .active })
     }
 
-    @Test("automaticTriggerOffset 为 nil 时关闭滚到底部自动加载")
-    func nilAutomaticTriggerOffsetDisablesAutomaticLoading() {
+    @Test("automaticTriggerDistance 为 nil 时关闭滚到底部自动加载")
+    func nilAutomaticTriggerDistanceDisablesAutomaticLoading() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: nil
+                automaticallyEnds: false,
+                automaticTriggerDistance: nil
             )
         )
         component.scrollView = scrollView
@@ -453,8 +453,8 @@ struct EdgeBottomLoadMoreComponentTests {
         let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 80
+                automaticallyEnds: false,
+                automaticTriggerDistance: 80
             )
         )
         component.scrollView = scrollView
@@ -462,8 +462,8 @@ struct EdgeBottomLoadMoreComponentTests {
         let nearBottomOffset = CGPoint(x: 0, y: 2000 - 667 - 79)
         component.scrollViewDidScroll(contentOffset: nearBottomOffset)
 
-        #expect(component.state == .refreshing)
-        #expect(style.records.contains { $0.state == .refreshing })
+        #expect(component.state == .active)
+        #expect(style.records.contains { $0.state == .active })
     }
 
     @Test("自动加载预取不把用户位置强制滚到底部")
@@ -476,19 +476,19 @@ struct EdgeBottomLoadMoreComponentTests {
             style: MockStyle(extent: 54),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 120
+                automaticallyEnds: false,
+                automaticTriggerDistance: 120
             )
         )
         component.scrollView = scrollView
 
         component.scrollViewDidScroll(contentOffset: nearBottomOffset)
 
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
         #expect(scrollView.contentOffset == nearBottomOffset)
         #expect(scrollView.contentInset.bottom == 54)
 
-        component.endRefreshing()
+        component.endAction()
 
         #expect(scrollView.contentOffset == nearBottomOffset)
         #expect(scrollView.contentInset.bottom == 0)
@@ -502,8 +502,8 @@ struct EdgeBottomLoadMoreComponentTests {
         let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 80
+                automaticallyEnds: false,
+                automaticTriggerDistance: 80
             )
         )
         component.scrollView = scrollView
@@ -522,8 +522,8 @@ struct EdgeBottomLoadMoreComponentTests {
         let component = makeBottomLoadMoreComponent(
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 80
+                automaticallyEnds: false,
+                automaticTriggerDistance: 80
             )
         )
         component.scrollView = scrollView
@@ -543,7 +543,7 @@ struct EdgeBottomLoadMoreComponentTests {
             style: style,
             options: RefreshableOptions(
                 allowsLoadMoreWhenContentFits: true,
-                automaticTriggerOffset: nil
+                automaticTriggerDistance: nil
             )
         )
         component.scrollView = scrollView
@@ -573,15 +573,15 @@ struct EdgeBottomLoadMoreComponentTests {
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 不改变 bottom 加载占位")
-    func customBottomTriggerOffsetDoesNotChangeReservedExtent() {
+    @Test("自定义 triggerDistance 不改变 bottom 加载占位")
+    func customBottomTriggerDistanceDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(triggerOffset: 90, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 90, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -590,15 +590,15 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(scrollView.contentInset.bottom == 70)
     }
 
-    @Test("非正 triggerOffset 不改变 bottom 加载占位")
-    func nonPositiveBottomTriggerOffsetDoesNotChangeReservedExtent() {
+    @Test("非正 triggerDistance 不改变 bottom 加载占位")
+    func nonPositiveBottomTriggerDistanceDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 16
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(triggerOffset: -10, animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: -10, animationDuration: 0, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -608,21 +608,21 @@ struct EdgeBottomLoadMoreComponentTests {
         #expect(scrollView.contentInset.bottom == 70)
     }
 
-    @Test("automaticallyEndRefreshing 为 false 时 bottom edge action 完成后保持 refreshing")
+    @Test("automaticallyEnds 为 false 时 bottom edge action 完成后保持 active")
     func bottomManualEndOption() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         let style = MockStyle()
         let component = makeBottomLoadMoreComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
         component.trigger()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     private func makeBottomLoadMoreComponent(

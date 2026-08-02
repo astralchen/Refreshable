@@ -4,7 +4,7 @@
 
 **Goal:** Add safer runtime control, configurable behavior, state visibility, task cancellation, and UI polish to the Refreshable package without breaking the current one-line API.
 
-**Architecture:** Keep the existing `UIScrollView` associated-object architecture. Add a small `RefreshableOptions` value type, thread it through `RefreshComponent`, and expose read-only state plus control methods from `UIScrollView+Refreshable`. Preserve the current default `refreshable {}` and `loadMoreable {}` APIs as compatibility wrappers.
+**Architecture:** Keep the existing `UIScrollView` associated-object architecture. Add a small `RefreshableOptions` value type, thread it through `RefreshComponent`, and expose read-only state plus control methods from `UIScrollView+Refreshable`. Preserve the current default `refreshable {}` and `onLoadMore {}` APIs as compatibility wrappers.
 
 **Tech Stack:** Swift 6.0, UIKit, Swift Testing, iOS 13+, no third-party dependencies.
 
@@ -64,24 +64,24 @@ struct RefreshableOptionsTests {
     func defaults() {
         let options = RefreshableOptions()
 
-        #expect(options.triggerOffset == nil)
+        #expect(options.triggerDistance == nil)
         #expect(options.animationDuration == 0.25)
-        #expect(options.automaticallyEndRefreshing == true)
+        #expect(options.automaticallyEnds == true)
         #expect(options.allowsLoadMoreWhenContentFits == false)
     }
 
     @Test("可配置触发距离、动画时长、自动结束和内容不足一屏加载")
     func customValues() {
         let options = RefreshableOptions(
-            triggerOffset: 80,
+            triggerDistance: 80,
             animationDuration: 0.4,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             allowsLoadMoreWhenContentFits: true
         )
 
-        #expect(options.triggerOffset == 80)
+        #expect(options.triggerDistance == 80)
         #expect(options.animationDuration == 0.4)
-        #expect(options.automaticallyEndRefreshing == false)
+        #expect(options.automaticallyEnds == false)
         #expect(options.allowsLoadMoreWhenContentFits == true)
     }
 }
@@ -108,13 +108,13 @@ import UIKit
 @MainActor
 public struct RefreshableOptions {
     /// 触发距离。nil 表示使用 style.height，保持现有行为。
-    public var triggerOffset: CGFloat?
+    public var triggerDistance: CGFloat?
 
     /// inset 展开和收起动画时长。
     public var animationDuration: TimeInterval
 
     /// action 完成后是否自动调用 endRefreshing/endLoadingMore。
-    public var automaticallyEndRefreshing: Bool
+    public var automaticallyEnds: Bool
 
     /// 内容不足一屏时，是否仍允许上拉加载。
     public var allowsLoadMoreWhenContentFits: Bool
@@ -123,15 +123,15 @@ public struct RefreshableOptions {
     public var onStateChange: (@MainActor (RefreshState) -> Void)?
 
     public init(
-        triggerOffset: CGFloat? = nil,
+        triggerDistance: CGFloat? = nil,
         animationDuration: TimeInterval = 0.25,
-        automaticallyEndRefreshing: Bool = true,
+        automaticallyEnds: Bool = true,
         allowsLoadMoreWhenContentFits: Bool = false,
         onStateChange: (@MainActor (RefreshState) -> Void)? = nil
     ) {
-        self.triggerOffset = triggerOffset
+        self.triggerDistance = triggerDistance
         self.animationDuration = animationDuration
-        self.automaticallyEndRefreshing = automaticallyEndRefreshing
+        self.automaticallyEnds = automaticallyEnds
         self.allowsLoadMoreWhenContentFits = allowsLoadMoreWhenContentFits
         self.onStateChange = onStateChange
     }
@@ -168,14 +168,14 @@ git commit -m "feat: add refreshable options"
 Append to `HeaderRefreshComponentTests`:
 
 ```swift
-@Test("自定义 triggerOffset 用于 header inset")
-func customHeaderTriggerOffset() {
+@Test("自定义 triggerDistance 用于 header inset")
+func customHeaderTriggerDistance() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     scrollView.contentInset.top = 12
     let style = MockStyle()
     let component = HeaderRefreshComponent(
         style: style,
-        options: RefreshableOptions(triggerOffset: 80, automaticallyEndRefreshing: false)
+        options: RefreshableOptions(triggerDistance: 80, automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
@@ -188,15 +188,15 @@ func customHeaderTriggerOffset() {
 Append to `FooterRefreshComponentTests`:
 
 ```swift
-@Test("自定义 triggerOffset 用于 footer inset")
-func customFooterTriggerOffset() {
+@Test("自定义 triggerDistance 用于 footer inset")
+func customFooterTriggerDistance() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     scrollView.contentSize = CGSize(width: 375, height: 2000)
     scrollView.contentInset.bottom = 16
     let style = MockStyle()
     let component = FooterRefreshComponent(
         style: style,
-        options: RefreshableOptions(triggerOffset: 90, automaticallyEndRefreshing: false)
+        options: RefreshableOptions(triggerDistance: 90, automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
@@ -211,7 +211,7 @@ func customFooterTriggerOffset() {
 Run:
 
 ```bash
-xcodebuild test -scheme Refreshable -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipPackagePluginValidation -only-testing:RefreshableTests/HeaderRefreshComponentTests/customHeaderTriggerOffset -only-testing:RefreshableTests/FooterRefreshComponentTests/customFooterTriggerOffset
+xcodebuild test -scheme Refreshable -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipPackagePluginValidation -only-testing:RefreshableTests/HeaderRefreshComponentTests/customHeaderTriggerDistance -only-testing:RefreshableTests/FooterRefreshComponentTests/customFooterTriggerDistance
 ```
 
 Expected: build fails because component initializers do not accept `options`.
@@ -241,7 +241,7 @@ In `HeaderRefreshComponent.swift`:
 
 ```swift
 private var threshold: CGFloat {
-    options.triggerOffset ?? style.height
+    options.triggerDistance ?? style.height
 }
 ```
 
@@ -257,7 +257,7 @@ In `FooterRefreshComponent.swift`:
 
 ```swift
 private var threshold: CGFloat {
-    options.triggerOffset ?? style.height
+    options.triggerDistance ?? style.height
 }
 ```
 
@@ -307,12 +307,12 @@ Add matching footer overloads:
 
 ```swift
 @MainActor
-public func loadMoreable(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
-    loadMoreable(style: DefaultFooterStyle(), options: options, action: action)
+public func onLoadMore(options: RefreshableOptions, action: @MainActor @escaping () async -> Void) {
+    onLoadMore(style: DefaultFooterStyle(), options: options, action: action)
 }
 
 @MainActor
-public func loadMoreable(
+public func onLoadMore(
     style: some RefreshableStyle,
     options: RefreshableOptions,
     action: @MainActor @escaping () async -> Void
@@ -323,13 +323,13 @@ public func loadMoreable(
 }
 
 @MainActor
-public func loadMoreable(action: @MainActor @escaping () async -> Void) {
-    loadMoreable(style: DefaultFooterStyle(), options: RefreshableOptions(), action: action)
+public func onLoadMore(action: @MainActor @escaping () async -> Void) {
+    onLoadMore(style: DefaultFooterStyle(), options: RefreshableOptions(), action: action)
 }
 
 @MainActor
-public func loadMoreable(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
-    loadMoreable(style: style, options: RefreshableOptions(), action: action)
+public func onLoadMore(style: some RefreshableStyle, action: @MainActor @escaping () async -> Void) {
+    onLoadMore(style: style, options: RefreshableOptions(), action: action)
 }
 ```
 
@@ -398,8 +398,8 @@ func publicStateQuery() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     scrollView.contentSize = CGSize(width: 375, height: 2000)
 
-    scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
-    scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+    scrollView.refreshable(options: RefreshableOptions(automaticallyEnds: false)) {}
+    scrollView.onLoadMore(options: RefreshableOptions(automaticallyEnds: false)) {}
 
     #expect(scrollView.refreshState == .idle)
     #expect(scrollView.loadMoreState == .idle)
@@ -407,8 +407,8 @@ func publicStateQuery() {
     scrollView.beginRefreshing()
     scrollView.beginLoadingMore()
 
-    #expect(scrollView.refreshState == .refreshing)
-    #expect(scrollView.loadMoreState == .refreshing)
+    #expect(scrollView.refreshState == .active)
+    #expect(scrollView.loadMoreState == .active)
     #expect(scrollView.isRefreshActive == true)
     #expect(scrollView.isLoadMoreActive == true)
 }
@@ -461,13 +461,13 @@ public var loadMoreState: RefreshState {
 /// header 是否正在刷新。
 @MainActor
 public var isRefreshActive: Bool {
-    refreshState.isRefreshing
+    refreshState.isActive
 }
 
 /// footer 是否正在加载。
 @MainActor
 public var isLoadMoreActive: Bool {
-    loadMoreState.isRefreshing
+    loadMoreState.isActive
 }
 ```
 
@@ -500,20 +500,20 @@ git commit -m "feat: expose refresh states"
 Append to `HeaderRefreshComponentTests`:
 
 ```swift
-@Test("automaticallyEndRefreshing 为 false 时 action 完成后保持 refreshing")
+@Test("automaticallyEnds 为 false 时 action 完成后保持 active")
 func headerManualEndOption() async {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     let style = MockStyle()
     let component = HeaderRefreshComponent(
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
     component.trigger()
     try? await Task.sleep(nanoseconds: 50_000_000)
 
-    #expect(component.state == .refreshing)
+    #expect(component.state == .active)
 }
 
 @Test("取消 header 当前任务会结束刷新")
@@ -543,21 +543,21 @@ func cancelHeaderTask() async {
 Append to `FooterRefreshComponentTests`:
 
 ```swift
-@Test("automaticallyEndRefreshing 为 false 时 footer action 完成后保持 refreshing")
+@Test("automaticallyEnds 为 false 时 footer action 完成后保持 active")
 func footerManualEndOption() async {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     scrollView.contentSize = CGSize(width: 375, height: 2000)
     let style = MockStyle()
     let component = FooterRefreshComponent(
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
     component.trigger()
     try? await Task.sleep(nanoseconds: 50_000_000)
 
-    #expect(component.state == .refreshing)
+    #expect(component.state == .active)
 }
 ```
 
@@ -588,9 +588,9 @@ Replace `trigger()` with:
 ```swift
 func trigger() {
     guard isEnabled else { return }
-    guard !state.isRefreshing else { return }
+    guard !state.isActive else { return }
     captureOriginalInset()
-    setState(.refreshing)
+    setState(.active)
     startActionTask()
 }
 ```
@@ -615,7 +615,7 @@ func startActionTask() {
         guard !Task.isCancelled else { return }
         self.currentTask = nil
 
-        if self.options.automaticallyEndRefreshing {
+        if self.options.automaticallyEnds {
             self.endRefreshing()
         }
     }
@@ -626,7 +626,7 @@ func cancelCurrentTask(resetState: Bool) {
     currentTask = nil
 
     guard resetState else { return }
-    if state.isRefreshing || state == .ending {
+    if state.isActive || state == .ending {
         endRefreshing()
     } else if state != .idle && state != .noMoreData {
         setState(.idle)
@@ -641,11 +641,11 @@ In `HeaderRefreshComponent.beginRefreshing()`:
 ```swift
 func beginRefreshing() {
     guard isEnabled else { return }
-    guard !state.isRefreshing else { return }
+    guard !state.isActive else { return }
     guard let scrollView else { return }
 
     captureOriginalInset()
-    setState(.refreshing)
+    setState(.active)
 
     UIView.animate(withDuration: options.animationDuration) {
         scrollView.contentInset.top = self.originalInset.top + self.threshold
@@ -661,11 +661,11 @@ In `FooterRefreshComponent.beginLoadingMore()`:
 ```swift
 func beginLoadingMore() {
     guard isEnabled else { return }
-    guard !state.isRefreshing, state != .noMoreData else { return }
+    guard !state.isActive, state != .noMoreData else { return }
     guard let scrollView else { return }
 
     captureOriginalInset()
-    setState(.refreshing)
+    setState(.active)
 
     UIView.animate(withDuration: options.animationDuration) {
         scrollView.contentInset.bottom = self.originalInset.bottom + self.threshold
@@ -720,7 +720,7 @@ func recapturesHeaderInsetAtStart() {
     let style = MockStyle()
     let component = HeaderRefreshComponent(
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
@@ -742,7 +742,7 @@ func recapturesFooterInsetAtStart() {
     let style = MockStyle()
     let component = FooterRefreshComponent(
         style: style,
-        options: RefreshableOptions(automaticallyEndRefreshing: false)
+        options: RefreshableOptions(automaticallyEnds: false)
     ) {}
     component.scrollView = scrollView
 
@@ -770,7 +770,7 @@ Confirm the following calls exist:
 
 ```swift
 captureOriginalInset()
-setState(.refreshing)
+setState(.active)
 ```
 
 These calls must appear in:
@@ -811,7 +811,7 @@ Append to `UIScrollViewExtensionTests`:
 @Test("禁用 header 后 beginRefreshing 不触发")
 func disableHeaderPreventsBeginRefreshing() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-    scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+    scrollView.refreshable(options: RefreshableOptions(automaticallyEnds: false)) {}
 
     scrollView.setRefreshEnabled(false)
     scrollView.beginRefreshing()
@@ -823,7 +823,7 @@ func disableHeaderPreventsBeginRefreshing() {
 func disableFooterPreventsBeginLoadingMore() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     scrollView.contentSize = CGSize(width: 375, height: 2000)
-    scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+    scrollView.onLoadMore(options: RefreshableOptions(automaticallyEnds: false)) {}
 
     scrollView.setLoadMoreEnabled(false)
     scrollView.beginLoadingMore()
@@ -843,13 +843,13 @@ func removeRefreshable() {
     #expect(style.view.superview == nil)
 }
 
-@Test("removeLoadMoreable 移除 footer 组件和视图")
-func removeLoadMoreable() {
+@Test("removeLoadMore 移除 footer 组件和视图")
+func removeLoadMore() {
     let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
     let style = MockStyle()
-    scrollView.loadMoreable(style: style, options: RefreshableOptions()) {}
+    scrollView.onLoadMore(style: style, options: RefreshableOptions()) {}
 
-    scrollView.removeLoadMoreable()
+    scrollView.removeLoadMore()
 
     #expect(scrollView.footerComponent == nil)
     #expect(style.view.superview == nil)
@@ -861,7 +861,7 @@ func removeLoadMoreable() {
 Run:
 
 ```bash
-xcodebuild test -scheme Refreshable -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipPackagePluginValidation -only-testing:RefreshableTests/UIScrollViewExtensionTests/disableHeaderPreventsBeginRefreshing -only-testing:RefreshableTests/UIScrollViewExtensionTests/disableFooterPreventsBeginLoadingMore -only-testing:RefreshableTests/UIScrollViewExtensionTests/removeRefreshable -only-testing:RefreshableTests/UIScrollViewExtensionTests/removeLoadMoreable
+xcodebuild test -scheme Refreshable -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -skipPackagePluginValidation -only-testing:RefreshableTests/UIScrollViewExtensionTests/disableHeaderPreventsBeginRefreshing -only-testing:RefreshableTests/UIScrollViewExtensionTests/disableFooterPreventsBeginLoadingMore -only-testing:RefreshableTests/UIScrollViewExtensionTests/removeRefreshable -only-testing:RefreshableTests/UIScrollViewExtensionTests/removeLoadMore
 ```
 
 Expected: build fails because public APIs do not exist.
@@ -918,7 +918,7 @@ public func removeRefreshable() {
 
 /// 移除上拉加载组件。
 @MainActor
-public func removeLoadMoreable() {
+public func removeLoadMore() {
     footerComponent = nil
 }
 ```
@@ -995,14 +995,14 @@ Add these examples under `## API` in `README.md`:
 ```swift
 // 行为配置
 scrollView.refreshable(
-    options: RefreshableOptions(triggerOffset: 80, animationDuration: 0.3)
+    options: RefreshableOptions(triggerDistance: 80, animationDuration: 0.3)
 ) {
     await viewModel.fetchLatest()
 }
 
-scrollView.loadMoreable(
+scrollView.onLoadMore(
     options: RefreshableOptions(
-        automaticallyEndRefreshing: false,
+        automaticallyEnds: false,
         allowsLoadMoreWhenContentFits: true
     )
 ) {
@@ -1013,14 +1013,14 @@ scrollView.loadMoreable(
 // 状态查询
 let refreshState = scrollView.refreshState
 let loadMoreState = scrollView.loadMoreState
-let isRefreshing = scrollView.isRefreshActive
+let isActive = scrollView.isRefreshActive
 let isLoadingMore = scrollView.isLoadMoreActive
 
 // 运行时控制
 scrollView.setRefreshEnabled(false)
 scrollView.setLoadMoreEnabled(false)
 scrollView.removeRefreshable()
-scrollView.removeLoadMoreable()
+scrollView.removeLoadMore()
 ```
 
 Add callback example:
@@ -1044,7 +1044,7 @@ Add a new section after `4. 公开 API`:
 
 ```swift
 scrollView.refreshable(options: RefreshableOptions(...)) { ... }
-scrollView.loadMoreable(options: RefreshableOptions(...)) { ... }
+scrollView.onLoadMore(options: RefreshableOptions(...)) { ... }
 scrollView.refreshState
 scrollView.loadMoreState
 scrollView.isRefreshActive
@@ -1052,14 +1052,14 @@ scrollView.isLoadMoreActive
 scrollView.setRefreshEnabled(_:)
 scrollView.setLoadMoreEnabled(_:)
 scrollView.removeRefreshable()
-scrollView.removeLoadMoreable()
+scrollView.removeLoadMore()
 ```
 
 `RefreshableOptions` 支持：
 
-- `triggerOffset`: 自定义触发距离，默认使用 `style.height`
+- `triggerDistance`: 自定义触发距离，默认使用 `style.height`
 - `animationDuration`: inset 展开/收起动画时长，默认 `0.25`
-- `automaticallyEndRefreshing`: action 完成后是否自动结束，默认 `true`
+- `automaticallyEnds`: action 完成后是否自动结束，默认 `true`
 - `allowsLoadMoreWhenContentFits`: 内容不足一屏时是否允许上拉加载，默认 `false`
 - `onStateChange`: 状态变化回调
 ````
@@ -1104,7 +1104,7 @@ Add nested text structs:
 public struct Texts {
     public var idle: String
     public var triggered: String
-    public var refreshing: String
+    public var active: String
     public var ending: String
 }
 ```
@@ -1122,7 +1122,7 @@ For default styles:
 - set `label.adjustsFontForContentSizeCategory = true`
 - set `view.isAccessibilityElement = true`
 - update `view.accessibilityLabel` when state changes
-- post `UIAccessibility.post(notification: .announcement, argument: label.text)` only when entering `.refreshing`, `.ending`, and `.noMoreData`
+- post `UIAccessibility.post(notification: .announcement, argument: label.text)` only when entering `.active`, `.ending`, and `.noMoreData`
 
 ### Demo Expansion
 
@@ -1145,7 +1145,7 @@ public enum RefreshState: Sendable, Equatable {
     case idle
     case pulling(CGFloat)
     case triggered
-    case refreshing
+    case active
     case ending
     case failed(String)
     case noMoreData
@@ -1156,7 +1156,7 @@ Add throwing overloads:
 
 ```swift
 public func refreshable(action: @MainActor @escaping () async throws -> Void)
-public func loadMoreable(action: @MainActor @escaping () async throws -> Void)
+public func onLoadMore(action: @MainActor @escaping () async throws -> Void)
 ```
 
 Footer retry should be opt-in through options:

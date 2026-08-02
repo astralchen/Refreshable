@@ -42,7 +42,7 @@ struct DefaultRefreshControlStyleTests {
         )
 
         #expect(style.extent == 72)
-        #expect(style.defaultTriggerOffset == 54)
+        #expect(style.defaultTriggerDistance == 54)
         #expect(style.defaultPlacement == RefreshablePlacement(outerSpacing: 8))
 
         let verticalStyle = DefaultRefreshControlStyle(
@@ -71,7 +71,7 @@ struct DefaultRefreshControlStyleTests {
         role: RefreshableRole,
         idle: String,
         triggered: String,
-        refreshing: String,
+        active: String,
         ending: String,
         noMoreData: String
     ) throws {
@@ -88,8 +88,8 @@ struct DefaultRefreshControlStyleTests {
         #expect(label.text == idle)
         renderer.render(defaultContext(.triggered, progress: 1))
         #expect(label.text == triggered)
-        renderer.render(defaultContext(.refreshing, progress: 1))
-        #expect(label.text == refreshing)
+        renderer.render(defaultContext(.active, progress: 1))
+        #expect(label.text == active)
         renderer.render(defaultContext(.ending, progress: 1))
         #expect(label.text == ending)
         renderer.render(defaultContext(.noMoreData))
@@ -102,7 +102,7 @@ struct DefaultRefreshControlStyleTests {
             edge: .bottom,
             role: .loadMore,
             textConfiguration: RefreshableTextConfiguration(),
-            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+            accessibilityEnvironment: RefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: false,
                 isReduceTransparencyEnabled: false
             )
@@ -114,7 +114,7 @@ struct DefaultRefreshControlStyleTests {
         #expect(label.text == "释放加载")
         #expect(renderer.view.accessibilityValue == "释放加载")
 
-        renderer.render(defaultContext(.refreshing))
+        renderer.render(defaultContext(.active))
         #expect(label.text == "正在加载...")
         #expect(spinner.isSpinAnimationActive)
     }
@@ -125,7 +125,7 @@ struct DefaultRefreshControlStyleTests {
             edge: .top,
             role: .refresh,
             textConfiguration: nil,
-            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+            accessibilityEnvironment: RefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: false,
                 isReduceTransparencyEnabled: false
             )
@@ -146,7 +146,7 @@ struct DefaultRefreshControlStyleTests {
         #expect(spinner.currentProgress == 1)
         #expect(spinner.isSpinAnimationActive == false)
 
-        renderer.render(defaultContext(.refreshing, progress: 1))
+        renderer.render(defaultContext(.active, progress: 1))
         #expect(spinner.currentProgress == 1)
         #expect(spinner.isSpinAnimationActive)
 
@@ -162,7 +162,7 @@ struct DefaultRefreshControlStyleTests {
             edge: .top,
             role: .refresh,
             textConfiguration: nil,
-            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+            accessibilityEnvironment: RefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: true,
                 isReduceTransparencyEnabled: false
             )
@@ -170,7 +170,7 @@ struct DefaultRefreshControlStyleTests {
         let reducedSpinner = try #require(
             reducedRenderer.view.firstDefaultSubview(of: SegmentedRefreshSpinnerView.self)
         )
-        reducedRenderer.render(defaultContext(.refreshing, progress: 1))
+        reducedRenderer.render(defaultContext(.active, progress: 1))
         #expect(reducedSpinner.currentProgress == 1)
         #expect(reducedSpinner.isSpinAnimationActive == false)
     }
@@ -178,7 +178,7 @@ struct DefaultRefreshControlStyleTests {
     @Test("Reduce Motion 实时变化会更新正在刷新的 spinner")
     func liveReduceMotionChanges() throws {
         let environment = DefaultAccessibilityEnvironmentBox(
-            DefaultRefreshStyleAccessibilityEnvironment(
+            RefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: false,
                 isReduceTransparencyEnabled: false
             )
@@ -195,7 +195,7 @@ struct DefaultRefreshControlStyleTests {
             renderer.view.firstDefaultSubview(of: SegmentedRefreshSpinnerView.self)
         )
 
-        renderer.render(defaultContext(.refreshing, progress: 1))
+        renderer.render(defaultContext(.active, progress: 1))
         #expect(spinner.isSpinAnimationActive)
 
         environment.value.isReduceMotionEnabled = true
@@ -221,7 +221,7 @@ struct DefaultRefreshControlStyleTests {
             textConfiguration: RefreshableTextConfiguration(
                 pulling: "继续拖动",
                 triggered: "",
-                refreshing: "载入中"
+                active: "载入中"
             )
         ).makeRenderer()
         let label = try #require(renderer.view.firstDefaultSubview(of: UILabel.self))
@@ -239,7 +239,7 @@ struct DefaultRefreshControlStyleTests {
         #expect(label.isHidden)
         #expect(renderer.view.accessibilityValue == "释放加载")
 
-        renderer.render(defaultContext(.refreshing, progress: 1))
+        renderer.render(defaultContext(.active, progress: 1))
         #expect(label.text == "载入中")
         #expect(label.isHidden == false)
         #expect(renderer.view.accessibilityValue == "载入中")
@@ -252,7 +252,7 @@ struct DefaultRefreshControlStyleTests {
             role: .refresh,
             textConfiguration: nil
         ).makeRenderer()
-        hiddenRenderer.render(defaultContext(.refreshing, progress: 1))
+        hiddenRenderer.render(defaultContext(.active, progress: 1))
 
         #expect(hiddenRenderer.view.accessibilityLabel == "刷新")
         #expect(hiddenRenderer.view.accessibilityValue == "正在刷新")
@@ -305,7 +305,7 @@ struct DefaultRefreshControlStyleTests {
         let first = style.makeRenderer()
         let second = style.makeRenderer()
 
-        first.render(defaultContext(.refreshing))
+        first.render(defaultContext(.active))
 
         #expect(first !== second)
         #expect(first.view !== second.view)
@@ -316,9 +316,9 @@ struct DefaultRefreshControlStyleTests {
 
 @MainActor
 private final class DefaultAccessibilityEnvironmentBox {
-    var value: DefaultRefreshStyleAccessibilityEnvironment
+    var value: RefreshStyleAccessibilityEnvironment
 
-    init(_ value: DefaultRefreshStyleAccessibilityEnvironment) {
+    init(_ value: RefreshStyleAccessibilityEnvironment) {
         self.value = value
     }
 }

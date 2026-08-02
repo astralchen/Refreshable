@@ -6,13 +6,11 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
     private enum StyleChoice: Int, CaseIterable {
         case system
-        case taiji
         case kinetic
 
         var title: String {
             switch self {
             case .system: "系统"
-            case .taiji: "太极"
             case .kinetic: "动感"
             }
         }
@@ -126,10 +124,10 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
     private func installSelectedStyle() {
         tableView.removeRefreshable()
-        tableView.removeLoadMoreable()
+        tableView.removeLoadMore()
 
         let options = RefreshableOptions(
-            triggerOffset: triggerOffset,
+            triggerDistance: triggerDistance,
             animationDuration: 0.32
         )
 
@@ -139,21 +137,13 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
                 await self?.performRefresh()
             }
 
-        case .taiji:
-            tableView.refreshable(
-                style: TaijiRefreshStyle(theme: .dark),
-                options: options
-            ) { [weak self] in
-                await self?.performRefresh()
-            }
-
         case .kinetic:
             tableView.refreshable(style: KineticRefreshStyle(), options: options) { [weak self] in
                 await self?.performRefresh()
             }
         }
 
-        tableView.loadMoreable { [weak self] in
+        tableView.onLoadMore { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
             await MainActor.run {
                 self?.appendMoreRows()
@@ -161,10 +151,9 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
         }
     }
 
-    private var triggerOffset: CGFloat {
+    private var triggerDistance: CGFloat {
         switch selectedStyle {
         case .system: 132
-        case .taiji: 92
         case .kinetic: 82
         }
     }
@@ -197,7 +186,7 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
     private func appendMoreRows() {
         page += 1
         guard page <= 2 else {
-            tableView.noMoreData()
+            tableView.markNoMoreData()
             return
         }
 

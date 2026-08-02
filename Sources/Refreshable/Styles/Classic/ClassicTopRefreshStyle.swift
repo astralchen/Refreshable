@@ -1,24 +1,24 @@
 import UIKit
 
-/// 默认的顶部下拉刷新样式。
+/// 经典的顶部下拉刷新样式。
 ///
 /// 此样式使用系统符号、文本标签和活动指示器展示下拉刷新状态。
 @MainActor
-public final class DefaultTopRefreshStyle: RefreshableStyle {
-    /// 默认顶部刷新轴向尺寸。
+public final class ClassicTopRefreshStyle: RefreshableStyle {
+    /// 经典顶部刷新样式的轴向尺寸。
     public let extent: CGFloat = 54
-    private let texts: DefaultTopRefreshTexts
-    private let configuration: DefaultRefreshStyleConfiguration
-    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    private let texts: TopRefreshTexts
+    private let configuration: RefreshLabelStyleConfiguration
+    private let accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
 
-    /// 创建默认的顶部下拉刷新样式。
+    /// 创建经典的顶部下拉刷新样式。
     ///
     /// - Parameters:
     ///   - texts: 顶部下拉刷新样式使用的可见文案和 VoiceOver 文案。
     ///   - configuration: 字体、颜色和无障碍行为配置。
     public init(
-        texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
-        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()
+        texts: TopRefreshTexts = TopRefreshTexts(),
+        configuration: RefreshLabelStyleConfiguration = RefreshLabelStyleConfiguration()
     ) {
         self.texts = texts
         self.configuration = configuration
@@ -26,9 +26,9 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
     }
 
     init(
-        texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
-        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(),
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+        texts: TopRefreshTexts = TopRefreshTexts(),
+        configuration: RefreshLabelStyleConfiguration = RefreshLabelStyleConfiguration(),
+        accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
     ) {
         self.texts = texts
         self.configuration = configuration
@@ -36,7 +36,7 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
     }
 
     public func makeRenderer() -> any RefreshableStyleRenderer {
-        DefaultTopRefreshRenderer(
+        ClassicTopRefreshRenderer(
             extent: extent,
             texts: texts,
             configuration: configuration,
@@ -46,22 +46,22 @@ public final class DefaultTopRefreshStyle: RefreshableStyle {
 }
 
 @MainActor
-private final class DefaultTopRefreshRenderer: RefreshableStyleRenderer {
+private final class ClassicTopRefreshRenderer: RefreshableStyleRenderer {
     let view = UIView()
 
     private let extent: CGFloat
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
     private let arrowView = UIImageView()
-    private let texts: DefaultTopRefreshTexts
-    private let configuration: DefaultRefreshStyleConfiguration
-    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    private let texts: TopRefreshTexts
+    private let configuration: RefreshLabelStyleConfiguration
+    private let accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
 
     init(
         extent: CGFloat,
-        texts: DefaultTopRefreshTexts,
-        configuration: DefaultRefreshStyleConfiguration,
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+        texts: TopRefreshTexts,
+        configuration: RefreshLabelStyleConfiguration,
+        accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
     ) {
         self.extent = extent
         self.texts = texts
@@ -107,7 +107,7 @@ private final class DefaultTopRefreshRenderer: RefreshableStyleRenderer {
         ])
     }
 
-    /// 根据下拉刷新状态更新默认界面。
+    /// 根据下拉刷新状态更新经典界面。
     ///
     /// - Parameters:
     ///   - state: 当前下拉刷新状态。
@@ -142,9 +142,9 @@ private final class DefaultTopRefreshRenderer: RefreshableStyleRenderer {
             arrowView.isHidden = false
             arrowView.transform = CGAffineTransform(rotationAngle: .pi)
 
-        case .refreshing:
-            label.text = texts.refreshing
-            updateAccessibilityValue(texts.refreshingAccessibilityValue)
+        case .active:
+            label.text = texts.active
+            updateAccessibilityValue(texts.activeAccessibilityValue)
             indicator.startAnimating()
             arrowView.isHidden = true
 

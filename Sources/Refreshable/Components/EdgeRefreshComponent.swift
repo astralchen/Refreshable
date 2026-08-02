@@ -124,7 +124,7 @@ final class EdgeRefreshComponent: RefreshComponent {
         switch state {
         case .idle, .pulling, .triggered:
             break
-        case .refreshing, .ending, .noMoreData:
+        case .active, .ending, .noMoreData:
             return
         }
         dispatch(.dragChanged(progress: rawProgress))
@@ -145,7 +145,7 @@ final class EdgeRefreshComponent: RefreshComponent {
         }
         guard let scrollView, let insetCoordinator else { return }
         updateRefreshViewFrame(in: scrollView)
-        if reveal, role == .refresh, state == .refreshing {
+        if reveal, role == .refresh, state == .active {
             maintainsContentInsetRefreshBoundary = true
         }
         preservesContentOffsetAcrossInsetChanges = !reveal
@@ -241,7 +241,7 @@ final class EdgeRefreshComponent: RefreshComponent {
 
     // MARK: - 没有更多数据
 
-    func setNoMoreData() {
+    func markNoMoreData() {
         guard role == .loadMore else { return }
         let isAtBoundary = scrollView.map(isAtTargetBoundary(in:)) ?? false
         dispatch(.markNoMoreData(revealAtBoundary: isAtBoundary))
@@ -419,24 +419,24 @@ final class EdgeRefreshComponent: RefreshComponent {
     }
 
     private func triggerAutomaticallyIfNeeded(in scrollView: UIScrollView, contentOffset: CGPoint) -> Bool {
-        guard let triggerOffset = automaticTriggerOffset(in: scrollView) else { return false }
-        guard distanceToAutomaticTriggerEdge(in: scrollView, contentOffset: contentOffset) <= triggerOffset else {
+        guard let triggerDistance = automaticTriggerDistance(in: scrollView) else { return false }
+        guard distanceToAutomaticTriggerEdge(in: scrollView, contentOffset: contentOffset) <= triggerDistance else {
             return false
         }
 
         dispatch(.automaticTrigger)
-        return state.isRefreshing
+        return state.isActive
     }
 
-    private func automaticTriggerOffset(in scrollView: UIScrollView) -> CGFloat? {
-        guard let configuredOffset = resolvedOptions.automaticTriggerOffset else { return nil }
+    private func automaticTriggerDistance(in scrollView: UIScrollView) -> CGFloat? {
+        guard let configuredDistance = resolvedOptions.automaticTriggerDistance else { return nil }
 
         let rawValue: CGFloat
-        switch configuredOffset {
+        switch configuredDistance {
         case .default:
             guard role == .loadMore, edge.physicalEdge(in: scrollView) == .bottom else { return nil }
             rawValue = 0
-        case .offset(let value):
+        case .distance(let value):
             rawValue = value
         }
 
@@ -512,7 +512,7 @@ final class EdgeRefreshComponent: RefreshComponent {
     }
 
     private func establishLockedOverlayBoundaryIfNeeded(reveal: Bool) {
-        guard reveal, state == .refreshing else { return }
+        guard reveal, state == .active else { return }
         guard resolvedOptions.presentation.locksContentOffset else { return }
         guard let scrollView, isAtTargetBoundary(in: scrollView) else { return }
 
@@ -526,7 +526,7 @@ final class EdgeRefreshComponent: RefreshComponent {
             maintainedOffset = lockedOverlayContentOffset(in: scrollView)
         } else if maintainsContentInsetRefreshBoundary {
             switch state {
-            case .refreshing:
+            case .active:
                 maintainedOffset = geometry(in: scrollView).revealContentOffset
             case .idle, .pulling, .triggered, .ending, .noMoreData:
                 maintainedOffset = lockedOverlayContentOffset(in: scrollView)

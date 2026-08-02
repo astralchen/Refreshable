@@ -4,7 +4,7 @@
 
 **Goal:** Upgrade the grid demo into a simple mobile-first Refreshable screen that shows pull-to-refresh, automatic bottom load-more, and a terminal full-width `没有更多数据` collection footer without numbered pagination.
 
-**Architecture:** Keep the implementation scoped to the Demo app. `CollectionViewDemoController` owns the mock update data, filters, compositional grid layout, header, footer, cells, and Refreshable wiring; the package API remains unchanged. The screen uses `UICollectionView` with a fixed-height two-column layout, `SystemNativeRefreshStyle` for top refresh, and `DefaultBottomLoadMoreStyle` that ends normally, then is removed from the view hierarchy instead of entering `collectionView.noMoreData()`.
+**Architecture:** Keep the implementation scoped to the Demo app. `CollectionViewDemoController` owns the mock update data, filters, compositional grid layout, header, footer, cells, and Refreshable wiring; the package API remains unchanged. The screen uses `UICollectionView` with a fixed-height two-column layout, `SystemNativeRefreshStyle` for top refresh, and `ClassicBottomLoadMoreStyle` that ends normally, then is removed from the view hierarchy instead of entering `collectionView.markNoMoreData()`.
 
 **Tech Stack:** Swift, UIKit, UICollectionViewCompositionalLayout, Refreshable, SF Symbols, XCTest UI tests, Xcode Demo app.
 
@@ -30,14 +30,14 @@
   - Refresh should reset the dataset, hide the no-more footer, and reinstall bottom loading without inserting a transient status card into the grid.
   - Render `没有更多数据` as a full-width `UICollectionView.elementKindSectionFooter`, not as a regular grid cell.
   - Install top refresh and bottom load-more with Refreshable options that match the selected UI.
-  - Do not call `collectionView.noMoreData()` in this screen; after the final normal load ending, remove the bottom load-more component from the view hierarchy.
+  - Do not call `collectionView.markNoMoreData()` in this screen; after the final normal load ending, remove the bottom load-more component from the view hierarchy.
 - Modify: `Demo/DemoUITests/DemoUITests.swift`
   - Add smoke coverage for the grid screen labels and the absence of numbered pagination UI.
   - Add behavior coverage for filtering and the terminal no-more-data footer copy and dimensions.
 - Read only: `Sources/Refreshable/Core/RefreshableOptions.swift`
-  - Confirms `automaticTriggerOffset`, `removeLoadMoreable()`, and bottom load-more behavior are already public.
-- Read only: `Sources/Refreshable/Styles/Default/DefaultRefreshStyleConfiguration.swift`
-  - Confirms bottom load-more copy can be customized through `DefaultBottomLoadMoreTexts`.
+  - Confirms `automaticTriggerDistance`, `removeLoadMore()`, and bottom load-more behavior are already public.
+- Read only: `Sources/Refreshable/Styles/Classic/RefreshLabelStyleConfiguration.swift`
+  - Confirms bottom load-more copy can be customized through `BottomLoadMoreTexts`.
 - Read only: `Sources/Refreshable/Styles/Custom/SystemNativeRefreshStyle.swift`
   - Confirms a compact native top refresh style exists for the selected UI direction.
 
@@ -317,7 +317,7 @@ private func makePageItems(page: Int) -> [GridUpdateItem] {
     var pageItems = [
         GridUpdateItem(
             title: "自动加载批次 \(base + 1)",
-            source: "loadMoreable",
+            source: "onLoadMore",
             time: "第 \(page) 页",
             chip: "加载",
             chipStyle: .update,
@@ -327,7 +327,7 @@ private func makePageItems(page: Int) -> [GridUpdateItem] {
         ),
         GridUpdateItem(
             title: "边缘触发记录 \(base + 2)",
-            source: "automaticTriggerOffset",
+            source: "automaticTriggerDistance",
             time: "120pt",
             chip: "触发",
             chipStyle: .article,
@@ -821,7 +821,7 @@ func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath:
 
 - [ ] **Step 3: Update refresh and load-more wiring**
 
-Replace the existing `collectionView.refreshable` and `collectionView.loadMoreable` calls with:
+Replace the existing `collectionView.refreshable` and `collectionView.onLoadMore` calls with:
 
 ```swift
 collectionView.refreshable(
@@ -830,7 +830,7 @@ collectionView.refreshable(
         lastUpdatedText: "刷新后重置加载状态"
     ),
     options: RefreshableOptions(
-        triggerOffset: 72,
+        triggerDistance: 72,
         animationDuration: 0.3,
         placement: RefreshablePlacement(contentSpacing: 0),
         presentation: .overlay(spacing: 12, locksContentOffset: true),
@@ -841,13 +841,13 @@ collectionView.refreshable(
     await self?.performRefresh()
 }
 
-collectionView.loadMoreable(
-    style: DefaultBottomLoadMoreStyle(
-        texts: DefaultBottomLoadMoreTexts(
+collectionView.onLoadMore(
+    style: ClassicBottomLoadMoreStyle(
+        texts: BottomLoadMoreTexts(
             idle: "继续向上滑动",
             pulling: "继续向上滑动",
             triggered: "释放加载",
-            refreshing: "正在加载...",
+            active: "正在加载...",
             ending: "加载完成",
             noMoreData: "",
             noMoreDataAccessibilityValue: ""
@@ -855,7 +855,7 @@ collectionView.loadMoreable(
     ),
     options: RefreshableOptions(
         animationDuration: 0.28,
-        automaticTriggerOffset: 120,
+        automaticTriggerDistance: 120,
         placement: RefreshablePlacement(contentSpacing: 0),
         presentation: .overlay(spacing: 0),
         overlayAnchor: .contentBoundary
@@ -904,7 +904,7 @@ private func showNoMoreDataFooter() {
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
         guard let self, self.hasLoadedAllPages else { return }
-        self.collectionView.removeLoadMoreable()
+        self.collectionView.removeLoadMore()
     }
 }
 ```

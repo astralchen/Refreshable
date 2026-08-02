@@ -23,7 +23,7 @@
 
 在 `EdgeRefreshComponent` 内保存一次刷新生命周期专属的物理边界锚点：
 
-1. 锁定 overlay 的刷新进入 `.refreshing` 时，记录由 coordinator baseline 和当前物理 edge
+1. 锁定 overlay 的刷新进入 `.active` 时，记录由 coordinator baseline 和当前物理 edge
    计算出的边界 offset。
 2. action 期间发生 `contentSize`、bounds、contentInset 或环境变化时，重新按当前 baseline
    计算同一物理边界并恢复对应轴；另一轴保持用户现有位置。

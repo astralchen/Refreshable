@@ -43,13 +43,13 @@ struct UIScrollViewExtensionTests {
     }
 
     @Test("刷新中替换 header 会恢复 top inset")
-    func replacingRefreshingHeaderRestoresInset() {
+    func replacingActiveHeaderRestoresInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 20
         let style1 = MockStyle()
         scrollView.refreshable(
             style: style1,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginRefreshing()
         #expect(scrollView.contentInset.top == 74)
@@ -57,7 +57,7 @@ struct UIScrollViewExtensionTests {
         let style2 = MockStyle()
         scrollView.refreshable(
             style: style2,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         #expect(style1.view.superview == nil)
@@ -70,7 +70,7 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.refreshable { }
         scrollView.beginRefreshing()
-        #expect(scrollView.headerComponent?.state == .refreshing)
+        #expect(scrollView.headerComponent?.state == .active)
     }
 
     @Test("refreshable action 可在后台语义下执行")
@@ -91,19 +91,19 @@ struct UIScrollViewExtensionTests {
     }
 
     @Test("默认横向无文字刷新保留 54pt 触发距离、54pt 显示空间和 8pt 外侧留白")
-    func defaultHorizontalRefreshUsesCompactDisplayExtentWithDefaultTriggerOffset() throws {
+    func defaultHorizontalRefreshUsesCompactDisplayExtentWithDefaultTriggerDistance() throws {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 844, height: 390))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentSize = CGSize(width: 1600, height: 390)
 
         scrollView.refreshable(
             edge: .leading,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         let component = scrollView.component(for: .leading)
-        #expect(component?.options.triggerOffset == nil)
-        #expect(component?.resolvedOptions.triggerOffset == 54)
+        #expect(component?.options.triggerDistance == nil)
+        #expect(component?.resolvedOptions.triggerDistance == 54)
         #expect(component?.options.placement == nil)
         #expect(component?.resolvedOptions.placement.outerSpacing == 8)
         #expect(component?.style.extent == 54)
@@ -131,7 +131,7 @@ struct UIScrollViewExtensionTests {
             #expect(refreshComponent?.renderer.view.firstDefaultRouteLabel?.text == "Refresh")
 
             let loadMoreScrollView = UIScrollView()
-            loadMoreScrollView.loadMoreable(
+            loadMoreScrollView.onLoadMore(
                 edge: edge,
                 options: RefreshableOptions(textConfiguration: RefreshableTextConfiguration(idle: "Load"))
             ) {}
@@ -151,7 +151,7 @@ struct UIScrollViewExtensionTests {
         )
 
         scrollView.refreshable(edge: .leading, style: refreshStyle, options: options) {}
-        scrollView.loadMoreable(edge: .trailing, style: loadMoreStyle, options: options) {}
+        scrollView.onLoadMore(edge: .trailing, style: loadMoreStyle, options: options) {}
 
         #expect((scrollView.component(for: .leading)?.style as? MockStyle) === refreshStyle)
         #expect((scrollView.component(for: .trailing)?.style as? MockStyle) === loadMoreStyle)
@@ -173,42 +173,42 @@ struct UIScrollViewExtensionTests {
         scrollView.beginRefreshing() // 不应 crash
     }
 
-    // MARK: - loadMoreable
+    // MARK: - onLoadMore
 
-    @Test("loadMoreable 设置 footerComponent")
-    func loadMoreableSetsFooter() {
+    @Test("onLoadMore 设置 footerComponent")
+    func onLoadMoreSetsFooter() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
         #expect(scrollView.footerComponent != nil)
     }
 
-    @Test("默认底部 loadMoreable 滚到底部自动触发")
+    @Test("默认底部 onLoadMore 滚到底部自动触发")
     func defaultBottomLoadMoreAutomaticallyTriggersAtBottom() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
 
         scrollView.footerComponent?.scrollViewDidScroll(contentOffset: CGPoint(x: 0, y: 2000 - 667))
 
-        #expect(scrollView.loadMoreState == .refreshing)
+        #expect(scrollView.loadMoreState == .active)
     }
 
-    @Test("loadMoreable 自定义 style")
-    func loadMoreableCustomStyle() {
+    @Test("onLoadMore 自定义 style")
+    func onLoadMoreCustomStyle() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        scrollView.loadMoreable(style: style) { }
+        scrollView.onLoadMore(style: style) { }
         #expect((scrollView.footerComponent?.style as? MockStyle) === style)
     }
 
-    @Test("重复调用 loadMoreable 替换旧组件")
-    func loadMoreableReplacesOld() {
+    @Test("重复调用 onLoadMore 替换旧组件")
+    func onLoadMoreReplacesOld() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style1 = MockStyle()
-        scrollView.loadMoreable(style: style1) { }
+        scrollView.onLoadMore(style: style1) { }
 
         let style2 = MockStyle()
-        scrollView.loadMoreable(style: style2) { }
+        scrollView.onLoadMore(style: style2) { }
 
         #expect((scrollView.footerComponent?.style as? MockStyle) === style2)
         #expect(style1.view.superview == nil)
@@ -220,17 +220,17 @@ struct UIScrollViewExtensionTests {
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
         let style1 = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style1,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 66)
 
         let style2 = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style2,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         #expect(style1.view.superview == nil)
@@ -244,18 +244,18 @@ struct UIScrollViewExtensionTests {
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
         let style1 = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style1,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginLoadingMore()
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
         #expect(scrollView.contentInset.bottom == 66)
 
         let style2 = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style2,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         #expect(style1.view.superview == nil)
@@ -266,13 +266,13 @@ struct UIScrollViewExtensionTests {
     @Test("beginLoadingMore 转发到 footerComponent")
     func beginLoadingMore() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
         scrollView.beginLoadingMore()
-        #expect(scrollView.footerComponent?.state == .refreshing)
+        #expect(scrollView.footerComponent?.state == .active)
     }
 
-    @Test("loadMoreable action 可显式切回 MainActor")
-    func loadMoreableActionCanHopToMainActor() async {
+    @Test("onLoadMore action 可显式切回 MainActor")
+    func onLoadMoreActionCanHopToMainActor() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let probe = MainActorActionProbe()
         let action: @Sendable () async -> Void = {
@@ -281,7 +281,7 @@ struct UIScrollViewExtensionTests {
             }
         }
 
-        scrollView.loadMoreable(options: RefreshableOptions(animationDuration: 0), action: action)
+        scrollView.onLoadMore(options: RefreshableOptions(animationDuration: 0), action: action)
         scrollView.beginLoadingMore()
         for _ in 0..<100 where probe.didRun == false {
             try? await Task.sleep(nanoseconds: 20_000_000)
@@ -293,7 +293,7 @@ struct UIScrollViewExtensionTests {
     @Test("endLoadingMore 转发到 footerComponent")
     func endLoadingMore() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
         scrollView.beginLoadingMore()
         scrollView.endLoadingMore()
         let validStates: [RefreshState] = [.ending, .idle]
@@ -309,10 +309,10 @@ struct UIScrollViewExtensionTests {
     // MARK: - noMoreData
 
     @Test("noMoreData 转发到 footerComponent")
-    func noMoreData() {
+    func markNoMoreData() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.loadMoreable { }
-        scrollView.noMoreData()
+        scrollView.onLoadMore { }
+        scrollView.markNoMoreData()
         #expect(scrollView.footerComponent?.state == .noMoreData)
     }
 
@@ -321,10 +321,10 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 placement: RefreshablePlacement(contentSpacing: 6)
             )
         ) {}
@@ -332,7 +332,7 @@ struct UIScrollViewExtensionTests {
         scrollView.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 72)
 
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
 
         #expect(scrollView.loadMoreState == .noMoreData)
         #expect(scrollView.contentInset.bottom == 12)
@@ -344,10 +344,10 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 placement: RefreshablePlacement(contentSpacing: 6),
                 textConfiguration: RefreshableTextConfiguration(noMoreData: "")
             )
@@ -356,7 +356,7 @@ struct UIScrollViewExtensionTests {
         scrollView.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 72)
 
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
 
         #expect(scrollView.loadMoreState == .noMoreData)
         #expect(scrollView.contentInset.bottom == 12)
@@ -367,17 +367,17 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 placement: RefreshablePlacement(contentSpacing: 6),
                 textConfiguration: RefreshableTextConfiguration()
             )
         ) {}
 
         scrollView.beginLoadingMore()
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
 
         #expect(scrollView.loadMoreState == .noMoreData)
         #expect(scrollView.contentInset.bottom == 72)
@@ -386,8 +386,8 @@ struct UIScrollViewExtensionTests {
     @Test("resetNoMoreData 转发到 footerComponent")
     func resetNoMoreData() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.loadMoreable { }
-        scrollView.noMoreData()
+        scrollView.onLoadMore { }
+        scrollView.markNoMoreData()
         scrollView.resetNoMoreData()
         #expect(scrollView.footerComponent?.state == .idle)
     }
@@ -395,7 +395,7 @@ struct UIScrollViewExtensionTests {
     @Test("无 footer 时 noMoreData 不 crash")
     func noMoreDataWithoutFooter() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
         scrollView.resetNoMoreData()
     }
 
@@ -405,7 +405,7 @@ struct UIScrollViewExtensionTests {
     func bothHeaderAndFooter() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.refreshable { }
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
         #expect(scrollView.headerComponent != nil)
         #expect(scrollView.footerComponent != nil)
     }
@@ -414,15 +414,15 @@ struct UIScrollViewExtensionTests {
     func headerAndFooterIndependent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.refreshable { }
-        scrollView.loadMoreable { }
+        scrollView.onLoadMore { }
 
         scrollView.beginRefreshing()
-        #expect(scrollView.headerComponent?.state == .refreshing)
+        #expect(scrollView.headerComponent?.state == .active)
         #expect(scrollView.footerComponent?.state == .idle)
 
         scrollView.endRefreshing()
         scrollView.beginLoadingMore()
-        #expect(scrollView.footerComponent?.state == .refreshing)
+        #expect(scrollView.footerComponent?.state == .active)
     }
 
     // MARK: - UITableView / UICollectionView
@@ -439,7 +439,7 @@ struct UIScrollViewExtensionTests {
         let layout = UICollectionViewFlowLayout()
         let cv = UICollectionView(frame: CGRect(x: 0, y: 0, width: 375, height: 667), collectionViewLayout: layout)
         cv.refreshable { }
-        cv.loadMoreable { }
+        cv.onLoadMore { }
         #expect(cv.headerComponent != nil)
         #expect(cv.footerComponent != nil)
     }
@@ -451,8 +451,8 @@ struct UIScrollViewExtensionTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
 
-        scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
-        scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+        scrollView.refreshable(options: RefreshableOptions(automaticallyEnds: false)) {}
+        scrollView.onLoadMore(options: RefreshableOptions(automaticallyEnds: false)) {}
 
         #expect(scrollView.refreshState == .idle)
         #expect(scrollView.loadMoreState == .idle)
@@ -460,8 +460,8 @@ struct UIScrollViewExtensionTests {
         scrollView.beginRefreshing()
         scrollView.beginLoadingMore()
 
-        #expect(scrollView.refreshState == .refreshing)
-        #expect(scrollView.loadMoreState == .refreshing)
+        #expect(scrollView.refreshState == .active)
+        #expect(scrollView.loadMoreState == .active)
         #expect(scrollView.isRefreshActive == true)
         #expect(scrollView.isLoadMoreActive == true)
     }
@@ -471,7 +471,7 @@ struct UIScrollViewExtensionTests {
     @Test("禁用 header 后 beginRefreshing 不触发")
     func disableHeaderPreventsBeginRefreshing() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
-        scrollView.refreshable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+        scrollView.refreshable(options: RefreshableOptions(automaticallyEnds: false)) {}
 
         scrollView.setRefreshEnabled(false)
         scrollView.beginRefreshing()
@@ -483,7 +483,7 @@ struct UIScrollViewExtensionTests {
     func disableFooterPreventsBeginLoadingMore() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
-        scrollView.loadMoreable(options: RefreshableOptions(automaticallyEndRefreshing: false)) {}
+        scrollView.onLoadMore(options: RefreshableOptions(automaticallyEnds: false)) {}
 
         scrollView.setLoadMoreEnabled(false)
         scrollView.beginLoadingMore()
@@ -504,13 +504,13 @@ struct UIScrollViewExtensionTests {
     }
 
     @Test("刷新中移除 header 会恢复 top inset")
-    func removeRefreshableWhileRefreshingRestoresInset() {
+    func removeRefreshableWhileActiveRestoresInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 20
         let style = MockStyle()
         scrollView.refreshable(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginRefreshing()
         #expect(scrollView.contentInset.top == 74)
@@ -522,32 +522,32 @@ struct UIScrollViewExtensionTests {
         #expect(scrollView.contentInset.top == 20)
     }
 
-    @Test("removeLoadMoreable 移除 footer 组件和视图")
-    func removeLoadMoreable() {
+    @Test("removeLoadMore 移除 footer 组件和视图")
+    func removeLoadMore() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
-        scrollView.loadMoreable(style: style, options: RefreshableOptions()) {}
+        scrollView.onLoadMore(style: style, options: RefreshableOptions()) {}
 
-        scrollView.removeLoadMoreable()
+        scrollView.removeLoadMore()
 
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)
     }
 
     @Test("加载中移除 footer 会恢复 bottom inset")
-    func removeLoadMoreableWhileLoadingRestoresInset() {
+    func removeLoadMoreWhileLoadingRestoresInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
         let style = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginLoadingMore()
         #expect(scrollView.contentInset.bottom == 66)
 
-        scrollView.removeLoadMoreable()
+        scrollView.removeLoadMore()
 
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)
@@ -555,20 +555,20 @@ struct UIScrollViewExtensionTests {
     }
 
     @Test("noMoreData 状态移除 footer 会恢复 bottom inset")
-    func removeLoadMoreableWhileNoMoreDataRestoresInset() {
+    func removeLoadMoreWhileNoMoreDataRestoresInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 2000)
         scrollView.contentInset.bottom = 12
         let style = MockStyle()
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginLoadingMore()
-        scrollView.noMoreData()
+        scrollView.markNoMoreData()
         #expect(scrollView.contentInset.bottom == 66)
 
-        scrollView.removeLoadMoreable()
+        scrollView.removeLoadMore()
 
         #expect(scrollView.footerComponent == nil)
         #expect(style.view.superview == nil)

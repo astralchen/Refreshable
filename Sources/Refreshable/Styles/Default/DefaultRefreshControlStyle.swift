@@ -6,10 +6,10 @@ final class DefaultRefreshControlStyle: RefreshableStyle, RefreshableNoMoreDataI
     private let edge: RefreshableEdge
     private let role: RefreshableRole
     private let textConfiguration: RefreshableTextConfiguration?
-    private let accessibilityEnvironmentProvider: @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment
+    private let accessibilityEnvironmentProvider: @MainActor () -> RefreshStyleAccessibilityEnvironment
     private let accessibilityNotificationCenter: NotificationCenter?
 
-    var defaultTriggerOffset: CGFloat {
+    var defaultTriggerDistance: CGFloat {
         edge.axis == .horizontal ? 54 : extent
     }
 
@@ -28,8 +28,8 @@ final class DefaultRefreshControlStyle: RefreshableStyle, RefreshableNoMoreDataI
         edge: RefreshableEdge,
         role: RefreshableRole,
         textConfiguration: RefreshableTextConfiguration?,
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment? = nil,
-        accessibilityEnvironmentProvider: (@MainActor () -> DefaultRefreshStyleAccessibilityEnvironment)? = nil,
+        accessibilityEnvironment: RefreshStyleAccessibilityEnvironment? = nil,
+        accessibilityEnvironmentProvider: (@MainActor () -> RefreshStyleAccessibilityEnvironment)? = nil,
         accessibilityNotificationCenter: NotificationCenter = .default
     ) {
         self.edge = edge
@@ -65,7 +65,7 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
     private let role: RefreshableRole
     private let textConfiguration: RefreshableTextConfiguration?
     private let extent: CGFloat
-    private let accessibilityEnvironmentProvider: @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment
+    private let accessibilityEnvironmentProvider: @MainActor () -> RefreshStyleAccessibilityEnvironment
     private let accessibilityNotificationCenter: NotificationCenter?
     private let spinnerView = SegmentedRefreshSpinnerView()
     private let label = UILabel()
@@ -79,7 +79,7 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
         role: RefreshableRole,
         textConfiguration: RefreshableTextConfiguration?,
         extent: CGFloat,
-        accessibilityEnvironmentProvider: @escaping @MainActor () -> DefaultRefreshStyleAccessibilityEnvironment,
+        accessibilityEnvironmentProvider: @escaping @MainActor () -> RefreshStyleAccessibilityEnvironment,
         accessibilityNotificationCenter: NotificationCenter?
     ) {
         self.edge = edge
@@ -112,7 +112,7 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
         case .triggered:
             spinnerView.setProgress(1, animated: false)
             spinnerView.stopSpinning()
-        case .refreshing:
+        case .active:
             spinnerView.setProgress(1, animated: false)
             if accessibilityEnvironmentProvider().isReduceMotionEnabled {
                 spinnerView.stopSpinning()
@@ -213,8 +213,8 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
             textConfiguration?.pulling
         case .triggered:
             textConfiguration?.triggered
-        case .refreshing:
-            textConfiguration?.refreshing
+        case .active:
+            textConfiguration?.active
         case .ending:
             textConfiguration?.ending
         case .noMoreData:
@@ -241,7 +241,7 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
             }
         case .triggered:
             role == .refresh ? "释放刷新" : "释放加载"
-        case .refreshing:
+        case .active:
             role == .refresh ? "正在刷新..." : "正在加载..."
         case .ending:
             role == .refresh ? "刷新完成" : "加载完成"
@@ -252,7 +252,7 @@ private final class DefaultRefreshControlRenderer: RefreshableStyleRenderer {
 
     private func builtInAccessibilityValue(for state: RefreshState) -> String {
         switch state {
-        case .refreshing:
+        case .active:
             role == .refresh ? "正在刷新" : "正在加载"
         default:
             builtInText(for: state)

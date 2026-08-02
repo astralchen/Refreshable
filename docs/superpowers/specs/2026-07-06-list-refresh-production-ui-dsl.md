@@ -37,23 +37,23 @@ screen ListRefreshDemo {
         idle: "下拉刷新"
         pulling: "下拉刷新"
         triggered: "释放刷新"
-        refreshing: "正在刷新..."
+        active: "正在刷新..."
         ending: "刷新完成"
       }
-      subtitleWhenRefreshing: "松手即可查看最新内容"
+      subtitleWhenActive: "松手即可查看最新内容"
       actionLatency: 0.9s
       result: "Insert a fresh update row at the top, reset page to 0, reset noMoreData."
     }
 
     bottom {
       gesture: scrollNearBottom
-      style: DefaultBottomLoadMoreStyle
-      automaticTriggerOffset: 120
+      style: ClassicBottomLoadMoreStyle
+      automaticTriggerDistance: 120
       visibleCopy {
         idle: "上拉加载更多"
         pulling: "上拉加载更多"
         triggered: "释放加载"
-        refreshing: "正在加载..."
+        active: "正在加载..."
         ending: "加载完成"
         noMoreData: "没有更多数据"
       }
@@ -159,7 +159,7 @@ tableHeader {
 
 refreshControlRevealedArea {
   owner: Refreshable
-  visibleWhen: pulling | triggered | refreshing | ending
+  visibleWhen: pulling | triggered | active | ending
   placement: "revealed by the scroll view at the top edge"
   height: token.refreshBandHeight
   content: horizontalStack(spacing: 14, alignment: center) {
@@ -329,7 +329,7 @@ updateRows = [
 - Top refresh text uses `下拉刷新` before threshold and `释放刷新` at threshold.
 - The page content should not jump; keep default `.contentInset` presentation.
 
-### Refreshing
+### Active
 
 - Top refresh control shows `正在刷新...` and the subtitle `松手即可查看最新内容`.
 - A new row appears at index 0 after the async action completes:
@@ -341,13 +341,13 @@ updateRows = [
 
 ### Automatic Load More
 
-- `loadMoreable` uses `RefreshableOptions(automaticTriggerOffset: 120)`.
-- When the scroll view is within 120 pt of the bottom, the bottom component enters refreshing without requiring an overscroll gesture.
+- `onLoadMore` uses `RefreshableOptions(automaticTriggerDistance: 120)`.
+- When the scroll view is within 120 pt of the bottom, the bottom component enters active without requiring an overscroll gesture.
 - Appended rows use the same `UpdateRow` component and realistic content.
 
 ### No More Data
 
-- After page 3, call `tableView.noMoreData()`.
+- After page 3, call `tableView.markNoMoreData()`.
 - Footer copy becomes `没有更多数据`.
 - A following pull-to-refresh calls `tableView.resetNoMoreData()`.
 
@@ -371,8 +371,8 @@ In scope:
 - Redesign `TableViewDemoController` only.
 - Add a private data model and private custom table cell in the same file unless the file becomes unwieldy during implementation.
 - Use existing Refreshable APIs and built-in UIKit/SF Symbols.
-- Use `SystemNativeRefreshStyle` for top refresh and `DefaultBottomLoadMoreStyle` for bottom load more.
-- Use `automaticTriggerOffset` for bottom automatic loading.
+- Use `SystemNativeRefreshStyle` for top refresh and `ClassicBottomLoadMoreStyle` for bottom load more.
+- Use `automaticTriggerDistance` for bottom automatic loading.
 - Add UI tests for the visible screen and main refresh/load-more behavior.
 
 Out of scope:
@@ -391,7 +391,7 @@ Out of scope:
 - The first tab presents a production-quality update list matching the selected target direction.
 - The page includes a header, status line, segmented control, realistic update rows, and bottom load-more state.
 - Pulling down refreshes and inserts a new top row.
-- Scrolling near the bottom automatically loads more rows via `automaticTriggerOffset`.
+- Scrolling near the bottom automatically loads more rows via `automaticTriggerDistance`.
 - After the final page, the bottom component enters no-more-data.
 - Pulling down again resets the no-more-data state.
 - Demo UI tests cover key labels and at least one refresh path.

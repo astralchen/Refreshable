@@ -31,7 +31,6 @@ final class DemoUITests: XCTestCase {
         stylesTab.tap()
 
         try verifyRefresh(styleTitle: "系统", expectedBody: "系统样式刚完成一次真实下拉刷新。", app: app)
-        try verifyRefresh(styleTitle: "太极", expectedBody: "太极样式刚完成一次真实下拉刷新。", app: app)
         try verifyRefresh(styleTitle: "动感", expectedBody: "动感样式刚完成一次真实下拉刷新。", app: app)
     }
 
@@ -91,7 +90,7 @@ final class DemoUITests: XCTestCase {
 
             XCTAssertTrue(
                 waitForLabel(containing: "刷新中", in: status, timeout: 3),
-                "\(testCase.title) edge should reach refreshing"
+                "\(testCase.title) edge should reach active"
             )
 
             let indicator = app.descendants(matching: .any)
@@ -349,7 +348,7 @@ final class DemoUITests: XCTestCase {
     }
 
     @MainActor
-    func testGridRefreshAdvancesToRefreshingWhenFingerLifts() throws {
+    func testGridRefreshAdvancesToActiveWhenFingerLifts() throws {
         let app = XCUIApplication()
         app.launchEnvironment["GridRefresh.UITestRefreshActionDuration"] = "30"
         app.launch()

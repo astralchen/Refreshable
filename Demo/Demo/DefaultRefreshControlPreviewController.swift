@@ -88,7 +88,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
             noMoreDataButton,
             title: "没有更多数据",
             identifier: "DefaultRefreshPreview.NoMoreData",
-            action: #selector(setNoMoreData)
+            action: #selector(markNoMoreData)
         )
         configure(
             resetButton,
@@ -212,14 +212,14 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         boundaryPositionGeneration += 1
         for edge in RefreshableEdge.allCases {
             canvas.removeRefreshable(edge: edge)
-            canvas.removeLoadMoreable(edge: edge)
+            canvas.removeLoadMore(edge: edge)
         }
 
         selectedState = .idle
         let options = RefreshableOptions(
             animationDuration: Self.componentAnimationDuration,
             allowsLoadMoreWhenContentFits: true,
-            automaticTriggerOffset: nil,
+            automaticTriggerDistance: nil,
             textConfiguration: textSwitch.isOn ? RefreshableTextConfiguration() : nil,
             onStateChange: { [weak self] state in
                 self?.selectedState = state
@@ -234,7 +234,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
                 try? await Task.sleep(nanoseconds: actionDuration)
             }
         case .loadMore:
-            canvas.loadMoreable(edge: selectedEdge, options: options) {
+            canvas.onLoadMore(edge: selectedEdge, options: options) {
                 try? await Task.sleep(nanoseconds: actionDuration)
             }
         }
@@ -319,7 +319,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
             "拖动中"
         case .triggered:
             "可释放"
-        case .refreshing:
+        case .active:
             "刷新中"
         case .ending:
             "收起中"
@@ -338,9 +338,9 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         updateStatus()
     }
 
-    @objc private func setNoMoreData() {
+    @objc private func markNoMoreData() {
         guard selectedRole == .loadMore else { return }
-        canvas.noMoreData(edge: selectedEdge)
+        canvas.markNoMoreData(edge: selectedEdge)
         repositionCanvasAtSelectedBoundary(expectedState: .noMoreData)
     }
 

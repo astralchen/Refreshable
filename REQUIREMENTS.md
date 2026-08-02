@@ -38,8 +38,8 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 - 支持 `beginLoadingMore()` 手动触发
 - 支持 `beginLoadingMore(edge:)` 手动触发指定边缘
 - 支持 `endLoadingMore()` 手动结束
-- 支持 `noMoreData()` 标记无更多数据（显示终态文案，停止触发）
-- 支持 `noMoreData(edge:)` 标记指定边缘
+- 支持 `markNoMoreData()` 标记无更多数据（显示终态文案，停止触发）
+- 支持 `markNoMoreData(edge:)` 标记指定边缘
 - 支持 `resetNoMoreData()` 重置状态（如下拉刷新后重新允许上拉）
 - 内容不足当前 edge 所在轴的视口时默认不触发加载，可通过 `allowsLoadMoreWhenContentFits` 开启
 - 支持运行时启用、禁用和移除指定边缘加载组件
@@ -56,7 +56,7 @@ API 风格对标 SwiftUI `.refreshable {}`，一行代码即可接入。
 - `RefreshableStyleContext` 由组件创建并提供状态与归一化拖动进度
 - 通过 `scrollView.refreshable(style:action:)` 传入自定义样式
 - 核心产品 `Refreshable` 保留默认 spinner、DefaultTop、DefaultBottom 和 SystemNative
-- Taiji、Kinetic、Video 展示型样式由独立产品 `RefreshableStyles` 提供，并依赖核心产品
+- Kinetic、Video 展示型样式由独立产品 `RefreshableStyles` 提供，并依赖核心产品
 
 ### 3.5 默认 UI
 
@@ -90,19 +90,19 @@ scrollView.setRefreshEnabled(false)
 scrollView.removeRefreshable()
 
 // 上拉加载
-scrollView.loadMoreable { await vm.loadNext() }
-scrollView.loadMoreable(edge: .trailing) { await vm.loadNext() }
-scrollView.loadMoreable(options: RefreshableOptions()) { await vm.loadNext() }
-scrollView.loadMoreable(style: CustomFooter()) { await vm.loadNext() }
-scrollView.loadMoreable(style: CustomFooter(), options: RefreshableOptions()) { await vm.loadNext() }
+scrollView.onLoadMore { await vm.loadNext() }
+scrollView.onLoadMore(edge: .trailing) { await vm.loadNext() }
+scrollView.onLoadMore(options: RefreshableOptions()) { await vm.loadNext() }
+scrollView.onLoadMore(style: CustomFooter()) { await vm.loadNext() }
+scrollView.onLoadMore(style: CustomFooter(), options: RefreshableOptions()) { await vm.loadNext() }
 scrollView.beginLoadingMore()
 scrollView.beginLoadingMore(edge: .trailing)
 scrollView.endLoadingMore()
-scrollView.noMoreData()
-scrollView.noMoreData(edge: .trailing)
+scrollView.markNoMoreData()
+scrollView.markNoMoreData(edge: .trailing)
 scrollView.resetNoMoreData()
 scrollView.setLoadMoreEnabled(false)
-scrollView.removeLoadMoreable()
+scrollView.removeLoadMore()
 
 // 状态查询
 scrollView.refreshState
@@ -117,11 +117,11 @@ scrollView.isLoadMoreActive
 
 ```swift
 RefreshableOptions(
-    triggerOffset: nil,
+    triggerDistance: nil,
     animationDuration: 0.25,
-    automaticallyEndRefreshing: true,
+    automaticallyEnds: true,
     allowsLoadMoreWhenContentFits: false,
-    automaticTriggerOffset: .default,
+    automaticTriggerDistance: .default,
     placement: nil,
     presentation: .contentInset, // 或 .overlay(spacing: 12, locksContentOffset: true)
     textConfiguration: nil,
@@ -144,11 +144,11 @@ func enableBuiltInRefreshText(on scrollView: UIScrollView) {
     scrollView.refreshable(options: options) {}
 }
 
-// 只覆盖 refreshing；其他状态继续使用内置中文文案
+// 只覆盖 active；其他状态继续使用内置中文文案
 @MainActor
-func overrideRefreshingText(on scrollView: UIScrollView) {
+func overrideActiveText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
-        textConfiguration: RefreshableTextConfiguration(refreshing: "正在同步...")
+        textConfiguration: RefreshableTextConfiguration(active: "正在同步...")
     )
     scrollView.refreshable(options: options) {}
 }
@@ -159,15 +159,15 @@ func hideEndingText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
         textConfiguration: RefreshableTextConfiguration(ending: "")
     )
-    scrollView.loadMoreable(options: options) {}
+    scrollView.onLoadMore(options: options) {}
 }
 ```
 
 ## 5. 状态机
 
 ```
-Refresh:  idle → pulling(progress) → triggered → refreshing → ending → idle
-LoadMore: idle → pulling(progress) → triggered → refreshing → ending → idle
+Refresh:  idle → pulling(progress) → triggered → active → ending → idle
+LoadMore: idle → pulling(progress) → triggered → active → ending → idle
                                                                  ↘ noMoreData
 ```
 
@@ -176,9 +176,9 @@ LoadMore: idle → pulling(progress) → triggered → refreshing → ending →
 | `idle` | 空闲 |
 | `pulling(CGFloat)` | 正在拖拽，progress 0...1 |
 | `triggered` | 已达阈值，松手即触发 |
-| `refreshing` | 刷新/加载中 |
+| `active` | 刷新/加载中 |
 | `ending` | 收起动画中 |
-| `noMoreData` | 无更多数据（仅 `loadMoreable`） |
+| `noMoreData` | 无更多数据（仅 `onLoadMore`） |
 
 ## 6. 自定义样式协议
 
@@ -186,7 +186,7 @@ LoadMore: idle → pulling(progress) → triggered → refreshing → ending →
 @MainActor
 public protocol RefreshableStyle {
     var extent: CGFloat { get }
-    var defaultTriggerOffset: CGFloat { get }
+    var defaultTriggerDistance: CGFloat { get }
     var defaultPlacement: RefreshablePlacement { get }
     func makeRenderer() -> any RefreshableStyleRenderer
 }
@@ -203,7 +203,7 @@ public struct RefreshableStyleContext: Sendable, Equatable {
 }
 ```
 
-`defaultTriggerOffset` 默认等于 `extent`，`defaultPlacement` 默认是 `.init()`。
+`defaultTriggerDistance` 默认等于 `extent`，`defaultPlacement` 默认是 `.init()`。
 `RefreshableOptions.placement` 默认 `nil`，表示采用 style 默认 placement；显式 `.init()` 表示真正全零布局。
 
 ## 7. 视图可见性（借鉴 UIRefreshControl）
@@ -215,7 +215,7 @@ style.view 的 alpha 由组件自动管理，idle 时完全不可见，拖拽时
 | idle | 0 | 完全透明，bounce 时不会露出 |
 | pulling(p) | p (0→1) | 跟随拖拽进度渐显 |
 | triggered | 1 | 完全可见 |
-| refreshing | 1 | 完全可见 |
+| active | 1 | 完全可见 |
 | ending | 保持 | 收起动画期间保持可见，回到 idle 后隐藏 |
 | noMoreData | 1 | 显示终态文案 |
 
@@ -230,7 +230,7 @@ style.view 的 alpha 由组件自动管理，idle 时完全不可见，拖拽时
 | idle | 空进度，停止 | 隐藏 | 显示对应 edge / 角色的内置中文文案 |
 | pulling(p) | 跟随 p 填充，停止 | 隐藏 | 显示对应 edge / 角色的内置中文文案 |
 | triggered | 满进度，停止 | 隐藏 | 显示“释放刷新”或“释放加载” |
-| refreshing | 满进度，旋转 | 隐藏 | 显示“正在刷新...”或“正在加载...” |
+| active | 满进度，旋转 | 隐藏 | 显示“正在刷新...”或“正在加载...” |
 | ending | 满进度，停止 | 隐藏 | 显示“刷新完成”或“加载完成” |
 | noMoreData | 空进度，停止 | 隐藏 | 加载更多显示“没有更多数据” |
 
@@ -238,11 +238,11 @@ style.view 的 alpha 由组件自动管理，idle 时完全不可见，拖拽时
 
 ### 显式样式兼容性
 
-`DefaultTopRefreshStyle`、`DefaultBottomLoadMoreStyle` 和 `SystemNativeRefreshStyle` 仍可显式传入，并保留原有行为：
+`ClassicTopRefreshStyle`、`ClassicBottomLoadMoreStyle` 和 `SystemNativeRefreshStyle` 仍可显式传入，并保留原有行为：
 
 ```swift
-scrollView.refreshable(style: DefaultTopRefreshStyle()) {}
-scrollView.loadMoreable(style: DefaultBottomLoadMoreStyle()) {}
+scrollView.refreshable(style: ClassicTopRefreshStyle()) {}
+scrollView.onLoadMore(style: ClassicBottomLoadMoreStyle()) {}
 scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
 ```
 
@@ -292,17 +292,17 @@ Refreshable/
 │   ├── Extensions/
 │   │   └── UIScrollView+Refreshable.swift
 │   └── Styles/
+│       ├── Classic/
+│       │   ├── RefreshLabelStyleConfiguration.swift
+│       │   ├── ClassicTopRefreshStyle.swift
+│       │   └── ClassicBottomLoadMoreStyle.swift
 │       ├── Default/
-│       │   ├── DefaultRefreshStyleConfiguration.swift
-│       │   ├── DefaultTopRefreshStyle.swift
-│       │   ├── DefaultBottomLoadMoreStyle.swift
 │       │   └── DefaultRefreshControlStyle.swift
 │       ├── Shared/
 │       │   └── SegmentedRefreshSpinnerView.swift
 │       └── Custom/
 │           └── SystemNativeRefreshStyle.swift
 ├── Sources/RefreshableStyles/
-│   ├── TaijiRefreshStyle.swift
 │   ├── KineticRefreshStyle.swift
 │   └── VideoRefreshStyles.swift
 ├── Tests/RefreshableTests/
@@ -320,9 +320,9 @@ Refreshable/
 - Reducer：完整状态流、progress 归零、ended/cancelled/failed、手动/自动触发、旧 generation、disable/detach/noMoreData
 - Inset：外部修改、活跃增量、多 owner 同边叠加、物理边切换和逐 owner 移除
 - Geometry：四个物理方向、reveal、host/renderer frame、安全区、bounds/contentSize/RTL 变化
-- Renderer：独立 UIView/状态、Taiji 多 renderer 主题同步、Reduce Motion 和动态颜色
+- Renderer：独立 UIView/状态、Reduce Motion 和动态颜色
 - 生命周期：controller、scroll view、component、renderer 可释放，存储闭包使用弱捕获
-- UI：四方向真实拖拽、默认无文案、内置文案、noMoreData/reset 和三套自定义样式
+- UI：四方向真实拖拽、默认无文案、内置文案、noMoreData/reset 和两套自定义样式
 - CI 使用官方 `macos-26`，执行核心/样式单测、iOS 13 generic Release 编译、Demo Swift 6 build-for-testing、UI smoke/full 测试和两产品 API baseline 检查
 
 ## 12. Demo 示例

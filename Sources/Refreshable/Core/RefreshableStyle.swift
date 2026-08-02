@@ -32,7 +32,7 @@ public protocol RefreshableStyle {
     var extent: CGFloat { get }
 
     /// 未显式配置触发距离时使用的距离。
-    var defaultTriggerOffset: CGFloat { get }
+    var defaultTriggerDistance: CGFloat { get }
 
     /// 未显式配置 placement 时使用的位置。
     var defaultPlacement: RefreshablePlacement { get }
@@ -42,7 +42,7 @@ public protocol RefreshableStyle {
 }
 
 public extension RefreshableStyle {
-    var defaultTriggerOffset: CGFloat { extent }
+    var defaultTriggerDistance: CGFloat { extent }
 
     var defaultPlacement: RefreshablePlacement { RefreshablePlacement() }
 }

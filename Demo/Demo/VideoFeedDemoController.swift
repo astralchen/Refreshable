@@ -12,8 +12,8 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
 
     private let pageSize = 3
     private let maxPage = 3
-    private let refreshTriggerOffset: CGFloat = 76
-    private let loadMoreTriggerOffset: CGFloat = 76
+    private let refreshTriggerDistance: CGFloat = 76
+    private let loadMoreTriggerDistance: CGFloat = 76
     private let refreshOverlayTopSpacing: CGFloat = 14
     private let loadMoreContentBoundarySpacing: CGFloat = 8
     private let videoResourceNames = [
@@ -59,7 +59,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
             edge: .top,
             style: VideoTopRefreshStyle(),
             options: RefreshableOptions(
-                triggerOffset: refreshTriggerOffset,
+                triggerDistance: refreshTriggerDistance,
                 presentation: .overlay(spacing: refreshOverlayTopSpacing, locksContentOffset: true)
             )
         ) { [weak self] in
@@ -76,11 +76,11 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
             }
         }
 
-        collectionView.loadMoreable(
+        collectionView.onLoadMore(
             edge: .bottom,
-            style: VideoBottomLoadMoreStyle(extent: loadMoreTriggerOffset),
+            style: VideoBottomLoadMoreStyle(extent: loadMoreTriggerDistance),
             options: RefreshableOptions(
-                triggerOffset: loadMoreTriggerOffset,
+                triggerDistance: loadMoreTriggerDistance,
                 animationDuration: 0.24,
                 allowsLoadMoreWhenContentFits: true,
                 presentation: .overlay(spacing: loadMoreContentBoundarySpacing),
@@ -92,7 +92,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 guard let self else { return }
                 let nextPage = self.page + 1
                 guard nextPage < self.maxPage else {
-                    self.collectionView.noMoreData(edge: .bottom)
+                    self.collectionView.markNoMoreData(edge: .bottom)
                     return
                 }
 

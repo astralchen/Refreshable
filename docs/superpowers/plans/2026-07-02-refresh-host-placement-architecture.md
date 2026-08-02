@@ -4,7 +4,7 @@
 
 **Goal:** Replace the hidden `layoutMargins` coupling in refresh component layout with an explicit placement model, so vertical and horizontal refresh controls can reserve space, add axis spacing, and add cross-axis insets without styles depending on container internals.
 
-**Architecture:** `EdgeRefreshComponent` owns an internal host view that represents scroll-view geometry and reserved space. `RefreshableStyle.view` becomes the visual content view inside that host. Public spacing is expressed by `RefreshablePlacement`, not by mutating `style.view.layoutMargins`. `triggerOffset` remains the gesture threshold only; the refreshing reservation is `placement.outerSpacing + style.extent + placement.contentSpacing`.
+**Architecture:** `EdgeRefreshComponent` owns an internal host view that represents scroll-view geometry and reserved space. `RefreshableStyle.view` becomes the visual content view inside that host. Public spacing is expressed by `RefreshablePlacement`, not by mutating `style.view.layoutMargins`. `triggerDistance` remains the gesture threshold only; the active reservation is `placement.outerSpacing + style.extent + placement.contentSpacing`.
 
 **Tech Stack:** Swift 6, UIKit, Swift Testing, XCTest UI tests, Xcode iOS Simulator.
 
@@ -45,9 +45,9 @@ public struct RefreshablePlacement: Equatable {
 }
 
 public struct RefreshableOptions {
-    public var triggerOffset: CGFloat?
+    public var triggerDistance: CGFloat?
     public var animationDuration: TimeInterval
-    public var automaticallyEndRefreshing: Bool
+    public var automaticallyEnds: Bool
     public var allowsLoadMoreWhenContentFits: Bool
     public var placement: RefreshablePlacement
     public var presentation: RefreshablePresentation
@@ -76,7 +76,7 @@ Semantics:
 - [RefreshableStyle.swift](/Users/sondra/Documents/GitHub/Refreshable/Sources/Refreshable/RefreshableStyle.swift): document that `view` is the visual style view.
 - [RefreshableOptionsTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/RefreshableOptionsTests.swift): cover `placement`.
 - [EdgeRefreshComponentTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/EdgeRefreshComponentTests.swift): cover host view, preserved margins, spacing, and cross-axis inset.
-- [DefaultStyleTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/DefaultStyleTests.swift): update default horizontal style tests to visual-bounds semantics.
+- [ClassicStyleTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/ClassicStyleTests.swift): update default horizontal style tests to visual-bounds semantics.
 - [README.md](/Users/sondra/Documents/GitHub/Refreshable/README.md): document placement once implementation is verified.
 
 ---
@@ -134,7 +134,7 @@ func leadingPlacementContentSpacingReservesGapBeforeContent() throws {
     let style = MockStyle(extent: 54)
     let options = RefreshableOptions(
         animationDuration: 0,
-        automaticallyEndRefreshing: false,
+        automaticallyEnds: false,
         placement: RefreshablePlacement(contentSpacing: 12)
     )
 
@@ -157,7 +157,7 @@ func topPlacementCrossAxisInsetShrinksVisualWidthOnly() throws {
     let style = MockStyle(extent: 44)
     let options = RefreshableOptions(
         animationDuration: 0,
-        automaticallyEndRefreshing: false,
+        automaticallyEnds: false,
         placement: RefreshablePlacement(contentSpacing: 12, crossAxisInset: 20)
     )
 
@@ -199,7 +199,7 @@ func removingLeadingRefreshDetachesStyleAndHostViews() throws {
 }
 ```
 
-- [ ] Update [DefaultStyleTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/DefaultStyleTests.swift) so horizontal default style tests use a narrow visual `view.frame`, not `layoutMargins`:
+- [ ] Update [ClassicStyleTests.swift](/Users/sondra/Documents/GitHub/Refreshable/Tests/RefreshableTests/ClassicStyleTests.swift) so horizontal default style tests use a narrow visual `view.frame`, not `layoutMargins`:
 
 ```swift
 @Test @MainActor
@@ -310,7 +310,7 @@ private func updateViewVisibility(for state: RefreshState) {
     switch state {
     case .idle:
         visibilityView.alpha = 0
-    case .pulling, .triggered, .refreshing, .finishing:
+    case .pulling, .triggered, .active, .finishing:
         visibilityView.alpha = 1
     }
 }
@@ -391,7 +391,7 @@ private var reservedExtent: CGFloat {
 }
 ```
 
-- [ ] Replace `refreshingInsetExtent(in:)` so refreshing reservation uses `reservedExtent` for every edge:
+- [ ] Replace `refreshingInsetExtent(in:)` so active reservation uses `reservedExtent` for every edge:
 
 ```swift
 private func refreshingInsetExtent(in scrollView: UIScrollView) -> CGFloat {
@@ -594,8 +594,7 @@ Expected result: `TEST SUCCEEDED`.
   - Select `系统`, pull below threshold, assert `下拉刷新`.
   - Pull beyond threshold, assert `释放刷新`.
   - Release, assert `正在刷新`.
-  - Select `太极`, pull and assert the taiji view remains centered and not clipped.
-  - Select `动感`, pull and assert the kinetic control is visible only while the pull state is active or refreshing.
+  - Select `动感`, pull and assert the kinetic control is visible only while the pull state is active or active.
 
 - [ ] Re-run:
 
@@ -660,9 +659,9 @@ Expected result:
 ## Implementation Notes
 
 - Keep `layoutMargins` unmodified by `EdgeRefreshComponent`. A style may still use its own margins internally, but component geometry must not write into them.
-- Keep `triggerOffset` independent from `reservedExtent`. Pull state transitions use `triggerOffset ?? style.extent`; refreshing content inset uses `placement.outerSpacing + style.extent + placement.contentSpacing`.
+- Keep `triggerDistance` independent from `reservedExtent`. Pull state transitions use `triggerDistance ?? style.extent`; active content inset uses `placement.outerSpacing + style.extent + placement.contentSpacing`.
 - Do not expose the host view. It is an implementation detail of `EdgeRefreshComponent`.
-- Do not rename existing `DefaultTopRefreshStyle`, `DefaultBottomLoadMoreStyle`, or footer/header aliases in this plan. The placement architecture is independent from naming cleanup.
+- Do not rename existing `ClassicTopRefreshStyle`, `ClassicBottomLoadMoreStyle`, or footer/header aliases in this plan. The placement architecture is independent from naming cleanup.
 - Preserve public initializer source compatibility by placing `placement` after `allowsLoadMoreWhenContentFits` with a default value.
 
 ## Commit Plan

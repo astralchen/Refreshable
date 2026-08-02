@@ -128,7 +128,7 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
 
     private func installRefreshControls() {
         let refreshOptions = RefreshableOptions(
-            triggerOffset: 86,
+            triggerDistance: 86,
             animationDuration: 0.32,
             placement: RefreshablePlacement(contentSpacing: 4)
         )
@@ -146,11 +146,11 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
 
         let loadMoreOptions = RefreshableOptions(
             animationDuration: 0.28,
-            automaticTriggerOffset: 120,
+            automaticTriggerDistance: 120,
             placement: RefreshablePlacement(contentSpacing: 6)
         )
 
-        tableView.loadMoreable(options: loadMoreOptions) { [weak self] in
+        tableView.onLoadMore(options: loadMoreOptions) { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
             await self?.appendNextPage()
         }
@@ -178,7 +178,7 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
     private func appendNextPage() {
         page += 1
         guard page <= 3 else {
-            tableView.noMoreData()
+            tableView.markNoMoreData()
             return
         }
         allItems.append(contentsOf: makePageItems(page: page))

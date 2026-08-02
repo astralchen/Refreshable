@@ -82,7 +82,7 @@ struct RefreshComponentTests {
 
     // MARK: - State 完整流转
 
-    @Test("完整状态流转: idle → pulling → triggered → refreshing → ending → idle")
+    @Test("完整状态流转: idle → pulling → triggered → active → ending → idle")
     func fullStateFlow() {
         let style = MockStyle()
         let component = makeTopRefreshComponent(style: style)
@@ -98,8 +98,8 @@ struct RefreshComponentTests {
         component.setState(.triggered)
         #expect(component.state == .triggered)
 
-        component.setState(.refreshing)
-        #expect(component.state == .refreshing)
+        component.setState(.active)
+        #expect(component.state == .active)
 
         component.setState(.ending)
         #expect(component.state == .ending)
@@ -138,7 +138,7 @@ struct RefreshComponentTests {
     }
 
     @Test("默认 action 完成后自动结束刷新")
-    func automaticallyEndsRefreshingAfterActionCompletes() async {
+    func automaticallyEndsAfterActionCompletes() async {
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
@@ -153,7 +153,7 @@ struct RefreshComponentTests {
         #expect(await waitForState(.idle, in: component) == true)
     }
 
-    @Test("refreshing 回调重入结束后不会启动已失效 action")
+    @Test("active 回调重入结束后不会启动已失效 action")
     func callbackReentrancyInvalidatesDeferredActionStart() async {
         let holder = ComponentHolder()
         let actionCounter = ActionCounter()
@@ -161,10 +161,10 @@ struct RefreshComponentTests {
             style: MockStyle(),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 onStateChange: { state in
-                    guard state == .refreshing else { return }
-                    holder.component?.endRefreshing()
+                    guard state == .active else { return }
+                    holder.component?.endAction()
                 }
             ),
             action: {
@@ -187,7 +187,7 @@ struct RefreshComponentTests {
             style: MockStyle(),
             options: RefreshableOptions(
                 animationDuration: 0.01,
-                automaticallyEndRefreshing: false
+                automaticallyEnds: false
             )
         )
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
@@ -199,7 +199,7 @@ struct RefreshComponentTests {
 
         #expect(await waitForState(.idle, in: component))
         component.trigger()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     private func makeTopRefreshComponent(

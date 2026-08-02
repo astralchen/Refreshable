@@ -12,7 +12,7 @@ The refresh control should work for both horizontal edges:
 - Leading/left physical edge: arrow points right.
 - Trailing/right physical edge: arrow points left.
 - Idle and pulling copy is `拖动刷新`.
-- Triggered, refreshing, ending, and no-more-data copy changes by state.
+- Triggered, active, ending, and no-more-data copy changes by state.
 - Direction is communicated by the arrow, not by left/right wording in the copy.
 
 Reference design:
@@ -25,7 +25,7 @@ The implementation should remain compatible with the existing `RefreshableStyle`
 
 ```swift
 collectionView.refreshable(edge: .leading) { ... }
-collectionView.loadMoreable(edge: .trailing) { ... }
+collectionView.onLoadMore(edge: .trailing) { ... }
 ```
 
 The first implementation should improve:
@@ -33,7 +33,7 @@ The first implementation should improve:
 - `DefaultEdgeStyle` for horizontal edges.
 - `HorizontalEdgeDemoController` production UI.
 
-It should not change the public `UIScrollView.refreshable(...)` or `loadMoreable(...)` APIs.
+It should not change the public `UIScrollView.refreshable(...)` or `onLoadMore(...)` APIs.
 
 ## Refresh Control Visual Design
 
@@ -50,7 +50,7 @@ The confirmed horizontal edge control is intentionally simple:
    - Track: complete light gray circular stroke.
    - Progress: blue circular stroke with round caps.
    - Pulling progress maps to stroke end from `0...1`.
-   - Triggered/refreshing states show a complete or nearly complete progress ring.
+   - Triggered/active states show a complete or nearly complete progress ring.
 
 3. **Directional arrow**
    - Uses system symbol style.
@@ -64,14 +64,14 @@ The confirmed horizontal edge control is intentionally simple:
    - Font: system 12-13 pt.
    - Color: `secondaryLabel`.
    - Single line with minimum scale support.
-   - Triggered/refreshing/ending copy updates by state.
+   - Triggered/active/ending copy updates by state.
    - Refresh role copy: `释放刷新`, `正在刷新...`, `刷新完成`.
    - Load-more role copy: `释放加载`, `正在加载...`, `加载完成`, `没有更多数据`.
    - Directional words such as `左滑` and `右滑` are not used in the label.
 
 5. **No spinner**
    - Do not show `UIActivityIndicatorView`.
-   - Refreshing is communicated through circular progress and subtle animation.
+   - The active refresh state is communicated through circular progress and subtle animation.
 
 ## Animation And Interaction Details
 
@@ -98,7 +98,7 @@ The confirmed horizontal edge control is intentionally simple:
   - Refresh role: `释放刷新`.
   - Load-more role: `释放加载`.
 
-### Refreshing
+### Active
 
 - No spinner appears.
 - Ring stroke end remains full.
@@ -132,7 +132,7 @@ The confirmed horizontal edge control is intentionally simple:
 - Accessibility value should map to state:
   - idle/pulling: `拖动刷新`.
   - triggered: `释放刷新` or `释放加载`.
-  - refreshing: `正在刷新` or `正在加载`.
+  - active: `正在刷新` or `正在加载`.
   - ending: `刷新完成` or `加载完成`.
   - noMoreData: `没有更多数据`.
 - Respect Reduce Motion by disabling continuous ring rotation.

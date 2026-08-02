@@ -62,7 +62,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
         guard direction != layoutDirection else { return }
 
         collectionView.removeRefreshable(edge: .leading)
-        collectionView.removeLoadMoreable(edge: .trailing)
+        collectionView.removeLoadMore(edge: .trailing)
 
         layoutDirection = direction
         applyLayoutDirection()
@@ -259,7 +259,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
             }
         }
 
-        collectionView.loadMoreable(
+        collectionView.onLoadMore(
             edge: .trailing,
             options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
         ) { [weak self] in
@@ -268,7 +268,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
                 guard let self else { return }
                 self.page += 1
                 guard self.page < 3 else {
-                    self.collectionView.noMoreData(edge: .trailing)
+                    self.collectionView.markNoMoreData(edge: .trailing)
                     return
                 }
 

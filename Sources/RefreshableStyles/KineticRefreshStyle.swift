@@ -13,7 +13,7 @@ public struct KineticRefreshTexts {
     public var triggered: String
 
     /// 刷新或加载动作执行中显示的文案。
-    public var refreshing: String
+    public var active: String
 
     /// 动作结束并开始收起时显示的文案。
     public var ending: String
@@ -34,7 +34,7 @@ public struct KineticRefreshTexts {
     public var triggeredAccessibilityValue: String
 
     /// 执行中状态的无障碍值。
-    public var refreshingAccessibilityValue: String
+    public var activeAccessibilityValue: String
 
     /// 结束状态的无障碍值。
     public var endingAccessibilityValue: String
@@ -48,42 +48,42 @@ public struct KineticRefreshTexts {
     ///   - idle: 空闲状态显示的文案。
     ///   - pulling: 用户拖动但尚未达到触发距离时显示的文案。
     ///   - triggered: 已达到触发距离、等待用户松手时显示的文案。
-    ///   - refreshing: 刷新或加载动作执行中显示的文案。
+    ///   - active: 刷新或加载动作执行中显示的文案。
     ///   - ending: 动作结束并开始收起时显示的文案。
     ///   - noMoreData: 没有更多数据状态显示的文案。
     ///   - accessibilityLabel: 刷新视图的无障碍标签。
     ///   - idleAccessibilityValue: 空闲状态的无障碍值。
     ///   - pullingAccessibilityValue: 拖动状态的无障碍值。
     ///   - triggeredAccessibilityValue: 已触发状态的无障碍值。
-    ///   - refreshingAccessibilityValue: 执行中状态的无障碍值。
+    ///   - activeAccessibilityValue: 执行中状态的无障碍值。
     ///   - endingAccessibilityValue: 结束状态的无障碍值。
     ///   - noMoreDataAccessibilityValue: 没有更多数据状态的无障碍值。
     public init(
         idle: String = "下拉刷新",
         pulling: String = "继续下拉",
         triggered: String = "松手刷新",
-        refreshing: String = "正在更新",
+        active: String = "正在更新",
         ending: String = "刷新完成",
         noMoreData: String = "没有更多数据",
         accessibilityLabel: String = "刷新",
         idleAccessibilityValue: String = "未刷新",
         pullingAccessibilityValue: String = "下拉中",
         triggeredAccessibilityValue: String = "释放刷新",
-        refreshingAccessibilityValue: String = "正在更新",
+        activeAccessibilityValue: String = "正在更新",
         endingAccessibilityValue: String = "刷新完成",
         noMoreDataAccessibilityValue: String = "没有更多数据"
     ) {
         self.idle = idle
         self.pulling = pulling
         self.triggered = triggered
-        self.refreshing = refreshing
+        self.active = active
         self.ending = ending
         self.noMoreData = noMoreData
         self.accessibilityLabel = accessibilityLabel
         self.idleAccessibilityValue = idleAccessibilityValue
         self.pullingAccessibilityValue = pullingAccessibilityValue
         self.triggeredAccessibilityValue = triggeredAccessibilityValue
-        self.refreshingAccessibilityValue = refreshingAccessibilityValue
+        self.activeAccessibilityValue = activeAccessibilityValue
         self.endingAccessibilityValue = endingAccessibilityValue
         self.noMoreDataAccessibilityValue = noMoreDataAccessibilityValue
     }
@@ -92,46 +92,46 @@ public struct KineticRefreshTexts {
 /// `KineticRefreshStyle` 使用的颜色配置。
 public struct KineticRefreshPalette {
     /// 主强调色，默认用于进度和状态点。
-    public var teal: UIColor
+    public var primaryAccent: UIColor
 
-    /// 暖色强调色，默认用于动感轨迹的起始段。
-    public var coral: UIColor
+    /// 动感轨迹起始段的强调色。
+    public var leadingAccent: UIColor
 
-    /// 冷色强调色，默认用于动感轨迹的中段。
-    public var indigo: UIColor
+    /// 动感轨迹中段的强调色。
+    public var middleAccent: UIColor
 
-    /// 亮色强调色，默认用于动感轨迹的结束段。
-    public var lime: UIColor
+    /// 动感轨迹结束段的强调色。
+    public var trailingAccent: UIColor
 
     /// 文案颜色。
-    public var ink: UIColor
+    public var foreground: UIColor
 
     /// 胶囊背景颜色。
-    public var surface: UIColor
+    public var background: UIColor
 
     /// 创建动感刷新样式的颜色配置。
     ///
     /// - Parameters:
-    ///   - teal: 主强调色。
-    ///   - coral: 暖色强调色。
-    ///   - indigo: 冷色强调色。
-    ///   - lime: 亮色强调色。
-    ///   - ink: 文案颜色。
-    ///   - surface: 胶囊背景颜色。
+    ///   - primaryAccent: 主强调色。
+    ///   - leadingAccent: 动感轨迹起始段的强调色。
+    ///   - middleAccent: 动感轨迹中段的强调色。
+    ///   - trailingAccent: 动感轨迹结束段的强调色。
+    ///   - foreground: 文案颜色。
+    ///   - background: 胶囊背景颜色。
     public init(
-        teal: UIColor = .systemTeal,
-        coral: UIColor = .systemPink,
-        indigo: UIColor = .systemIndigo,
-        lime: UIColor = UIColor(red: 0.58, green: 0.84, blue: 0.16, alpha: 1),
-        ink: UIColor = .label,
-        surface: UIColor = .white
+        primaryAccent: UIColor = .systemTeal,
+        leadingAccent: UIColor = .systemPink,
+        middleAccent: UIColor = .systemIndigo,
+        trailingAccent: UIColor = UIColor(red: 0.58, green: 0.84, blue: 0.16, alpha: 1),
+        foreground: UIColor = .label,
+        background: UIColor = .white
     ) {
-        self.teal = teal
-        self.coral = coral
-        self.indigo = indigo
-        self.lime = lime
-        self.ink = ink
-        self.surface = surface
+        self.primaryAccent = primaryAccent
+        self.leadingAccent = leadingAccent
+        self.middleAccent = middleAccent
+        self.trailingAccent = trailingAccent
+        self.foreground = foreground
+        self.background = background
     }
 }
 
@@ -247,8 +247,8 @@ private final class KineticRefreshRenderer: RefreshableStyleRenderer {
             progress >= 1 ? texts.triggered : texts.pulling
         case .triggered:
             texts.triggered
-        case .refreshing:
-            texts.refreshing
+        case .active:
+            texts.active
         case .ending:
             texts.ending
         case .noMoreData:
@@ -264,8 +264,8 @@ private final class KineticRefreshRenderer: RefreshableStyleRenderer {
             texts.pullingAccessibilityValue
         case .triggered:
             texts.triggeredAccessibilityValue
-        case .refreshing:
-            texts.refreshingAccessibilityValue
+        case .active:
+            texts.activeAccessibilityValue
         case .ending:
             texts.endingAccessibilityValue
         case .noMoreData:
@@ -311,36 +311,36 @@ private final class KineticRefreshView: UIView {
 
     func apply(palette: KineticRefreshPalette) {
         currentPalette = palette
-        pathLayer.strokeColor = palette.teal.withAlphaComponent(0.16).cgColor
+        pathLayer.strokeColor = palette.primaryAccent.withAlphaComponent(0.16).cgColor
         progressLayer.strokeColor = UIColor.black.cgColor
         ribbonGradientLayer.colors = [
-            palette.coral.withAlphaComponent(0).cgColor,
-            palette.coral.withAlphaComponent(0.75).cgColor,
-            palette.indigo.withAlphaComponent(0.95).cgColor,
-            palette.teal.withAlphaComponent(0.95).cgColor,
+            palette.leadingAccent.withAlphaComponent(0).cgColor,
+            palette.leadingAccent.withAlphaComponent(0.75).cgColor,
+            palette.middleAccent.withAlphaComponent(0.95).cgColor,
+            palette.primaryAccent.withAlphaComponent(0.95).cgColor,
             UIColor(red: 0.08, green: 0.68, blue: 0.92, alpha: 0.95).cgColor,
-            palette.lime.withAlphaComponent(0.9).cgColor,
-            palette.lime.withAlphaComponent(0).cgColor,
+            palette.trailingAccent.withAlphaComponent(0.9).cgColor,
+            palette.trailingAccent.withAlphaComponent(0).cgColor,
         ]
         ribbonGradientLayer.locations = [0, 0.12, 0.34, 0.5, 0.66, 0.86, 1]
         ribbonGradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
         ribbonGradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
         glyphContainer.backgroundColor = UIColor.white.withAlphaComponent(0.96)
-        glyphView.tintColor = palette.teal
-        pillView.backgroundColor = palette.surface.withAlphaComponent(0.94)
-        label.textColor = palette.ink
-        statusDot.backgroundColor = palette.teal
+        glyphView.tintColor = palette.primaryAccent
+        pillView.backgroundColor = palette.background.withAlphaComponent(0.94)
+        label.textColor = palette.foreground
+        statusDot.backgroundColor = palette.primaryAccent
 
         let colors = [
-            palette.coral,
-            palette.coral,
+            palette.leadingAccent,
+            palette.leadingAccent,
             UIColor(red: 1.0, green: 0.62, blue: 0.16, alpha: 1),
             UIColor(red: 1.0, green: 0.62, blue: 0.16, alpha: 1),
-            palette.indigo,
+            palette.middleAccent,
             UIColor(red: 0.56, green: 0.39, blue: 0.96, alpha: 1),
-            palette.teal,
+            palette.primaryAccent,
             UIColor(red: 0.12, green: 0.68, blue: 0.92, alpha: 1),
-            palette.lime,
+            palette.trailingAccent,
             UIColor(red: 0.42, green: 0.78, blue: 0.22, alpha: 1),
             UIColor(red: 0.50, green: 0.82, blue: 0.16, alpha: 1),
         ]
@@ -388,7 +388,7 @@ private final class KineticRefreshView: UIView {
             glyphContainer.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
             pillView.transform = .identity
 
-        case .refreshing:
+        case .active:
             layer.opacity = 1
             glyphContainer.transform = .identity
             pillView.transform = .identity
@@ -619,7 +619,7 @@ private extension RefreshState {
         switch self {
         case .pulling(let progress):
             min(max(progress, 0), 1)
-        case .triggered, .refreshing, .ending:
+        case .triggered, .active, .ending:
             1
         case .idle, .noMoreData:
             min(max(fallback, 0), 1)

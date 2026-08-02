@@ -1,24 +1,24 @@
 import UIKit
 
-/// 默认的底部上拉加载更多样式。
+/// 经典的底部上拉加载更多样式。
 ///
 /// 此样式使用文本标签和活动指示器展示加载更多状态。
 @MainActor
-public final class DefaultBottomLoadMoreStyle: RefreshableStyle {
-    /// 默认底部加载更多轴向尺寸。
+public final class ClassicBottomLoadMoreStyle: RefreshableStyle {
+    /// 经典底部加载更多样式的轴向尺寸。
     public let extent: CGFloat = 54
-    private let texts: DefaultBottomLoadMoreTexts
-    private let configuration: DefaultRefreshStyleConfiguration
-    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    private let texts: BottomLoadMoreTexts
+    private let configuration: RefreshLabelStyleConfiguration
+    private let accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
 
-    /// 创建默认的底部上拉加载更多样式。
+    /// 创建经典的底部上拉加载更多样式。
     ///
     /// - Parameters:
     ///   - texts: 底部上拉加载更多样式使用的可见文案和 VoiceOver 文案。
     ///   - configuration: 字体、颜色和无障碍行为配置。
     public init(
-        texts: DefaultBottomLoadMoreTexts = DefaultBottomLoadMoreTexts(),
-        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration()
+        texts: BottomLoadMoreTexts = BottomLoadMoreTexts(),
+        configuration: RefreshLabelStyleConfiguration = RefreshLabelStyleConfiguration()
     ) {
         self.texts = texts
         self.configuration = configuration
@@ -26,9 +26,9 @@ public final class DefaultBottomLoadMoreStyle: RefreshableStyle {
     }
 
     init(
-        texts: DefaultBottomLoadMoreTexts = DefaultBottomLoadMoreTexts(),
-        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(),
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+        texts: BottomLoadMoreTexts = BottomLoadMoreTexts(),
+        configuration: RefreshLabelStyleConfiguration = RefreshLabelStyleConfiguration(),
+        accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
     ) {
         self.texts = texts
         self.configuration = configuration
@@ -36,7 +36,7 @@ public final class DefaultBottomLoadMoreStyle: RefreshableStyle {
     }
 
     public func makeRenderer() -> any RefreshableStyleRenderer {
-        DefaultBottomLoadMoreRenderer(
+        ClassicBottomLoadMoreRenderer(
             extent: extent,
             texts: texts,
             configuration: configuration,
@@ -46,21 +46,21 @@ public final class DefaultBottomLoadMoreStyle: RefreshableStyle {
 }
 
 @MainActor
-private final class DefaultBottomLoadMoreRenderer: RefreshableStyleRenderer {
+private final class ClassicBottomLoadMoreRenderer: RefreshableStyleRenderer {
     let view = UIView()
 
     private let extent: CGFloat
     private let indicator = UIActivityIndicatorView(style: .medium)
     private let label = UILabel()
-    private let texts: DefaultBottomLoadMoreTexts
-    private let configuration: DefaultRefreshStyleConfiguration
-    private let accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+    private let texts: BottomLoadMoreTexts
+    private let configuration: RefreshLabelStyleConfiguration
+    private let accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
 
     init(
         extent: CGFloat,
-        texts: DefaultBottomLoadMoreTexts,
-        configuration: DefaultRefreshStyleConfiguration,
-        accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment
+        texts: BottomLoadMoreTexts,
+        configuration: RefreshLabelStyleConfiguration,
+        accessibilityEnvironment: RefreshStyleAccessibilityEnvironment
     ) {
         self.extent = extent
         self.texts = texts
@@ -94,7 +94,7 @@ private final class DefaultBottomLoadMoreRenderer: RefreshableStyleRenderer {
         ])
     }
 
-    /// 根据上拉加载状态更新默认界面。
+    /// 根据上拉加载状态更新经典界面。
     ///
     /// - Parameters:
     ///   - state: 当前上拉加载状态。
@@ -118,9 +118,9 @@ private final class DefaultBottomLoadMoreRenderer: RefreshableStyleRenderer {
             updateAccessibilityValue(texts.triggeredAccessibilityValue)
             indicator.stopAnimating()
 
-        case .refreshing:
-            label.text = texts.refreshing
-            updateAccessibilityValue(texts.refreshingAccessibilityValue)
+        case .active:
+            label.text = texts.active
+            updateAccessibilityValue(texts.activeAccessibilityValue)
             indicator.startAnimating()
 
         case .ending:

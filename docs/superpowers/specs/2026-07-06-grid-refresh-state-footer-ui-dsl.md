@@ -14,7 +14,7 @@ The screen should feel like a simple native iOS app surface:
 - Refresh completion resets page state and allows bottom loading again.
 - Scrolling near the bottom automatically loads more items.
 - After the final batch, a full-width collection footer shows `没有更多数据`.
-- The bottom load-more control ends normally, then is removed from the view hierarchy; `collectionView.noMoreData()` is not called in this demo.
+- The bottom load-more control ends normally, then is removed from the view hierarchy; `collectionView.markNoMoreData()` is not called in this demo.
 - There are no manual page number buttons, no ellipsis pagination, and no left/right page navigation row.
 
 ## Effect Images
@@ -46,14 +46,14 @@ screen GridRefreshDemo {
       api: scrollView.refreshable
       edge: .top
       gesture: pullDown
-      triggerOffset: 72
+      triggerDistance: 72
       style: SystemNativeRefreshStyle
       extent: 52
       visibleCopy {
         idle: "下拉刷新"
         pulling: "下拉刷新"
         triggered: "释放刷新"
-        refreshing: "正在刷新..."
+        active: "正在刷新..."
         ending: "刷新完成"
       }
       presentation: overlay(viewport, locksContentOffset)
@@ -63,16 +63,16 @@ screen GridRefreshDemo {
     }
 
     bottom {
-      api: scrollView.loadMoreable
+      api: scrollView.onLoadMore
       edge: .bottom
       gesture: scrollNearBottom
-      style: DefaultBottomLoadMoreStyle
-      automaticTriggerOffset: 120
+      style: ClassicBottomLoadMoreStyle
+      automaticTriggerDistance: 120
       visibleCopy {
         idle: "继续向上滑动"
         pulling: "继续向上滑动"
         triggered: "释放加载"
-        refreshing: "正在加载..."
+        active: "正在加载..."
         ending: "加载完成"
         noMoreData: hidden
       }
@@ -80,7 +80,7 @@ screen GridRefreshDemo {
       terminalSubtitle: "下拉刷新后重新加载"
       presentation: overlay(contentBoundary)
       rule: "The framework load-more control ends normally and is removed from the view hierarchy; noMoreData is represented as a full-width UICollectionView section footer, not as a regular grid cell."
-      result: "Append four grid items per page until page 3; after the final normal load finishes, show the terminal footer, remove loadMoreable, and do not call collectionView.noMoreData()."
+      result: "Append four grid items per page until page 3; after the final normal load finishes, show the terminal footer, remove onLoadMore, and do not call collectionView.markNoMoreData()."
     }
   }
 }
@@ -215,7 +215,7 @@ terminalNoMoreDataFooter {
 
 loadMoreOverlay {
   owner: Refreshable
-  visibleWhen: refreshing
+  visibleWhen: active
   placement: overlay(contentBoundary)
   refreshingContent {
     spinner(style: medium, color: tertiaryText)
@@ -297,7 +297,7 @@ paginationState {
   maxPage: 3
   loadedCount: Int
   totalCount: Int = 36
-  state: idle | refreshing | loadingMore | hasLoadedAllPages
+  state: idle | active | loadingMore | hasLoadedAllPages
 }
 ```
 
@@ -310,7 +310,7 @@ copy {
   loadedCount: "已加载 36 项"
   syncStatus: "刚刚同步"
   filters: ["全部", "加载中", "完成"]
-  loadMoreRefreshing: "正在加载..."
+  loadMoreActive: "正在加载..."
   noMoreTitle: "没有更多数据"
   noMoreSubtitle: "下拉刷新后重新加载"
   terminalCount: "36 项已加载"
@@ -332,7 +332,7 @@ copy {
 - The screen does not show numbered pagination, ellipsis pagination, or page chevron navigation.
 - Initial screen shows `最近更新`, `已加载 36 项`, and a two-column grid without a separate refresh hint row.
 - Pull-to-refresh resets data, sets page back to 0, hides the footer, and reinstalls bottom loading.
-- Bottom automatic load-more uses `automaticTriggerOffset: 120`.
+- Bottom automatic load-more uses `automaticTriggerDistance: 120`.
 - After the final page, a full-width collection footer shows `没有更多数据`, `下拉刷新后重新加载`, and `36 项已加载`.
-- The bottom load-more control ends normally and is removed from the view hierarchy; `collectionView.noMoreData()` is not used for this demo screen.
+- The bottom load-more control ends normally and is removed from the view hierarchy; `collectionView.markNoMoreData()` is not used for this demo screen.
 - The UI remains simple on a 390x844 viewport with no search field, no metrics strip, and no inspector panel.

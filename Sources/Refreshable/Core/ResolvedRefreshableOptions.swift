@@ -2,11 +2,11 @@ import UIKit
 
 struct ResolvedRefreshableOptions {
     let extent: CGFloat
-    let triggerOffset: CGFloat
+    let triggerDistance: CGFloat
     let animationDuration: TimeInterval
-    let automaticallyEndRefreshing: Bool
+    let automaticallyEnds: Bool
     let allowsLoadMoreWhenContentFits: Bool
-    let automaticTriggerOffset: RefreshableOptions.AutomaticTriggerOffset?
+    let automaticTriggerDistance: RefreshableOptions.AutomaticTriggerDistance?
     let placement: RefreshablePlacement
     let presentation: RefreshablePresentation
     let overlayAnchor: RefreshableOverlayAnchor
@@ -14,15 +14,15 @@ struct ResolvedRefreshableOptions {
     init(
         options: RefreshableOptions,
         styleExtent: CGFloat,
-        styleTriggerOffset: CGFloat,
+        styleTriggerDistance: CGFloat,
         stylePlacement: RefreshablePlacement
     ) {
         extent = Self.positiveDimension(styleExtent)
-        triggerOffset = Self.positiveDimension(options.triggerOffset ?? styleTriggerOffset)
+        triggerDistance = Self.positiveDimension(options.triggerDistance ?? styleTriggerDistance)
         animationDuration = Self.nonnegative(options.animationDuration)
-        automaticallyEndRefreshing = options.automaticallyEndRefreshing
+        automaticallyEnds = options.automaticallyEnds
         allowsLoadMoreWhenContentFits = options.allowsLoadMoreWhenContentFits
-        automaticTriggerOffset = Self.automaticTriggerOffset(options.automaticTriggerOffset)
+        automaticTriggerDistance = Self.automaticTriggerDistance(options.automaticTriggerDistance)
         placement = Self.placement(options.placement ?? stylePlacement)
         presentation = Self.presentation(options.presentation)
         overlayAnchor = options.overlayAnchor
@@ -44,12 +44,12 @@ struct ResolvedRefreshableOptions {
         )
     }
 
-    private static func automaticTriggerOffset(
-        _ offset: RefreshableOptions.AutomaticTriggerOffset?
-    ) -> RefreshableOptions.AutomaticTriggerOffset? {
-        guard case .offset(let value) = offset else { return offset }
+    private static func automaticTriggerDistance(
+        _ offset: RefreshableOptions.AutomaticTriggerDistance?
+    ) -> RefreshableOptions.AutomaticTriggerDistance? {
+        guard case .distance(let value) = offset else { return offset }
         guard value.isFinite, value >= 0 else { return nil }
-        return .offset(value)
+        return .distance(value)
     }
 
     private static func presentation(_ presentation: RefreshablePresentation) -> RefreshablePresentation {

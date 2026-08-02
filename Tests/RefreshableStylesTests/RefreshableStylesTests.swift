@@ -11,7 +11,7 @@ struct RefreshableStylesTests {
         let renderer = VideoTopRefreshStyle().makeRenderer()
         let label = try #require(renderer.view.firstSubview(of: UILabel.self))
 
-        renderer.render(context(.refreshing))
+        renderer.render(context(.active))
 
         #expect(renderer.view.isAccessibilityElement)
         #expect(renderer.view.firstSubview(of: UIVisualEffectView.self) != nil)
@@ -53,7 +53,7 @@ struct RefreshableStylesTests {
         ).makeRenderer()
         reducedRenderer.view.frame = CGRect(x: 0, y: 0, width: 390, height: 82)
         reducedRenderer.view.layoutIfNeeded()
-        reducedRenderer.render(context(.refreshing, progress: 1))
+        reducedRenderer.render(context(.active, progress: 1))
 
         let reducedAnimationKeys = reducedRenderer.view.layer
             .allSublayers()
@@ -67,7 +67,7 @@ struct RefreshableStylesTests {
         ).makeRenderer()
         animatedRenderer.view.frame = CGRect(x: 0, y: 0, width: 390, height: 82)
         animatedRenderer.view.layoutIfNeeded()
-        animatedRenderer.render(context(.refreshing, progress: 1))
+        animatedRenderer.render(context(.active, progress: 1))
 
         let animatedKeys = animatedRenderer.view.layer
             .allSublayers()
@@ -76,54 +76,6 @@ struct RefreshableStylesTests {
         #expect(animatedKeys.contains("kineticTick"))
     }
 
-    @Test("Taiji style 将主题变化同步至其所有存活 renderer")
-    func taijiThemeSynchronizesRenderers() throws {
-        let style = TaijiRefreshStyle(theme: .dark)
-        let first = style.makeRenderer()
-        let second = style.makeRenderer()
-        let firstGradient = try #require(first.view.layer.firstSublayer(of: CAGradientLayer.self))
-        let secondGradient = try #require(second.view.layer.firstSublayer(of: CAGradientLayer.self))
-        let darkFirstColor = UIColor(cgColor: firstGradient.colors!.first! as! CGColor)
-        let darkSecondColor = UIColor(cgColor: secondGradient.colors!.first! as! CGColor)
-
-        style.setTheme(.light, animated: false)
-
-        let lightFirstColor = UIColor(cgColor: firstGradient.colors!.first! as! CGColor)
-        let lightSecondColor = UIColor(cgColor: secondGradient.colors!.first! as! CGColor)
-        #expect(style.theme == .light)
-        #expect(darkFirstColor != lightFirstColor)
-        #expect(darkSecondColor != lightSecondColor)
-        #expect(lightFirstColor == lightSecondColor)
-    }
-
-    @Test("Taiji system theme 实时响应 renderer 的明暗外观变化")
-    func taijiSystemThemeRespondsToLiveAppearanceChanges() throws {
-        let style = TaijiRefreshStyle(theme: .system)
-        let renderer = try #require(
-            style.makeRenderer() as? any TaijiRefreshSystemAppearanceRendering
-        )
-        renderer.view.frame = CGRect(x: 0, y: 0, width: 390, height: style.extent)
-
-        let gradient = try #require(
-            renderer.view.layer.firstSublayer(of: CAGradientLayer.self)
-        )
-
-        renderer.applySystemAppearance(
-            traitCollection: UITraitCollection(userInterfaceStyle: .light)
-        )
-        renderer.render(context(.refreshing, progress: 1))
-        let lightColorValue = try #require(gradient.colors?.first)
-        let lightColor = lightColorValue as! CGColor
-
-        renderer.applySystemAppearance(
-            traitCollection: UITraitCollection(userInterfaceStyle: .dark)
-        )
-        let darkColorValue = try #require(gradient.colors?.first)
-        let darkColor = darkColorValue as! CGColor
-
-        #expect(UIColor(cgColor: lightColor) != UIColor(cgColor: darkColor))
-        #expect(renderer.view.accessibilityValue == "正在刷新")
-    }
 }
 
 private func context(_ state: RefreshState, progress: CGFloat = 0) -> RefreshableStyleContext {
@@ -141,14 +93,6 @@ private extension UIView {
 }
 
 private extension CALayer {
-    func firstSublayer<T: CALayer>(of type: T.Type) -> T? {
-        if let typed = self as? T { return typed }
-        for sublayer in sublayers ?? [] {
-            if let found = sublayer.firstSublayer(of: type) { return found }
-        }
-        return nil
-    }
-
     func allSublayers() -> [CALayer] {
         [self] + (sublayers ?? []).flatMap { $0.allSublayers() }
     }

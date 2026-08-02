@@ -14,7 +14,7 @@ public enum RefreshState: Sendable, Equatable {
     case triggered
 
     /// 组件正在执行刷新或加载更多动作。
-    case refreshing
+    case active
 
     /// 刷新动作已经结束，组件正在执行收起动画。
     case ending
@@ -22,8 +22,8 @@ public enum RefreshState: Sendable, Equatable {
     /// 加载更多组件已经进入没有更多数据的状态。
     case noMoreData
 
-    /// 一个布尔值，指示状态是否为 `refreshing`。
-    public var isRefreshing: Bool {
-        self == .refreshing
+    /// 一个布尔值，指示状态是否为 `active`。
+    public var isActive: Bool {
+        self == .active
     }
 }

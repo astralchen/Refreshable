@@ -5,8 +5,8 @@ import UIKit
 public final class SystemNativeRefreshStyle: RefreshableStyle {
     /// 刷新视图沿滚动轴占用的尺寸。
     public let extent: CGFloat
-    private let texts: DefaultTopRefreshTexts
-    private let configuration: DefaultRefreshStyleConfiguration
+    private let texts: TopRefreshTexts
+    private let configuration: RefreshLabelStyleConfiguration
     private let lastUpdatedText: String
 
     /// 创建系统风格刷新样式。
@@ -18,8 +18,8 @@ public final class SystemNativeRefreshStyle: RefreshableStyle {
     ///   - lastUpdatedText: 刷新中和结束状态显示的最近更新时间文案。
     public init(
         extent: CGFloat = 64,
-        texts: DefaultTopRefreshTexts = DefaultTopRefreshTexts(),
-        configuration: DefaultRefreshStyleConfiguration = DefaultRefreshStyleConfiguration(
+        texts: TopRefreshTexts = TopRefreshTexts(),
+        configuration: RefreshLabelStyleConfiguration = RefreshLabelStyleConfiguration(
             font: .systemFont(ofSize: 15, weight: .semibold),
             textColor: .label
         ),
@@ -46,12 +46,11 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
     let view = UIView()
 
     private let extent: CGFloat
-    private let texts: DefaultTopRefreshTexts
-    private let configuration: DefaultRefreshStyleConfiguration
+    private let texts: TopRefreshTexts
+    private let configuration: RefreshLabelStyleConfiguration
     private let lastUpdatedText: String
     private let hintContainer = UIView()
     private let hintArrowView = UIImageView()
-    private let hintDotView = UIView()
     private let iconContainer = UIView()
     private let spinnerView = SegmentedRefreshSpinnerView()
     private let arrowView = UIImageView()
@@ -61,8 +60,8 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
 
     init(
         extent: CGFloat,
-        texts: DefaultTopRefreshTexts,
-        configuration: DefaultRefreshStyleConfiguration,
+        texts: TopRefreshTexts,
+        configuration: RefreshLabelStyleConfiguration,
         lastUpdatedText: String
     ) {
         self.extent = extent
@@ -92,19 +91,18 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
             arrowView.isHidden = false
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
-            hintContainer.alpha = 0
-            hintArrowView.transform = .identity
+            updatePullHint(progress: 0, isVisible: false)
 
         case .pulling(let p):
+            let pullProgress = normalizedProgress(max(p, context.pullProgress))
             label.text = texts.pulling
             updateAccessibilityValue(texts.pullingAccessibilityValue)
-            spinnerView.setProgress(min(max(p, context.pullProgress), 1), animated: false)
+            spinnerView.setProgress(pullProgress, animated: false)
             spinnerView.stopSpinning()
             arrowView.isHidden = true
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
-            hintContainer.alpha = min(max(p, 0), 1) * 0.72
-            hintArrowView.transform = hintArrowTransform(progress: p)
+            updatePullHint(progress: pullProgress, isVisible: true)
 
         case .triggered:
             label.text = texts.triggered
@@ -114,12 +112,11 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
             arrowView.isHidden = true
             arrowView.transform = .identity
             subtitleLabel.isHidden = true
-            hintContainer.alpha = 0.82
-            hintArrowView.transform = hintArrowTransform(progress: 1)
+            updatePullHint(progress: 1, isVisible: true)
 
-        case .refreshing:
-            label.text = texts.refreshing
-            updateAccessibilityValue(texts.refreshingAccessibilityValue)
+        case .active:
+            label.text = texts.active
+            updateAccessibilityValue(texts.activeAccessibilityValue)
             arrowView.isHidden = true
             spinnerView.setProgress(1, animated: true)
             if honorsReduceMotion {
@@ -129,8 +126,7 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
             }
             subtitleLabel.text = lastUpdatedText
             subtitleLabel.isHidden = false
-            hintContainer.alpha = 0.62
-            hintArrowView.transform = hintArrowTransform(progress: 1)
+            updatePullHint(progress: 1, isVisible: false)
 
         case .ending:
             label.text = texts.ending
@@ -140,8 +136,7 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
             arrowView.isHidden = true
             subtitleLabel.text = lastUpdatedText
             subtitleLabel.isHidden = false
-            hintContainer.alpha = 0.35
-            hintArrowView.transform = hintArrowTransform(progress: 1)
+            updatePullHint(progress: 1, isVisible: false)
 
         case .noMoreData:
             label.text = texts.ending
@@ -150,8 +145,7 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
             spinnerView.setProgress(0, animated: true)
             arrowView.isHidden = true
             subtitleLabel.isHidden = true
-            hintContainer.alpha = 0
-            hintArrowView.transform = .identity
+            updatePullHint(progress: 0, isVisible: false)
         }
     }
 
@@ -162,22 +156,19 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
         view.accessibilityLabel = texts.accessibilityLabel
 
         hintContainer.translatesAutoresizingMaskIntoConstraints = false
-        hintContainer.alpha = 0
+        hintContainer.isHidden = true
+        hintContainer.accessibilityIdentifier = "Refreshable.SystemNative.PullHint"
         view.addSubview(hintContainer)
 
-        let hintImageConfiguration = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        let hintImageConfiguration = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
         hintArrowView.image = UIImage(systemName: "arrow.down", withConfiguration: hintImageConfiguration)
-        hintArrowView.tintColor = .tertiaryLabel
+        hintArrowView.tintColor = .secondaryLabel
         hintArrowView.contentMode = .center
         hintArrowView.translatesAutoresizingMaskIntoConstraints = false
         hintContainer.addSubview(hintArrowView)
 
-        hintDotView.backgroundColor = .tertiaryLabel
-        hintDotView.layer.cornerRadius = 1.5
-        hintDotView.translatesAutoresizingMaskIntoConstraints = false
-        hintContainer.addSubview(hintDotView)
-
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
+        iconContainer.accessibilityIdentifier = "Refreshable.SystemNative.Icon"
         view.addSubview(iconContainer)
 
         spinnerView.translatesAutoresizingMaskIntoConstraints = false
@@ -213,20 +204,15 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
         view.addSubview(textStack)
 
         NSLayoutConstraint.activate([
-            hintContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            hintContainer.topAnchor.constraint(equalTo: view.topAnchor, constant: 3),
-            hintContainer.widthAnchor.constraint(equalToConstant: 24),
+            hintContainer.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            hintContainer.bottomAnchor.constraint(equalTo: iconContainer.topAnchor, constant: -4),
+            hintContainer.widthAnchor.constraint(equalToConstant: 20),
             hintContainer.heightAnchor.constraint(equalToConstant: 20),
 
             hintArrowView.centerXAnchor.constraint(equalTo: hintContainer.centerXAnchor),
-            hintArrowView.topAnchor.constraint(equalTo: hintContainer.topAnchor),
+            hintArrowView.centerYAnchor.constraint(equalTo: hintContainer.centerYAnchor),
             hintArrowView.widthAnchor.constraint(equalTo: hintContainer.widthAnchor),
-            hintArrowView.heightAnchor.constraint(equalToConstant: 14),
-
-            hintDotView.centerXAnchor.constraint(equalTo: hintContainer.centerXAnchor),
-            hintDotView.topAnchor.constraint(equalTo: hintArrowView.bottomAnchor, constant: 1),
-            hintDotView.widthAnchor.constraint(equalToConstant: 3),
-            hintDotView.heightAnchor.constraint(equalToConstant: 3),
+            hintArrowView.heightAnchor.constraint(equalTo: hintContainer.heightAnchor),
 
             iconContainer.trailingAnchor.constraint(equalTo: textStack.leadingAnchor, constant: -10),
             iconContainer.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 8),
@@ -252,9 +238,37 @@ private final class SystemNativeRefreshRenderer: RefreshableStyleRenderer {
         configuration.honorsReduceMotion && UIAccessibility.isReduceMotionEnabled
     }
 
-    private func hintArrowTransform(progress: CGFloat) -> CGAffineTransform {
-        guard !honorsReduceMotion else { return .identity }
-        return CGAffineTransform(rotationAngle: min(max(progress, 0), 1) * .pi)
+    private func updatePullHint(progress: CGFloat, isVisible: Bool) {
+        let progress = normalizedProgress(progress)
+        let easedProgress = smoothStep(progress)
+
+        hintContainer.isHidden = !isVisible
+
+        guard !honorsReduceMotion else {
+            hintContainer.transform = .identity
+            hintArrowView.transform = progress >= 1
+                ? CGAffineTransform(rotationAngle: .pi)
+                : .identity
+            return
+        }
+
+        // 箭头从 spinner 上方向下靠近，拉动越接近阈值，两者的位置关系越紧密。
+        hintContainer.transform = CGAffineTransform(
+            translationX: 0,
+            y: -3 + easedProgress * 6
+        )
+
+        // 保持方向稳定到阈值附近，再快速翻转为“松手刷新”，避免全程侧向旋转。
+        let flipProgress = smoothStep(normalizedProgress((progress - 0.82) / 0.18))
+        hintArrowView.transform = CGAffineTransform(rotationAngle: flipProgress * .pi)
+    }
+
+    private func normalizedProgress(_ progress: CGFloat) -> CGFloat {
+        min(max(progress, 0), 1)
+    }
+
+    private func smoothStep(_ progress: CGFloat) -> CGFloat {
+        progress * progress * (3 - 2 * progress)
     }
 
     private func currentTextColor() -> UIColor {

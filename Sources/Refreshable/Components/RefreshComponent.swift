@@ -29,7 +29,7 @@ class RefreshComponent: NSObject {
     let resolvedOptions: ResolvedRefreshableOptions
     var action: (@Sendable () async -> Void)?
 
-    var triggerThreshold: CGFloat { resolvedOptions.triggerOffset }
+    var triggerThreshold: CGFloat { resolvedOptions.triggerDistance }
     var styleExtent: CGFloat { resolvedOptions.extent }
     var state: RefreshState { reducer.publicState }
     var isEnabled: Bool { reducer.isEnabled }
@@ -57,13 +57,13 @@ class RefreshComponent: NSObject {
         resolvedOptions = ResolvedRefreshableOptions(
             options: options,
             styleExtent: style.extent,
-            styleTriggerOffset: style.defaultTriggerOffset,
+            styleTriggerDistance: style.defaultTriggerDistance,
             stylePlacement: style.defaultPlacement
         )
         self.action = action
         reducer = RefreshEventReducer(
             role: role,
-            automaticallyEnds: options.automaticallyEndRefreshing
+            automaticallyEnds: options.automaticallyEnds
         )
         super.init()
     }
@@ -179,7 +179,7 @@ class RefreshComponent: NSObject {
             visibilityView.alpha = 0
         case .pulling(let progress):
             visibilityView.alpha = min(max(progress, 0), 1)
-        case .triggered, .refreshing, .noMoreData:
+        case .triggered, .active, .noMoreData:
             visibilityView.alpha = 1
         case .ending:
             break
@@ -192,7 +192,7 @@ class RefreshComponent: NSObject {
         dispatch(.begin)
     }
 
-    func endRefreshing() {
+    func endAction() {
         dispatch(.endRequested)
     }
 
@@ -214,7 +214,7 @@ class RefreshComponent: NSObject {
             switch state {
             case .ending:
                 dispatch(.endAnimationCompleted(generation: reducer.transitionGeneration))
-            case .refreshing:
+            case .active:
                 dispatch(.endRequested)
                 dispatch(.endAnimationCompleted(generation: reducer.transitionGeneration))
             default:
@@ -224,7 +224,7 @@ class RefreshComponent: NSObject {
             dispatch(.dragChanged(progress: progress))
         case .triggered:
             dispatch(.dragChanged(progress: max(reducer.renderProgress, 1)))
-        case .refreshing:
+        case .active:
             dispatch(.begin)
         case .ending:
             dispatch(.endRequested)

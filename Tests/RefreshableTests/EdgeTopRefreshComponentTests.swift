@@ -11,7 +11,7 @@ struct EdgeTopRefreshComponentTests {
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
         return (scrollView, component, style)
@@ -83,8 +83,8 @@ struct EdgeTopRefreshComponentTests {
         let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 60,
-                automaticallyEndRefreshing: false
+                triggerDistance: 60,
+                automaticallyEnds: false
             )
         )
         component.scrollView = scrollView
@@ -98,13 +98,13 @@ struct EdgeTopRefreshComponentTests {
         #expect(style.lastProgress == 1.7)
     }
 
-    @Test("scrollViewDidEndDragging: triggered 状态下触发 refreshing")
+    @Test("scrollViewDidEndDragging: triggered 状态下触发 active")
     func endDraggingTriggersRefresh() {
         let (_, component, _) = makeSUT()
         component.setState(.triggered)
 
         component.scrollViewDidEndDragging()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     @Test("scrollViewDidEndDragging: 非 triggered 状态下不触发")
@@ -139,26 +139,26 @@ struct EdgeTopRefreshComponentTests {
 
     // MARK: - 防重入
 
-    @Test("trigger: 已在 refreshing 时不重复触发")
+    @Test("trigger: 已在 active 时不重复触发")
     func preventReentry() async {
         let counter = ActionCallCounter()
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         ) {
             await counter.increment()
         }
         component.scrollView = scrollView
 
         component.trigger()
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
 
         // 再次触发应被忽略
         component.trigger()
         // action 执行计数需要等 Task 调度，但 trigger 的 guard 是同步的
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
         #expect(await counter.waitUntilCount(1) == 1)
     }
 
@@ -170,12 +170,12 @@ struct EdgeTopRefreshComponentTests {
         component.beginRefreshing()
         // 无 window 时 UIView.animate 同步完成，action Task 也可能已执行完
         // 只要不停留在 idle 之前的某个无效状态即可
-        let validStates: [RefreshState] = [.refreshing, .ending, .idle]
+        let validStates: [RefreshState] = [.active, .ending, .idle]
         #expect(validStates.contains(component.state))
     }
 
-    @Test("beginRefreshing 已在 refreshing 时忽略")
-    func beginRefreshingWhenAlreadyRefreshing() {
+    @Test("beginRefreshing 已在 active 时忽略")
+    func beginRefreshingWhenAlreadyActive() {
         let (_, component, style) = makeSUT()
         component.beginRefreshing()
         style.reset()
@@ -193,12 +193,12 @@ struct EdgeTopRefreshComponentTests {
             style: style,
             options: RefreshableOptions(
                 animationDuration: 60,
-                automaticallyEndRefreshing: false
+                automaticallyEnds: false
             )
         )
         component.scrollView = scrollView
         component.beginRefreshing()
-        component.endRefreshing()
+        component.endAction()
         #expect(component.state == .ending)
         style.reset()
 
@@ -208,13 +208,13 @@ struct EdgeTopRefreshComponentTests {
         #expect(style.records.isEmpty)
     }
 
-    // MARK: - endRefreshing
+    // MARK: - endAction
 
-    @Test("endRefreshing 从 refreshing 进入收尾流程")
-    func endRefreshing() {
+    @Test("endAction 从 active 进入收尾流程")
+    func endAction() {
         let (_, component, _) = makeSUT()
-        component.setState(.refreshing)
-        component.endRefreshing()
+        component.setState(.active)
+        component.endAction()
         // 无 window 时动画同步完成，completion 可能已将状态置为 idle
         let validStates: [RefreshState] = [.ending, .idle]
         #expect(validStates.contains(component.state))
@@ -228,7 +228,7 @@ struct EdgeTopRefreshComponentTests {
             style: style,
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false
+                automaticallyEnds: false
             )
         )
         component.scrollView = scrollView
@@ -236,18 +236,18 @@ struct EdgeTopRefreshComponentTests {
         style.view.alpha = 1
         style.reset()
 
-        component.endRefreshing()
+        component.endAction()
 
         let idleRecord = style.records.first { $0.state == .idle }
         #expect(idleRecord?.viewAlpha == 0)
         #expect(style.view.alpha == 0)
     }
 
-    @Test("endRefreshing 在 idle 时忽略")
-    func endRefreshingWhenIdle() {
+    @Test("endAction 在 idle 时忽略")
+    func endActionWhenIdle() {
         let (_, component, style) = makeSUT()
         style.reset()
-        component.endRefreshing()
+        component.endAction()
         // 状态不变，不应有更新
         #expect(component.state == .idle)
         #expect(style.records.isEmpty)
@@ -255,8 +255,8 @@ struct EdgeTopRefreshComponentTests {
 
     // MARK: - inset
 
-    @Test("进入 refreshing 后 contentInset.top 增加")
-    func insetIncreasedOnRefreshing() {
+    @Test("进入 active 后 contentInset.top 增加")
+    func insetIncreasedWhileActive() {
         let (scrollView, component, _) = makeSUT()
         component.beginRefreshing()
         #expect(scrollView.contentInset.top == 54)
@@ -277,7 +277,7 @@ struct EdgeTopRefreshComponentTests {
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -295,7 +295,7 @@ struct EdgeTopRefreshComponentTests {
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -304,7 +304,7 @@ struct EdgeTopRefreshComponentTests {
         #expect(component.state == .idle)
     }
 
-    @Test("设置 automaticTriggerOffset 后滚到顶部自动触发刷新")
+    @Test("设置 automaticTriggerDistance 后滚到顶部自动触发刷新")
     func automaticallyTriggersRefreshAtTop() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentSize = CGSize(width: 375, height: 1200)
@@ -312,16 +312,16 @@ struct EdgeTopRefreshComponentTests {
         let component = makeTopRefreshComponent(
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 0
+                automaticallyEnds: false,
+                automaticTriggerDistance: 0
             )
         )
         component.scrollView = scrollView
 
         component.scrollViewDidScroll(contentOffset: .zero)
 
-        #expect(component.state == .refreshing)
-        #expect(style.records.contains { $0.state == .refreshing })
+        #expect(component.state == .active)
+        #expect(style.records.contains { $0.state == .active })
     }
 
     // MARK: - Action 执行
@@ -343,26 +343,26 @@ struct EdgeTopRefreshComponentTests {
 
     // MARK: - scrollView 释放
 
-    @Test("scrollView 为 nil 时 endRefreshing 直接回到 idle")
-    func endRefreshingWithoutScrollView() {
+    @Test("scrollView 为 nil 时 endAction 直接回到 idle")
+    func endActionWithoutScrollView() {
         let style = MockStyle()
         let component = makeTopRefreshComponent(style: style)
         // 不设置 scrollView
-        component.setState(.refreshing)
-        component.endRefreshing()
+        component.setState(.active)
+        component.endAction()
         #expect(component.state == .idle)
     }
 
     // MARK: - Options
 
-    @Test("自定义 triggerOffset 不改变 top 刷新占位")
-    func customTopTriggerOffsetDoesNotChangeReservedExtent() {
+    @Test("自定义 triggerDistance 不改变 top 刷新占位")
+    func customTopTriggerDistanceDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(triggerOffset: 80, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 80, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -371,14 +371,14 @@ struct EdgeTopRefreshComponentTests {
         #expect(scrollView.contentInset.top == 66)
     }
 
-    @Test("非正 triggerOffset 不改变 top 刷新占位")
-    func nonPositiveTopTriggerOffsetDoesNotChangeReservedExtent() {
+    @Test("非正 triggerDistance 不改变 top 刷新占位")
+    func nonPositiveTopTriggerDistanceDoesNotChangeReservedExtent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         scrollView.contentInset.top = 12
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(triggerOffset: 0, animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 0, animationDuration: 0, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -395,7 +395,7 @@ struct EdgeTopRefreshComponentTests {
         let style = MockStyle(extent: 0)
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
@@ -405,20 +405,20 @@ struct EdgeTopRefreshComponentTests {
         #expect(scrollView.contentInset.top == 13)
     }
 
-    @Test("automaticallyEndRefreshing 为 false 时 action 完成后保持 refreshing")
+    @Test("automaticallyEnds 为 false 时 action 完成后保持 active")
     func topManualEndOption() async {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let style = MockStyle()
         let component = makeTopRefreshComponent(
             style: style,
-            options: RefreshableOptions(automaticallyEndRefreshing: false)
+            options: RefreshableOptions(automaticallyEnds: false)
         )
         component.scrollView = scrollView
 
         component.trigger()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        #expect(component.state == .refreshing)
+        #expect(component.state == .active)
     }
 
     @Test("取消 top edge 当前任务会结束刷新")

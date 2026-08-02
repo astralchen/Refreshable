@@ -4,7 +4,7 @@
 
 **Goal:** Keep the grid header visible at the top boundary before, during, and after a locked overlay refresh, even when the refresh action reloads content and invalidates layout.
 
-**Architecture:** `EdgeRefreshComponent` owns a refresh-lifecycle boundary lock for overlay presentations whose `locksContentOffset` option is enabled. It establishes the lock only when refreshing begins at the component edge, recomputes the physical boundary from the current inset-coordinator baseline after geometry changes, preserves the cross axis, performs a final correction when ending, and clears the lock for every terminal/removal path.
+**Architecture:** `EdgeRefreshComponent` owns a refresh-lifecycle boundary lock for overlay presentations whose `locksContentOffset` option is enabled. It establishes the lock only when active begins at the component edge, recomputes the physical boundary from the current inset-coordinator baseline after geometry changes, preserves the cross axis, performs a final correction when ending, and clears the lock for every terminal/removal path.
 
 **Tech Stack:** Swift 6, UIKit, Swift Testing, XCTest UI tests, iOS 13+
 
@@ -25,7 +25,7 @@
 - Modify: `Tests/RefreshableTests/EdgeRefreshComponentTests.swift`
 - Modify: `Sources/Refreshable/Components/EdgeRefreshComponent.swift`
 
-- [x] Add a Swift Testing regression that installs a top `.overlay(spacing: 12, locksContentOffset: true)` refresh component at the adjusted top boundary, begins refreshing, simulates a layout-driven `contentOffset` drift, calls `scrollViewContentSizeDidChange`, and expects the component to restore the adjusted top boundary.
+- [x] Add a Swift Testing regression that installs a top `.overlay(spacing: 12, locksContentOffset: true)` refresh component at the adjusted top boundary, begins active, simulates a layout-driven `contentOffset` drift, calls `scrollViewContentSizeDidChange`, and expects the component to restore the adjusted top boundary.
 - [x] Run `xcodebuild test -scheme Refreshable-Package -destination 'platform=iOS Simulator,id=40789BEC-6977-4FC6-AA42-0ACDF687EF7D' -derivedDataPath '/Users/chenchen/Library/Developer/Xcode/DerivedData/Refreshable-default-refresh-control-fakszpqajdnmcggiroakruhhzqup' -only-testing:RefreshableTests/EdgeRefreshComponentTests` and confirm the new assertion fails because the offset remains drifted.
 - [x] Add an internal lifecycle flag to `EdgeRefreshComponent`.
 - [x] Establish the flag when a locked overlay refresh is revealed while already at the target boundary.
@@ -42,9 +42,9 @@
 - Preserve: `Demo/Demo/CollectionViewDemoController.swift`
 
 - [x] Reuse the frame-intersection assertion to verify that “最近更新” intersects the collection-view frame; `.exists` alone is insufficient because XCTest reports offscreen supplementary views as existing.
-- [x] Add a real top pull test with `GridRefresh.UITestRefreshActionDuration` set long enough to observe refreshing, then wait for completion and assert the header is still visible and the original first item remains.
+- [x] Add a real top pull test with `GridRefresh.UITestRefreshActionDuration` set long enough to observe active, then wait for completion and assert the header is still visible and the original first item remains.
 - [x] Assert that the refresh indicator stays above `GridHeaderView`, then remove the grid page's explicit overlay configuration so `RefreshableOptions` uses its default `.contentInset`.
-- [x] Add a core regression for a default content-inset refresh whose layout reload moves `contentOffset` by one header height, then maintain the reveal boundary during refreshing and restore the adjusted baseline boundary while ending.
+- [x] Add a core regression for a default content-inset refresh whose layout reload moves `contentOffset` by one header height, then maintain the reveal boundary during active and restore the adjusted baseline boundary while ending.
 - [x] Run only the new UI test against the shared simulator with parallel testing disabled.
 - [x] Confirm that no Demo `setContentOffset` workaround is needed.
 

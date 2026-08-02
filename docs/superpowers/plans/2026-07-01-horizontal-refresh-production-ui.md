@@ -23,7 +23,7 @@
 - Modify: `Sources/Refreshable/DefaultEdgeStyle.swift`
   - Replace horizontal edge spinner UI with circular progress, directional arrow, and label.
   - Add deterministic render-state helpers for tests.
-- Modify: `Tests/RefreshableTests/DefaultStyleTests.swift`
+- Modify: `Tests/RefreshableTests/ClassicStyleTests.swift`
   - Add tests for horizontal edge label, arrow direction, circular progress, and spinner removal.
 - Modify: `Demo/Demo/HorizontalEdgeDemoController.swift`
   - Replace placeholder cards with production-style content cards, page header, segmented control, filter action, and status rows.
@@ -72,7 +72,7 @@ Expected: the document includes files, TDD tasks, commands, and verification ste
 ### Task 2: Test Horizontal Edge Render State
 
 **Files:**
-- Modify: `Tests/RefreshableTests/DefaultStyleTests.swift`
+- Modify: `Tests/RefreshableTests/ClassicStyleTests.swift`
 - Modify later: `Sources/Refreshable/DefaultEdgeStyle.swift`
 
 - [x] **Step 1: Write failing tests for horizontal edge style**
@@ -114,7 +114,7 @@ struct DefaultEdgeStyleTests {
         style.update(state: .triggered, progress: 1)
         #expect(label.text == "释放刷新")
 
-        style.update(state: .refreshing, progress: 1)
+        style.update(state: .active, progress: 1)
         #expect(label.text == "正在刷新...")
 
         style.update(state: .ending, progress: 0)
@@ -182,7 +182,7 @@ Observed: not runnable in the current workspace because SwiftPM resolves tests f
 
 **Files:**
 - Modify: `Sources/Refreshable/DefaultEdgeStyle.swift`
-- Test: `Tests/RefreshableTests/DefaultStyleTests.swift`
+- Test: `Tests/RefreshableTests/ClassicStyleTests.swift`
 
 - [x] **Step 1: Replace horizontal setup with circular progress UI**
 
@@ -217,7 +217,7 @@ case .top: "arrow.down"
 case .bottom: "arrow.up"
 ```
 
-Clamp pulling progress to `0...1`; use `1` for triggered/refreshing and `0` for idle.
+Clamp pulling progress to `0...1`; use `1` for triggered/active and `0` for idle.
 
 - [x] **Step 3: Apply render state to layers**
 
@@ -231,7 +231,7 @@ Run:
 xcodebuild test -project Demo/Demo.xcodeproj -scheme Demo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:RefreshableTests/DefaultEdgeStyleTests
 ```
 
-Observed: the existing Xcode schemes are not configured for Test action. Keep the tests in `Tests/RefreshableTests/DefaultStyleTests.swift` and use the Demo build for current verification until a test-host scheme is added.
+Observed: the existing Xcode schemes are not configured for Test action. Keep the tests in `Tests/RefreshableTests/ClassicStyleTests.swift` and use the Demo build for current verification until a test-host scheme is added.
 
 ---
 

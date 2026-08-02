@@ -4,7 +4,7 @@
 
 **Goal:** Upgrade the first demo tab into a production-quality vertical list screen that demonstrates pull-to-refresh and automatic bottom load-more.
 
-**Architecture:** Keep the work scoped to the Demo app. `TableViewDemoController` owns the mock data, table header, refresh/load-more wiring, and private cell classes; the Refreshable package public API remains unchanged. Existing built-in refresh styles are reused, with `automaticTriggerOffset` enabling scroll-near-bottom loading.
+**Architecture:** Keep the work scoped to the Demo app. `TableViewDemoController` owns the mock data, table header, refresh/load-more wiring, and private cell classes; the Refreshable package public API remains unchanged. Existing built-in refresh styles are reused, with `automaticTriggerDistance` enabling scroll-near-bottom loading.
 
 **Tech Stack:** Swift, UIKit, Refreshable, SF Symbols, XCTest UI tests, Xcode project Demo app.
 
@@ -24,17 +24,17 @@
 - Modify: `Demo/Demo/TableViewDemoController.swift`
   - Replace placeholder string data with a private `UpdateItem` model.
   - Add a production table header with status and segmented control.
-  - Install `SystemNativeRefreshStyle` for top refresh and `DefaultBottomLoadMoreStyle` for bottom load-more.
-  - Configure `automaticTriggerOffset: 120` on bottom load-more.
+  - Install `SystemNativeRefreshStyle` for top refresh and `ClassicBottomLoadMoreStyle` for bottom load-more.
+  - Configure `automaticTriggerDistance: 120` on bottom load-more.
   - Add private `UpdateItemCell`, `UpdateListHeaderView`, `StatusChipView`, and supporting helpers.
 - Modify: `Demo/DemoUITests/DemoUITests.swift`
   - Add UI tests for the first tab's production labels.
   - Add a refresh test that pulls the list and verifies the inserted row.
 - Read only: `Sources/Refreshable/Core/RefreshableOptions.swift`
-  - Confirms `automaticTriggerOffset` already exists and should be used.
+  - Confirms `automaticTriggerDistance` already exists and should be used.
 - Read only: `Sources/Refreshable/Styles/Custom/SystemNativeRefreshStyle.swift`
   - Confirms a compact top refresh style exists and matches the target direction.
-- Read only: `Sources/Refreshable/Styles/Default/DefaultBottomLoadMoreStyle.swift`
+- Read only: `Sources/Refreshable/Styles/Classic/ClassicBottomLoadMoreStyle.swift`
   - Confirms default bottom copy and no-more-data copy already exist.
 
 ## Task 1: Add UI Test Coverage For The New First Tab
@@ -360,7 +360,7 @@ Replace the current refresh/load-more closures with:
 
 ```swift
 let refreshOptions = RefreshableOptions(
-    triggerOffset: 86,
+    triggerDistance: 86,
     animationDuration: 0.32,
     placement: RefreshablePlacement(contentSpacing: 4)
 )
@@ -380,11 +380,11 @@ tableView.refreshable(
 
 let loadMoreOptions = RefreshableOptions(
     animationDuration: 0.28,
-    automaticTriggerOffset: 120,
+    automaticTriggerDistance: 120,
     placement: RefreshablePlacement(contentSpacing: 6)
 )
 
-tableView.loadMoreable(options: loadMoreOptions) { [weak self] in
+tableView.onLoadMore(options: loadMoreOptions) { [weak self] in
     try? await Task.sleep(nanoseconds: 700_000_000)
     await MainActor.run {
         self?.appendNextPage()
@@ -414,7 +414,7 @@ private func performRefresh() {
 private func appendNextPage() {
     page += 1
     guard page <= 3 else {
-        tableView.noMoreData()
+        tableView.markNoMoreData()
         return
     }
     items.append(contentsOf: makePageItems(page: page))

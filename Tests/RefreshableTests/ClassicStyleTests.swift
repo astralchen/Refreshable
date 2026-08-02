@@ -2,26 +2,26 @@ import Testing
 @testable import Refreshable
 import UIKit
 
-@Suite("Default style renderers", .tags(.ui))
+@Suite("Classic style renderers", .tags(.ui))
 @MainActor
-struct DefaultStyleTests {
+struct ClassicStyleTests {
     @Test("top renderer 保留状态文案和 VoiceOver 值")
     func topRendererStateText() throws {
-        let renderer = DefaultTopRefreshStyle().makeRenderer()
+        let renderer = ClassicTopRefreshStyle().makeRenderer()
         let label = try #require(renderer.view.firstSubview(of: UILabel.self))
 
         renderer.render(context(.idle))
         #expect(label.text == "下拉刷新")
         renderer.render(context(.triggered, progress: 1))
         #expect(label.text == "释放刷新")
-        renderer.render(context(.refreshing))
+        renderer.render(context(.active))
         #expect(label.text == "正在刷新...")
         #expect(renderer.view.accessibilityValue == "正在刷新")
     }
 
     @Test("bottom renderer 保留状态文案和 VoiceOver 值")
     func bottomRendererStateText() throws {
-        let renderer = DefaultBottomLoadMoreStyle().makeRenderer()
+        let renderer = ClassicBottomLoadMoreStyle().makeRenderer()
         let label = try #require(renderer.view.firstSubview(of: UILabel.self))
 
         renderer.render(context(.pulling(0.4), progress: 0.4))
@@ -33,11 +33,11 @@ struct DefaultStyleTests {
 
     @Test("factory 每次创建独立 top renderer 和 view")
     func topRenderersAreIndependent() {
-        let style = DefaultTopRefreshStyle()
+        let style = ClassicTopRefreshStyle()
         let first = style.makeRenderer()
         let second = style.makeRenderer()
 
-        first.render(context(.refreshing, progress: 1))
+        first.render(context(.active, progress: 1))
 
         #expect(first !== second)
         #expect(first.view !== second.view)
@@ -47,13 +47,13 @@ struct DefaultStyleTests {
 
     @Test("top renderer 保持 Dynamic Type 与 Reduce Motion 配置")
     func topRendererAccessibilityConfiguration() throws {
-        let style = DefaultTopRefreshStyle(
-            configuration: DefaultRefreshStyleConfiguration(
+        let style = ClassicTopRefreshStyle(
+            configuration: RefreshLabelStyleConfiguration(
                 font: .systemFont(ofSize: 17, weight: .semibold),
                 fontTextStyle: .headline,
                 adjustsFontForContentSizeCategory: true
             ),
-            accessibilityEnvironment: DefaultRefreshStyleAccessibilityEnvironment(
+            accessibilityEnvironment: RefreshStyleAccessibilityEnvironment(
                 isReduceMotionEnabled: true,
                 isReduceTransparencyEnabled: false
             )

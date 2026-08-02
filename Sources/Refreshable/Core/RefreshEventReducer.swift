@@ -34,7 +34,7 @@ private enum RefreshMachinePhase: Equatable {
     case idle
     case pulling
     case triggered
-    case refreshing
+    case active
     case ending
     case noMoreData
 }
@@ -64,8 +64,8 @@ struct RefreshEventReducer {
             .pulling(pullProgress)
         case .triggered:
             .triggered
-        case .refreshing:
-            .refreshing
+        case .active:
+            .active
         case .ending:
             .ending
         case .noMoreData:
@@ -79,7 +79,7 @@ struct RefreshEventReducer {
             0
         case .pulling, .triggered:
             pullProgress
-        case .refreshing, .ending:
+        case .active, .ending:
             1
         }
     }
@@ -87,7 +87,7 @@ struct RefreshEventReducer {
     func canStartAction(generation: UInt) -> Bool {
         isAttached
             && isEnabled
-            && phase == .refreshing
+            && phase == .active
             && activeActionGeneration == generation
     }
 
@@ -133,7 +133,7 @@ struct RefreshEventReducer {
             }
 
             switch phase {
-            case .refreshing, .ending:
+            case .active, .ending:
                 setPhase(.ending, progress: 1)
                 effects.append(
                     .removeInset(animated: true, completionGeneration: transitionGeneration)
@@ -165,7 +165,7 @@ struct RefreshEventReducer {
                 effects = beginActionIfPossible(revealInset: true)
             case .pulling:
                 setPhase(.idle, progress: 0)
-            case .idle, .refreshing, .ending, .noMoreData:
+            case .idle, .active, .ending, .noMoreData:
                 break
             }
 
@@ -185,7 +185,7 @@ struct RefreshEventReducer {
             activeActionGeneration = nil
             effects.append(.clearAction(generation: generation))
 
-            if phase == .refreshing, automaticallyEnds {
+            if phase == .active, automaticallyEnds {
                 transitionGeneration &+= 1
                 setPhase(.ending, progress: 1)
                 effects.append(
@@ -194,7 +194,7 @@ struct RefreshEventReducer {
             }
 
         case .endRequested:
-            guard phase == .refreshing || phase == .ending else { return RefreshReduction() }
+            guard phase == .active || phase == .ending else { return RefreshReduction() }
             transitionGeneration &+= 1
             setPhase(.ending, progress: 1)
             effects.append(
@@ -237,13 +237,13 @@ struct RefreshEventReducer {
 
     private mutating func beginActionIfPossible(revealInset: Bool) -> [RefreshEffect] {
         guard isAttached, isEnabled else { return [] }
-        guard phase != .refreshing, phase != .ending else { return [] }
+        guard phase != .active, phase != .ending else { return [] }
         guard !(role == .loadMore && phase == .noMoreData) else { return [] }
 
         transitionGeneration &+= 1
         nextActionGeneration &+= 1
         activeActionGeneration = nextActionGeneration
-        setPhase(.refreshing, progress: 1)
+        setPhase(.active, progress: 1)
         return [
             .setInsetVisible(reveal: revealInset),
             .startAction(generation: nextActionGeneration),

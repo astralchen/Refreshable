@@ -29,7 +29,7 @@ struct RefreshEventReducerTests {
         #expect(reduction.effects.contains(where: \.startsAction) == false)
     }
 
-    @Test("松开 triggered 手势进入 refreshing 并生成 action token")
+    @Test("松开 triggered 手势进入 active 并生成 action token")
     func endedTriggeredGestureBeginsAction() throws {
         var reducer = RefreshEventReducer(role: .refresh, automaticallyEnds: true)
         _ = reducer.reduce(.attach)
@@ -38,7 +38,7 @@ struct RefreshEventReducerTests {
         let reduction = reducer.reduce(.panEnded)
         let actionGeneration = try #require(reduction.effects.compactMap(\.actionStartGeneration).first)
 
-        #expect(reducer.publicState == .refreshing)
+        #expect(reducer.publicState == .active)
         #expect(reduction.effects.contains(.setInsetVisible(reveal: true)))
         #expect(reducer.canStartAction(generation: actionGeneration))
     }
@@ -50,7 +50,7 @@ struct RefreshEventReducerTests {
 
         let reduction = reducer.reduce(.automaticTrigger)
 
-        #expect(reducer.publicState == .refreshing)
+        #expect(reducer.publicState == .active)
         #expect(reduction.effects.contains(.setInsetVisible(reveal: false)))
         #expect(reduction.effects.contains(.setInsetVisible(reveal: true)) == false)
     }

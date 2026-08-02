@@ -6,38 +6,38 @@ public struct VideoTopRefreshTexts: Equatable {
     public var idle: String
     public var pulling: String
     public var triggered: String
-    public var refreshing: String
+    public var active: String
     public var ending: String
     public var accessibilityLabel: String
     public var idleAccessibilityValue: String
     public var pullingAccessibilityValue: String
     public var triggeredAccessibilityValue: String
-    public var refreshingAccessibilityValue: String
+    public var activeAccessibilityValue: String
     public var endingAccessibilityValue: String
 
     public init(
         idle: String = "继续下拉刷新视频",
         pulling: String = "继续下拉刷新视频",
         triggered: String = "释放刷新视频",
-        refreshing: String = "正在刷新视频",
+        active: String = "正在刷新视频",
         ending: String = "视频已刷新",
         accessibilityLabel: String = "视频刷新",
         idleAccessibilityValue: String = "未刷新",
         pullingAccessibilityValue: String = "下拉中",
         triggeredAccessibilityValue: String = "释放刷新",
-        refreshingAccessibilityValue: String = "正在刷新",
+        activeAccessibilityValue: String = "正在刷新",
         endingAccessibilityValue: String = "刷新完成"
     ) {
         self.idle = idle
         self.pulling = pulling
         self.triggered = triggered
-        self.refreshing = refreshing
+        self.active = active
         self.ending = ending
         self.accessibilityLabel = accessibilityLabel
         self.idleAccessibilityValue = idleAccessibilityValue
         self.pullingAccessibilityValue = pullingAccessibilityValue
         self.triggeredAccessibilityValue = triggeredAccessibilityValue
-        self.refreshingAccessibilityValue = refreshingAccessibilityValue
+        self.activeAccessibilityValue = activeAccessibilityValue
         self.endingAccessibilityValue = endingAccessibilityValue
     }
 }
@@ -47,14 +47,14 @@ public struct VideoBottomLoadMoreTexts: Equatable {
     public var idle: String
     public var pulling: String
     public var triggered: String
-    public var refreshing: String
+    public var active: String
     public var ending: String
     public var noMoreData: String
     public var accessibilityLabel: String
     public var idleAccessibilityValue: String
     public var pullingAccessibilityValue: String
     public var triggeredAccessibilityValue: String
-    public var refreshingAccessibilityValue: String
+    public var activeAccessibilityValue: String
     public var endingAccessibilityValue: String
     public var noMoreDataAccessibilityValue: String
 
@@ -62,28 +62,28 @@ public struct VideoBottomLoadMoreTexts: Equatable {
         idle: String = "继续上拉加载视频",
         pulling: String = "继续上拉加载视频",
         triggered: String = "释放加载视频",
-        refreshing: String = "正在加载视频",
+        active: String = "正在加载视频",
         ending: String = "加载完成",
         noMoreData: String = "没有更多视频",
         accessibilityLabel: String = "视频加载更多",
         idleAccessibilityValue: String = "未加载",
         pullingAccessibilityValue: String = "上拉中",
         triggeredAccessibilityValue: String = "释放加载",
-        refreshingAccessibilityValue: String = "正在加载",
+        activeAccessibilityValue: String = "正在加载",
         endingAccessibilityValue: String = "加载完成",
         noMoreDataAccessibilityValue: String = "没有更多视频"
     ) {
         self.idle = idle
         self.pulling = pulling
         self.triggered = triggered
-        self.refreshing = refreshing
+        self.active = active
         self.ending = ending
         self.noMoreData = noMoreData
         self.accessibilityLabel = accessibilityLabel
         self.idleAccessibilityValue = idleAccessibilityValue
         self.pullingAccessibilityValue = pullingAccessibilityValue
         self.triggeredAccessibilityValue = triggeredAccessibilityValue
-        self.refreshingAccessibilityValue = refreshingAccessibilityValue
+        self.activeAccessibilityValue = activeAccessibilityValue
         self.endingAccessibilityValue = endingAccessibilityValue
         self.noMoreDataAccessibilityValue = noMoreDataAccessibilityValue
     }
@@ -128,22 +128,22 @@ private final class VideoTopRefreshRenderer: RefreshableStyleRenderer {
     private func render(state: RefreshState) {
         switch state {
         case .idle:
-            overlayView.update(iconSystemName: "arrow.down.circle", text: texts.idle, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.down.circle", text: texts.idle, isActive: false)
             view.accessibilityValue = texts.idleAccessibilityValue
         case .pulling:
-            overlayView.update(iconSystemName: "arrow.down.circle", text: texts.pulling, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.down.circle", text: texts.pulling, isActive: false)
             view.accessibilityValue = texts.pullingAccessibilityValue
         case .triggered:
-            overlayView.update(iconSystemName: "arrow.down.circle.fill", text: texts.triggered, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.down.circle.fill", text: texts.triggered, isActive: false)
             view.accessibilityValue = texts.triggeredAccessibilityValue
-        case .refreshing:
-            overlayView.update(iconSystemName: nil, text: texts.refreshing, isRefreshing: true)
-            view.accessibilityValue = texts.refreshingAccessibilityValue
+        case .active:
+            overlayView.update(iconSystemName: nil, text: texts.active, isActive: true)
+            view.accessibilityValue = texts.activeAccessibilityValue
         case .ending:
-            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isRefreshing: false)
+            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isActive: false)
             view.accessibilityValue = texts.endingAccessibilityValue
         case .noMoreData:
-            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isRefreshing: false)
+            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isActive: false)
             view.accessibilityValue = texts.endingAccessibilityValue
         }
     }
@@ -188,22 +188,22 @@ private final class VideoBottomLoadMoreRenderer: RefreshableStyleRenderer {
     private func render(state: RefreshState) {
         switch state {
         case .idle:
-            overlayView.update(iconSystemName: "arrow.up.circle", text: texts.idle, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.up.circle", text: texts.idle, isActive: false)
             view.accessibilityValue = texts.idleAccessibilityValue
         case .pulling:
-            overlayView.update(iconSystemName: "arrow.up.circle", text: texts.pulling, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.up.circle", text: texts.pulling, isActive: false)
             view.accessibilityValue = texts.pullingAccessibilityValue
         case .triggered:
-            overlayView.update(iconSystemName: "arrow.up.circle.fill", text: texts.triggered, isRefreshing: false)
+            overlayView.update(iconSystemName: "arrow.up.circle.fill", text: texts.triggered, isActive: false)
             view.accessibilityValue = texts.triggeredAccessibilityValue
-        case .refreshing:
-            overlayView.update(iconSystemName: nil, text: texts.refreshing, isRefreshing: true)
-            view.accessibilityValue = texts.refreshingAccessibilityValue
+        case .active:
+            overlayView.update(iconSystemName: nil, text: texts.active, isActive: true)
+            view.accessibilityValue = texts.activeAccessibilityValue
         case .ending:
-            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isRefreshing: false)
+            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.ending, isActive: false)
             view.accessibilityValue = texts.endingAccessibilityValue
         case .noMoreData:
-            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.noMoreData, isRefreshing: false)
+            overlayView.update(iconSystemName: "checkmark.circle.fill", text: texts.noMoreData, isActive: false)
             view.accessibilityValue = texts.noMoreDataAccessibilityValue
         }
     }
@@ -301,8 +301,8 @@ private final class VideoTopRefreshView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(iconSystemName: String?, text: String, isRefreshing: Bool) {
-        if isRefreshing {
+    func update(iconSystemName: String?, text: String, isActive: Bool) {
+        if isActive {
             iconView.isHidden = true
             indicator.startAnimating()
         } else {
@@ -370,8 +370,8 @@ private final class VideoBottomLoadMoreView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func update(iconSystemName: String?, text: String, isRefreshing: Bool) {
-        if isRefreshing {
+    func update(iconSystemName: String?, text: String, isActive: Bool) {
+        if isActive {
             iconView.isHidden = true
             indicator.startAnimating()
         } else {

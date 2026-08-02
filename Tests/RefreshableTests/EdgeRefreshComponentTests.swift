@@ -40,11 +40,11 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .leading,
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginRefreshing(edge: .leading)
 
-        #expect(scrollView.refreshState(edge: .leading) == .refreshing)
+        #expect(scrollView.refreshState(edge: .leading) == .active)
         #expect(scrollView.contentInset.top == 20)
         #expect(scrollView.contentInset.left == 50)
         #expect(scrollView.contentInset.bottom == 12)
@@ -52,7 +52,7 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.contentOffset.x == -50)
     }
 
-    @Test("loadMoreable(edge: .trailing) 使用 right inset 并支持 noMoreData")
+    @Test("onLoadMore(edge: .trailing) 使用 right inset 并支持 noMoreData")
     func trailingLoadMoreUsesRightInsetAndNoMoreData() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.semanticContentAttribute = .forceLeftToRight
@@ -62,18 +62,18 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 48)
         let expectedOffsetX = CGFloat(1000 - 320 + 10 + 48)
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginLoadingMore(edge: .trailing)
 
-        #expect(scrollView.loadMoreState(edge: .trailing) == .refreshing)
+        #expect(scrollView.loadMoreState(edge: .trailing) == .active)
         #expect(scrollView.contentInset.right == 58)
         #expect(scrollView.contentOffset.x == expectedOffsetX)
 
-        scrollView.noMoreData(edge: .trailing)
+        scrollView.markNoMoreData(edge: .trailing)
 
         #expect(scrollView.contentInset.right == 58)
         #expect(scrollView.loadMoreState(edge: .trailing) == .noMoreData)
@@ -94,10 +94,10 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 54)
         let expectedOffsetY = CGFloat(2000 - 667 + 12 + 83 + 54)
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .bottom,
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         scrollView.beginLoadingMore(edge: .bottom)
@@ -115,13 +115,13 @@ struct EdgeRefreshComponentTests {
         scrollView.contentOffset.y = 2000 - 667 + 12 + 83
         scrollView.isDraggingOverride = true
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .bottom,
             style: MockStyle(extent: 54),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: nil
+                automaticallyEnds: false,
+                automaticTriggerDistance: nil
             )
         ) {}
 
@@ -139,7 +139,7 @@ struct EdgeRefreshComponentTests {
         let trailingStyle = MockStyle(extent: 54)
 
         scrollView.refreshable(edge: .leading, style: leadingStyle) {}
-        scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
+        scrollView.onLoadMore(edge: .trailing, style: trailingStyle) {}
 
         let leadingHost = try #require(leadingStyle.view.superview)
         let trailingHost = try #require(trailingStyle.view.superview)
@@ -189,12 +189,12 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .leading,
             style: leadingStyle,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: trailingStyle,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         let leadingHost = try #require(leadingStyle.view.superview)
@@ -233,12 +233,12 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .leading,
             style: leadingStyle,
-            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 54, animationDuration: 0, automaticallyEnds: false)
         ) {}
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: trailingStyle,
-            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 54, animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         let leadingHost = try #require(leadingStyle.view.superview)
@@ -287,7 +287,7 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 54)
         let options = RefreshableOptions(
             animationDuration: 0,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             placement: RefreshablePlacement(contentSpacing: 12)
         )
 
@@ -310,7 +310,7 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 54)
         let options = RefreshableOptions(
             animationDuration: 0,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             placement: RefreshablePlacement(outerSpacing: 12)
         )
 
@@ -334,11 +334,11 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 54)
         let options = RefreshableOptions(
             animationDuration: 0,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             placement: RefreshablePlacement(contentSpacing: 8, outerSpacing: 12)
         )
 
-        scrollView.loadMoreable(edge: .trailing, style: style, options: options) {}
+        scrollView.onLoadMore(edge: .trailing, style: style, options: options) {}
         let hostView = try #require(style.view.superview)
 
         #expect(hostView.frame == CGRect(x: 830, y: 0, width: 844, height: 390))
@@ -358,7 +358,7 @@ struct EdgeRefreshComponentTests {
         let style = MockStyle(extent: 44)
         let options = RefreshableOptions(
             animationDuration: 0,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             placement: RefreshablePlacement(contentSpacing: 12, crossAxisInset: 20)
         )
 
@@ -385,7 +385,7 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .leading,
             style: style,
-            options: RefreshableOptions(triggerOffset: 54, animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(triggerDistance: 54, animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: CGPoint(x: -53, y: 0))
@@ -399,7 +399,7 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.contentOffset.x == -130)
     }
 
-    @Test("设置 automaticTriggerOffset 后 leading refresh 可自动触发")
+    @Test("设置 automaticTriggerDistance 后 leading refresh 可自动触发")
     func leadingRefreshAutomaticallyTriggersAtEdge() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.semanticContentAttribute = .forceLeftToRight
@@ -410,15 +410,15 @@ struct EdgeRefreshComponentTests {
             edge: .leading,
             style: style,
             options: RefreshableOptions(
-                automaticallyEndRefreshing: false,
-                automaticTriggerOffset: 0
+                automaticallyEnds: false,
+                automaticTriggerDistance: 0
             )
         ) {}
 
         scrollView.component(for: .leading)?.scrollViewDidScroll(contentOffset: .zero)
 
-        #expect(scrollView.refreshState(edge: .leading) == .refreshing)
-        #expect(style.records.contains { $0.state == .refreshing })
+        #expect(scrollView.refreshState(edge: .leading) == .active)
+        #expect(style.records.contains { $0.state == .active })
     }
 
     @Test("横向小幅触发后松手会完整露出刷新控件")
@@ -433,9 +433,9 @@ struct EdgeRefreshComponentTests {
             edge: .leading,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 54,
+                triggerDistance: 54,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 placement: RefreshablePlacement(outerSpacing: 8)
             )
         ) {}
@@ -447,7 +447,7 @@ struct EdgeRefreshComponentTests {
         scrollView.isDraggingOverride = false
         scrollView.component(for: .leading)?.scrollViewDidEndDragging()
 
-        #expect(scrollView.refreshState(edge: .leading) == .refreshing)
+        #expect(scrollView.refreshState(edge: .leading) == .active)
         #expect(scrollView.contentInset.left == 138)
         #expect(scrollView.contentOffset.x == -138)
     }
@@ -460,22 +460,22 @@ struct EdgeRefreshComponentTests {
         scrollView.contentOffset.y = 732
         let style = MockStyle(extent: 76)
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .bottom,
             style: style,
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12)
             )
         ) {}
         scrollView.beginLoadingMore(edge: .bottom)
 
-        #expect(scrollView.loadMoreState(edge: .bottom) == .refreshing)
+        #expect(scrollView.loadMoreState(edge: .bottom) == .active)
         #expect(scrollView.contentInset.bottom == 12)
         #expect(scrollView.contentOffset.y == 732)
         #expect(style.view.alpha == 1)
-        #expect(style.lastState == .refreshing)
+        #expect(style.lastState == .active)
     }
 
     @Test("overlay 展示模式将刷新视图固定在可见区域边缘且不调整 inset")
@@ -491,7 +491,7 @@ struct EdgeRefreshComponentTests {
             style: style,
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12)
             )
         ) {}
@@ -502,7 +502,7 @@ struct EdgeRefreshComponentTests {
 
         scrollView.beginRefreshing(edge: .top)
 
-        #expect(scrollView.refreshState(edge: .top) == .refreshing)
+        #expect(scrollView.refreshState(edge: .top) == .active)
         #expect(scrollView.contentInset.top == 8)
         #expect(style.view.alpha == 1)
         #expect(hostView.frame == CGRect(x: 0, y: 132, width: 320, height: 44))
@@ -517,13 +517,13 @@ struct EdgeRefreshComponentTests {
         scrollView.contentOffset = CGPoint(x: 0, y: 844)
         let style = MockStyle(extent: 76)
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .bottom,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 76,
+                triggerDistance: 76,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 24),
                 overlayAnchor: .contentBoundary
             )
@@ -554,9 +554,9 @@ struct EdgeRefreshComponentTests {
             edge: .top,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 60,
+                triggerDistance: 60,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12)
             )
         ) {}
@@ -581,9 +581,9 @@ struct EdgeRefreshComponentTests {
             edge: .top,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 60,
+                triggerDistance: 60,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12, locksContentOffset: true)
             )
         ) {}
@@ -611,13 +611,13 @@ struct EdgeRefreshComponentTests {
             style: MockStyle(extent: 44),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12, locksContentOffset: true)
             )
         ) {}
 
         scrollView.beginRefreshing(edge: .top)
-        #expect(scrollView.refreshState(edge: .top) == .refreshing)
+        #expect(scrollView.refreshState(edge: .top) == .active)
 
         scrollView.contentOffset = CGPoint(x: 17, y: 132)
         scrollView.contentSize.height = 1_900
@@ -640,7 +640,7 @@ struct EdgeRefreshComponentTests {
             style: MockStyle(extent: 44),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false
+                automaticallyEnds: false
             )
         ) {}
 
@@ -673,7 +673,7 @@ struct EdgeRefreshComponentTests {
             style: MockStyle(extent: 44),
             options: RefreshableOptions(
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 12, locksContentOffset: true)
             )
         ) {}
@@ -704,9 +704,9 @@ struct EdgeRefreshComponentTests {
             edge: .top,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 76,
+                triggerDistance: 76,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 14, locksContentOffset: true)
             )
         ) {}
@@ -733,9 +733,9 @@ struct EdgeRefreshComponentTests {
             edge: .top,
             style: style,
             options: RefreshableOptions(
-                triggerOffset: 76,
+                triggerDistance: 76,
                 animationDuration: 0,
-                automaticallyEndRefreshing: false,
+                automaticallyEnds: false,
                 presentation: .overlay(spacing: 14, locksContentOffset: true)
             )
         ) {}
@@ -747,13 +747,13 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.contentOffset.y == 0)
     }
 
-    @Test("noMoreData(edge:) 对 refresh 组件无副作用")
+    @Test("markNoMoreData(edge:) 对 refresh 组件无副作用")
     func noMoreDataIsNoOpForRefreshComponent() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         let style = MockStyle()
 
         scrollView.refreshable(edge: .leading, style: style) {}
-        scrollView.noMoreData(edge: .leading)
+        scrollView.markNoMoreData(edge: .leading)
 
         #expect(scrollView.refreshState(edge: .leading) == .idle)
         #expect(style.lastState == .idle)
@@ -768,7 +768,7 @@ struct EdgeRefreshComponentTests {
         let trailingStyle = MockStyle(extent: 50)
 
         scrollView.refreshable(edge: .leading, style: leadingStyle) {}
-        scrollView.loadMoreable(edge: .trailing, style: trailingStyle) {}
+        scrollView.onLoadMore(edge: .trailing, style: trailingStyle) {}
 
         let leadingHost = try #require(leadingStyle.view.superview)
         let trailingHost = try #require(trailingStyle.view.superview)
@@ -795,7 +795,7 @@ struct EdgeRefreshComponentTests {
     }
 
     @Test("刷新中切换布局方向后仍恢复原本占用的物理 inset")
-    func changingLayoutDirectionWhileRefreshingRestoresOriginalPhysicalInset() {
+    func changingLayoutDirectionWhileActiveRestoresOriginalPhysicalInset() {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         scrollView.semanticContentAttribute = .forceLeftToRight
         scrollView.contentInset = UIEdgeInsets(top: 20, left: 6, bottom: 12, right: 8)
@@ -804,7 +804,7 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .leading,
             style: style,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
         scrollView.beginRefreshing(edge: .leading)
         #expect(scrollView.contentInset.left == 50)
@@ -832,12 +832,12 @@ struct EdgeRefreshComponentTests {
         scrollView.refreshable(
             edge: .top,
             style: topStyle,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: trailingStyle,
-            options: RefreshableOptions(animationDuration: 0, automaticallyEndRefreshing: false)
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
         scrollView.beginRefreshing(edge: .top)
@@ -845,7 +845,7 @@ struct EdgeRefreshComponentTests {
         #expect(scrollView.contentInset.top == 74)
         #expect(scrollView.contentInset.right == 62)
 
-        scrollView.removeLoadMoreable(edge: .trailing)
+        scrollView.removeLoadMore(edge: .trailing)
 
         #expect(scrollView.component(for: .trailing) == nil)
         #expect(scrollView.contentInset.top == 74)
@@ -864,7 +864,7 @@ struct EdgeRefreshComponentTests {
         scrollView.contentSize = CGSize(width: 100, height: 480)
         scrollView.isDraggingOverride = true
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: MockStyle(),
             options: RefreshableOptions(animationDuration: 0)
@@ -872,13 +872,13 @@ struct EdgeRefreshComponentTests {
         scrollView.component(for: .trailing)?.scrollViewDidScroll(contentOffset: CGPoint(x: 200, y: 0))
         #expect(scrollView.loadMoreState(edge: .trailing) == .idle)
 
-        scrollView.loadMoreable(
+        scrollView.onLoadMore(
             edge: .trailing,
             style: MockStyle(),
             options: RefreshableOptions(
                 animationDuration: 0,
                 allowsLoadMoreWhenContentFits: true,
-                automaticTriggerOffset: nil
+                automaticTriggerDistance: nil
             )
         ) {}
         scrollView.component(for: .trailing)?.scrollViewDidScroll(contentOffset: CGPoint(x: 200, y: 0))

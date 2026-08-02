@@ -40,12 +40,12 @@ The component owns:
 Public API remains unchanged:
 
 - `refreshable(...)`
-- `loadMoreable(...)`
+- `onLoadMore(...)`
 - `beginRefreshing(...)`
 - `endRefreshing(...)`
 - `beginLoadingMore(...)`
 - `endLoadingMore(...)`
-- `noMoreData(...)`
+- `markNoMoreData(...)`
 - `resetNoMoreData(...)`
 - State query and enable/disable helpers
 

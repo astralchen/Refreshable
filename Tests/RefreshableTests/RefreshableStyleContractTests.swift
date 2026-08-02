@@ -24,7 +24,7 @@ struct RefreshableStyleContractTests {
     func styleDefaultsFollowExtent() {
         let style = FactoryStyle()
 
-        #expect(style.defaultTriggerOffset == 64)
+        #expect(style.defaultTriggerDistance == 64)
         #expect(style.defaultPlacement == RefreshablePlacement())
     }
 

@@ -9,11 +9,11 @@ struct RefreshableOptionsTests {
     func defaults() {
         let options = RefreshableOptions()
 
-        #expect(options.triggerOffset == nil)
+        #expect(options.triggerDistance == nil)
         #expect(options.animationDuration == 0.25)
-        #expect(options.automaticallyEndRefreshing == true)
+        #expect(options.automaticallyEnds == true)
         #expect(options.allowsLoadMoreWhenContentFits == false)
-        #expect(options.automaticTriggerOffset == .default)
+        #expect(options.automaticTriggerDistance == .default)
         #expect(options.placement == nil)
         #expect(options.presentation == .contentInset)
         #expect(options.overlayAnchor == .viewport)
@@ -25,21 +25,21 @@ struct RefreshableOptionsTests {
     @Test("可配置触发距离、动画时长、自动结束、内容不足一屏加载和展示方式")
     func customValues() throws {
         let options = RefreshableOptions(
-            triggerOffset: 80,
+            triggerDistance: 80,
             animationDuration: 0.4,
-            automaticallyEndRefreshing: false,
+            automaticallyEnds: false,
             allowsLoadMoreWhenContentFits: true,
-            automaticTriggerOffset: 120,
+            automaticTriggerDistance: 120,
             placement: RefreshablePlacement(contentSpacing: 12, outerSpacing: 8, crossAxisInset: 20),
             presentation: .overlay(spacing: 12, locksContentOffset: true),
             overlayAnchor: .contentBoundary
         )
 
-        #expect(options.triggerOffset == 80)
+        #expect(options.triggerDistance == 80)
         #expect(options.animationDuration == 0.4)
-        #expect(options.automaticallyEndRefreshing == false)
+        #expect(options.automaticallyEnds == false)
         #expect(options.allowsLoadMoreWhenContentFits == true)
-        #expect(options.automaticTriggerOffset == .offset(120))
+        #expect(options.automaticTriggerDistance == .distance(120))
         let placement = try #require(options.placement)
         #expect(placement.contentSpacing == 12)
         #expect(placement.outerSpacing == 8)
@@ -79,9 +79,9 @@ struct RefreshableOptionsTests {
     func resolvedOptionsSanitizeInvalidValues() {
         let resolved = ResolvedRefreshableOptions(
             options: RefreshableOptions(
-                triggerOffset: .infinity,
+                triggerDistance: .infinity,
                 animationDuration: -.infinity,
-                automaticTriggerOffset: .offset(-1),
+                automaticTriggerDistance: .distance(-1),
                 placement: RefreshablePlacement(
                     contentSpacing: -2,
                     outerSpacing: .nan,
@@ -90,15 +90,15 @@ struct RefreshableOptionsTests {
                 presentation: .overlay(spacing: -.infinity, locksContentOffset: true)
             ),
             styleExtent: -.infinity,
-            styleTriggerOffset: 0,
+            styleTriggerDistance: 0,
             stylePlacement: RefreshablePlacement(contentSpacing: 5, outerSpacing: 6, crossAxisInset: 7)
         )
 
         #expect(resolved.extent == 1)
-        #expect(resolved.triggerOffset == 1)
+        #expect(resolved.triggerDistance == 1)
         #expect(resolved.placement == RefreshablePlacement())
         #expect(resolved.animationDuration == 0)
-        #expect(resolved.automaticTriggerOffset == nil)
+        #expect(resolved.automaticTriggerDistance == nil)
         #expect(resolved.presentation == .overlay(spacing: 0, locksContentOffset: true))
     }
 
@@ -107,12 +107,12 @@ struct RefreshableOptionsTests {
         let resolved = ResolvedRefreshableOptions(
             options: RefreshableOptions(),
             styleExtent: 54,
-            styleTriggerOffset: 44,
+            styleTriggerDistance: 44,
             stylePlacement: RefreshablePlacement(contentSpacing: 3, outerSpacing: 8, crossAxisInset: 4)
         )
 
         #expect(resolved.extent == 54)
-        #expect(resolved.triggerOffset == 44)
+        #expect(resolved.triggerDistance == 44)
         #expect(
             resolved.placement
                 == RefreshablePlacement(contentSpacing: 3, outerSpacing: 8, crossAxisInset: 4)
@@ -125,7 +125,7 @@ struct RefreshableOptionsTests {
             idle: "Idle",
             pulling: "Pulling",
             triggered: "Triggered",
-            refreshing: "Refreshing",
+            active: "Active",
             ending: "Ending",
             noMoreData: "No more data",
             accessibilityLabel: "Refresh control"
@@ -135,7 +135,7 @@ struct RefreshableOptionsTests {
         #expect(options.textConfiguration?.idle == "Idle")
         #expect(options.textConfiguration?.pulling == "Pulling")
         #expect(options.textConfiguration?.triggered == "Triggered")
-        #expect(options.textConfiguration?.refreshing == "Refreshing")
+        #expect(options.textConfiguration?.active == "Active")
         #expect(options.textConfiguration?.ending == "Ending")
         #expect(options.textConfiguration?.noMoreData == "No more data")
         #expect(options.textConfiguration?.accessibilityLabel == "Refresh control")
@@ -148,7 +148,7 @@ struct RefreshableOptionsTests {
         #expect(configuration.idle == nil)
         #expect(configuration.pulling == nil)
         #expect(configuration.triggered == nil)
-        #expect(configuration.refreshing == nil)
+        #expect(configuration.active == nil)
         #expect(configuration.ending == nil)
         #expect(configuration.noMoreData == nil)
         #expect(configuration.accessibilityLabel == nil)
