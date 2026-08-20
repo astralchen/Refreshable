@@ -212,7 +212,7 @@ struct RefreshComponentTests {
 }
 
 @MainActor
-private func waitForState(_ expectedState: RefreshState, in component: RefreshComponent) async -> Bool {
+private func waitForState(_ expectedState: RefreshState, in component: EdgeRefreshComponent) async -> Bool {
     for _ in 0..<150 {
         if component.state == expectedState { return true }
         try? await Task.sleep(nanoseconds: 20_000_000)

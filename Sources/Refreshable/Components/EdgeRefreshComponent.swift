@@ -2,47 +2,101 @@ import UIKit
 
 /// 按边缘和语义角色驱动的刷新组件。
 @MainActor
-final class EdgeRefreshComponent: RefreshComponent {
+final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
 
     let edge: RefreshableEdge
     let role: RefreshableRole
-    private var insetCoordinator: RefreshableInsetCoordinator?
-    private var isLockingOverlayContentOffset = false
-    private var isApplyingInsetEffect = false
-    private var maintainsLockedOverlayBoundary = false
-    private var maintainsContentInsetRefreshBoundary = false
-    private var preservesContentOffsetAcrossInsetChanges = false
-    private let refreshHostView = RefreshHostView()
+    private var runtime: RefreshComponent!
+    private let presentationDriver: EdgePresentationDriver
+    private var insetCoordinator: RefreshableInsetCoordinator? {
+        get { presentationDriver.insetCoordinator }
+        set { presentationDriver.insetCoordinator = newValue }
+    }
+    private var isLockingOverlayContentOffset: Bool {
+        get { presentationDriver.isLockingOverlayContentOffset }
+        set { presentationDriver.isLockingOverlayContentOffset = newValue }
+    }
+    private var isApplyingInsetEffect: Bool {
+        get { presentationDriver.isApplyingInsetEffect }
+        set { presentationDriver.isApplyingInsetEffect = newValue }
+    }
+    private var maintainsLockedOverlayBoundary: Bool {
+        get { presentationDriver.maintainsLockedOverlayBoundary }
+        set { presentationDriver.maintainsLockedOverlayBoundary = newValue }
+    }
+    private var maintainsContentInsetRefreshBoundary: Bool {
+        get { presentationDriver.maintainsContentInsetRefreshBoundary }
+        set { presentationDriver.maintainsContentInsetRefreshBoundary = newValue }
+    }
+    private var preservesContentOffsetAcrossInsetChanges: Bool {
+        get { presentationDriver.preservesContentOffsetAcrossInsetChanges }
+        set { presentationDriver.preservesContentOffsetAcrossInsetChanges = newValue }
+    }
+    private var refreshHostView: RefreshHostView { presentationDriver.hostView }
+
+    weak var scrollView: UIScrollView? {
+        get { runtime.scrollView }
+        set { runtime.scrollView = newValue }
+    }
+    var renderer: any RefreshableStyleRenderer { runtime.renderer }
+    var style: any RefreshableStyle { runtime.style }
+    var options: RefreshableOptions { runtime.options }
+    var resolvedOptions: ResolvedRefreshableOptions { runtime.resolvedOptions }
+    var action: (@Sendable () async -> Void)? {
+        get { runtime.action }
+        set { runtime.action = newValue }
+    }
+    var triggerThreshold: CGFloat { runtime.triggerThreshold }
+    var styleExtent: CGFloat { runtime.styleExtent }
+    var state: RefreshState { runtime.state }
+    var isEnabled: Bool { runtime.isEnabled }
+
+    func dispatch(_ event: RefreshEvent) { runtime.dispatch(event) }
+    func receive(_ snapshot: RefreshableScrollSnapshot) { runtime.receive(snapshot) }
+    func trigger() { runtime.trigger() }
+    func endAction() { runtime.endAction() }
+    func setEnabled(_ enabled: Bool) { runtime.setEnabled(enabled) }
+    func prepareForRemoval() { runtime.prepareForRemoval() }
+    func setState(_ state: RefreshState) { runtime.setState(state) }
 
     init(
         edge: RefreshableEdge,
         role: RefreshableRole,
         style: any RefreshableStyle,
         options: RefreshableOptions = RefreshableOptions(),
+        usesExternalObservation: Bool = false,
+        insetCoordinator: RefreshableInsetCoordinator? = nil,
         action: @escaping @Sendable () async -> Void
     ) {
         self.edge = edge
         self.role = role
-        super.init(role: role, style: style, options: options, action: action)
+        presentationDriver = EdgePresentationDriver(insetCoordinator: insetCoordinator)
+        super.init()
+        runtime = RefreshComponent(
+            role: role,
+            style: style,
+            options: options,
+            usesExternalObservation: usesExternalObservation,
+            action: action
+        )
+        runtime.effects = self
     }
 
-    override var installedView: UIView {
+    var installedView: UIView {
         refreshHostView
     }
 
-    override func removeInstalledView() {
-        maintainsLockedOverlayBoundary = false
-        maintainsContentInsetRefreshBoundary = false
-        preservesContentOffsetAcrossInsetChanges = false
-        insetCoordinator?.removeContribution(owner: self)
-        insetCoordinator = nil
-        refreshHostView.onEnvironmentChange = nil
+    var visibilityView: UIView { renderer.view }
+
+    func removeInstalledView() {
         renderer.view.removeFromSuperview()
-        refreshHostView.removeFromSuperview()
+        presentationDriver.reset(owner: self)
     }
 
-    override func installView(in scrollView: UIScrollView) {
-        insetCoordinator = RefreshableInsetCoordinator.coordinator(for: scrollView)
+    func installView(in scrollView: UIScrollView) {
+        if insetCoordinator == nil {
+            insetCoordinator = RefreshableInsetCoordinator.coordinator(for: scrollView)
+        }
         refreshHostView.onEnvironmentChange = { [weak self, weak scrollView] in
             guard let self, let scrollView else { return }
             self.updateForEnvironmentChange(in: scrollView)
@@ -62,30 +116,30 @@ final class EdgeRefreshComponent: RefreshComponent {
         }
     }
 
-    override func scrollViewContentSizeDidChange(contentSize: CGSize) {
+    func scrollViewContentSizeDidChange(contentSize: CGSize) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView, contentSize: contentSize)
         restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
-    override func scrollViewBoundsDidChange(bounds: CGRect) {
+    func scrollViewBoundsDidChange(bounds: CGRect) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView)
         restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
-    override func scrollViewContentInsetDidChange(contentInset: UIEdgeInsets) {
+    func scrollViewContentInsetDidChange(contentInset: UIEdgeInsets) {
         guard let scrollView else { return }
         updateRefreshViewFrame(in: scrollView)
         restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)
     }
 
-    override func scrollViewEnvironmentDidChange() {
+    func scrollViewEnvironmentDidChange() {
         guard let scrollView else { return }
         updateForEnvironmentChange(in: scrollView)
     }
 
-    override func scrollViewDidScroll(contentOffset: CGPoint) {
+    func scrollViewDidScroll(contentOffset: CGPoint) {
         guard isEnabled else { return }
         guard let scrollView else { return }
 
@@ -130,15 +184,15 @@ final class EdgeRefreshComponent: RefreshComponent {
         dispatch(.dragChanged(progress: rawProgress))
     }
 
-    override func scrollViewDidEndDragging() {
+    func scrollViewDidEndDragging() {
         dispatch(.panEnded)
     }
 
-    override func scrollViewDidCancelDragging() {
+    func scrollViewDidCancelDragging() {
         dispatch(.panCancelled)
     }
 
-    override func setInsetVisible(reveal: Bool) {
+    func setInsetVisible(reveal: Bool) {
         guard resolvedOptions.presentation.usesContentInset else {
             establishLockedOverlayBoundaryIfNeeded(reveal: reveal)
             return
@@ -183,7 +237,7 @@ final class EdgeRefreshComponent: RefreshComponent {
         }
     }
 
-    override func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void) {
+    func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void) {
         guard resolvedOptions.presentation.usesContentInset, let insetCoordinator else {
             if let scrollView {
                 restoreMaintainedRefreshBoundaryIfNeeded(in: scrollView)

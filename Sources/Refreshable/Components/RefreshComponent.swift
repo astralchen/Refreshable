@@ -1,24 +1,43 @@
 import UIKit
 
-/// 刷新组件的内部基础类型。
-///
-/// Reducer 是状态的唯一来源；此类型只负责把 UIKit 事件转换为事件并执行副作用。
 @MainActor
-class RefreshComponent: NSObject {
+protocol RefreshComponentEffects: AnyObject {
+    var installedView: UIView { get }
+    var visibilityView: UIView { get }
+    func installView(in scrollView: UIScrollView)
+    func removeInstalledView()
+    func scrollViewDidScroll(contentOffset: CGPoint)
+    func scrollViewContentSizeDidChange(contentSize: CGSize)
+    func scrollViewBoundsDidChange(bounds: CGRect)
+    func scrollViewContentInsetDidChange(contentInset: UIEdgeInsets)
+    func scrollViewEnvironmentDidChange()
+    func scrollViewDidEndDragging()
+    func scrollViewDidCancelDragging()
+    func setInsetVisible(reveal: Bool)
+    func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void)
+}
+
+/// Composes state-machine, action, rendering, and observation drivers.
+@MainActor
+final class RefreshComponent: NSObject {
+
+    weak var effects: (any RefreshComponentEffects)?
 
     weak var scrollView: UIScrollView? {
         willSet {
             guard scrollView !== newValue else { return }
             if scrollView != nil {
                 dispatch(.detach)
-                removeObservers()
+                stopObservations()
             }
         }
         didSet {
             guard scrollView !== oldValue else { return }
             guard let scrollView else { return }
-            installView(in: scrollView)
-            addObservers(to: scrollView)
+            effects?.installView(in: scrollView)
+            if !usesExternalObservation {
+                startObservations(in: scrollView)
+            }
             dispatch(.attach)
         }
     }
@@ -27,21 +46,19 @@ class RefreshComponent: NSObject {
     let style: any RefreshableStyle
     let options: RefreshableOptions
     let resolvedOptions: ResolvedRefreshableOptions
-    var action: (@Sendable () async -> Void)?
+    var action: (@Sendable () async -> Void)? {
+        get { machine.action }
+        set { machine.action = newValue }
+    }
 
     var triggerThreshold: CGFloat { resolvedOptions.triggerDistance }
     var styleExtent: CGFloat { resolvedOptions.extent }
-    var state: RefreshState { reducer.publicState }
-    var isEnabled: Bool { reducer.isEnabled }
+    var state: RefreshState { machine.state }
+    var isEnabled: Bool { machine.isEnabled }
 
-    private var reducer: RefreshEventReducer
-    private var offsetObservation: NSKeyValueObservation?
-    private var sizeObservation: NSKeyValueObservation?
-    private var boundsObservation: NSKeyValueObservation?
-    private var insetObservation: NSKeyValueObservation?
-    private var semanticContentObservation: NSKeyValueObservation?
-    private var currentTask: Task<Void, Never>?
-    private var currentActionGeneration: UInt?
+    private let machine: RefreshMachineDriver
+    private let usesExternalObservation: Bool
+    private let observationSet = RefreshableScrollObservationSet()
     private var dispatchDepth = 0
     private var deferredEffectEvents: [RefreshEvent] = []
 
@@ -49,6 +66,7 @@ class RefreshComponent: NSObject {
         role: RefreshableRole,
         style: any RefreshableStyle,
         options: RefreshableOptions = RefreshableOptions(),
+        usesExternalObservation: Bool = false,
         action: @escaping @Sendable () async -> Void
     ) {
         self.style = style
@@ -60,58 +78,56 @@ class RefreshComponent: NSObject {
             styleTriggerDistance: style.defaultTriggerDistance,
             stylePlacement: style.defaultPlacement
         )
-        self.action = action
-        reducer = RefreshEventReducer(
+        self.usesExternalObservation = usesExternalObservation
+        machine = RefreshMachineDriver(
             role: role,
-            automaticallyEnds: options.automaticallyEnds
+            automaticallyEnds: options.automaticallyEnds,
+            action: action
         )
         super.init()
     }
 
-    deinit {
-        currentTask?.cancel()
+    func startObservations(in scrollView: UIScrollView) {
+        observationSet.onSnapshot = { [weak self] snapshot in
+            self?.receive(snapshot)
+        }
+        observationSet.onPanEnded = { [weak self] in
+            self?.effects?.scrollViewDidEndDragging()
+        }
+        observationSet.onPanCancelled = { [weak self] in
+            self?.effects?.scrollViewDidCancelDragging()
+        }
+        observationSet.start(for: scrollView)
     }
 
-    // MARK: - 子类钩子
-
-    func installView(in scrollView: UIScrollView) {}
-
-    var installedView: UIView { renderer.view }
-    var visibilityView: UIView { renderer.view }
-
-    func removeInstalledView() {
-        installedView.removeFromSuperview()
+    func stopObservations() {
+        observationSet.stop()
+        observationSet.onSnapshot = nil
+        observationSet.onPanEnded = nil
+        observationSet.onPanCancelled = nil
     }
 
-    func scrollViewDidScroll(contentOffset: CGPoint) {}
-    func scrollViewContentSizeDidChange(contentSize: CGSize) {}
-    func scrollViewBoundsDidChange(bounds: CGRect) {}
-    func scrollViewContentInsetDidChange(contentInset: UIEdgeInsets) {}
-    func scrollViewEnvironmentDidChange() {}
-    func scrollViewDidEndDragging() {}
-    func scrollViewDidCancelDragging() {}
-
-    /// 显示当前组件对 `contentInset` 的贡献。先于 renderer 和回调执行。
-    func setInsetVisible(reveal: Bool) {}
-
-    /// 移除当前组件对 `contentInset` 的贡献，并在动画结束时调用 completion。
-    func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void) {
-        completion()
+    func receive(_ snapshot: RefreshableScrollSnapshot) {
+        effects?.scrollViewDidScroll(contentOffset: snapshot.contentOffset)
+        effects?.scrollViewContentSizeDidChange(contentSize: snapshot.contentSize)
+        effects?.scrollViewBoundsDidChange(bounds: snapshot.bounds)
+        effects?.scrollViewContentInsetDidChange(contentInset: snapshot.contentInset)
+        effects?.scrollViewEnvironmentDidChange()
     }
 
     // MARK: - Reducer
 
     func dispatch(_ event: RefreshEvent) {
         dispatchDepth += 1
-        let reduction = reducer.reduce(event)
+        let reduction = machine.reduce(event)
 
         for effect in reduction.effects {
             switch effect {
             case .setInsetVisible(let reveal):
-                setInsetVisible(reveal: reveal)
+                effects?.setInsetVisible(reveal: reveal)
 
             case .removeInset(let animated, let generation):
-                removeInset(animated: animated) { [weak self] in
+                effects?.removeInset(animated: animated) { [weak self] in
                     guard let self, let generation else { return }
                     self.dispatchEffectCompletion(
                         .endAnimationCompleted(generation: generation)
@@ -119,10 +135,10 @@ class RefreshComponent: NSObject {
                 }
 
             case .cancelAction:
-                cancelActionTask()
+                machine.cancelAction()
 
             case .clearAction(let generation):
-                clearActionTask(generation: generation)
+                machine.clearAction(generation: generation)
 
             case .startAction:
                 break
@@ -139,8 +155,10 @@ class RefreshComponent: NSObject {
 
         for effect in reduction.effects {
             guard case .startAction(let generation) = effect else { continue }
-            guard reducer.canStartAction(generation: generation) else { continue }
-            startActionTask(generation: generation)
+            guard machine.canStartAction(generation: generation) else { continue }
+            machine.startAction(generation: generation) { [weak self] generation in
+                self?.dispatch(.actionCompleted(generation: generation))
+            }
         }
 
         dispatchDepth -= 1
@@ -161,8 +179,8 @@ class RefreshComponent: NSObject {
     }
 
     private func renderCurrentState() {
-        let state = reducer.publicState
-        let progress = reducer.renderProgress
+        let state = machine.state
+        let progress = machine.renderProgress
 
         if state == .idle {
             updateViewVisibility(state: state)
@@ -176,11 +194,11 @@ class RefreshComponent: NSObject {
     private func updateViewVisibility(state: RefreshState) {
         switch state {
         case .idle:
-            visibilityView.alpha = 0
+            effects?.visibilityView.alpha = 0
         case .pulling(let progress):
-            visibilityView.alpha = min(max(progress, 0), 1)
+            effects?.visibilityView.alpha = min(max(progress, 0), 1)
         case .triggered, .active, .noMoreData:
-            visibilityView.alpha = 1
+            effects?.visibilityView.alpha = 1
         case .ending:
             break
         }
@@ -202,7 +220,7 @@ class RefreshComponent: NSObject {
 
     func prepareForRemoval() {
         dispatch(.detach)
-        removeInstalledView()
+        effects?.removeInstalledView()
         action = nil
         scrollView = nil
     }
@@ -213,17 +231,17 @@ class RefreshComponent: NSObject {
         case .idle:
             switch state {
             case .ending:
-                dispatch(.endAnimationCompleted(generation: reducer.transitionGeneration))
+                dispatch(.endAnimationCompleted(generation: machine.transitionGeneration))
             case .active:
                 dispatch(.endRequested)
-                dispatch(.endAnimationCompleted(generation: reducer.transitionGeneration))
+                dispatch(.endAnimationCompleted(generation: machine.transitionGeneration))
             default:
                 dispatch(.panCancelled)
             }
         case .pulling(let progress):
             dispatch(.dragChanged(progress: progress))
         case .triggered:
-            dispatch(.dragChanged(progress: max(reducer.renderProgress, 1)))
+            dispatch(.dragChanged(progress: max(machine.renderProgress, 1)))
         case .active:
             dispatch(.begin)
         case .ending:
@@ -233,106 +251,4 @@ class RefreshComponent: NSObject {
         }
     }
 
-    private func startActionTask(generation: UInt) {
-        currentTask?.cancel()
-        currentActionGeneration = generation
-        let action = action
-
-        currentTask = Task { [weak self, action] in
-            guard let action else { return }
-            await action()
-            guard !Task.isCancelled else { return }
-            await MainActor.run { [weak self] in
-                guard !Task.isCancelled else { return }
-                self?.dispatch(.actionCompleted(generation: generation))
-            }
-        }
-    }
-
-    private func cancelActionTask() {
-        currentTask?.cancel()
-        currentTask = nil
-        currentActionGeneration = nil
-    }
-
-    private func clearActionTask(generation: UInt) {
-        guard currentActionGeneration == generation else { return }
-        currentTask = nil
-        currentActionGeneration = nil
-    }
-
-    // MARK: - KVO
-
-    private func addObservers(to scrollView: UIScrollView) {
-        offsetObservation = scrollView.observe(\.contentOffset, options: [.new]) { [weak self] _, change in
-            MainActor.assumeIsolated {
-                guard let offset = change.newValue else { return }
-                self?.scrollViewDidScroll(contentOffset: offset)
-            }
-        }
-
-        sizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] _, change in
-            MainActor.assumeIsolated {
-                guard let size = change.newValue else { return }
-                self?.scrollViewContentSizeDidChange(contentSize: size)
-            }
-        }
-
-        boundsObservation = scrollView.observe(\.bounds, options: [.new]) { [weak self] _, change in
-            MainActor.assumeIsolated {
-                guard let bounds = change.newValue else { return }
-                self?.scrollViewBoundsDidChange(bounds: bounds)
-            }
-        }
-
-        insetObservation = scrollView.observe(\.contentInset, options: [.new]) { [weak self] _, change in
-            MainActor.assumeIsolated {
-                guard let inset = change.newValue else { return }
-                self?.scrollViewContentInsetDidChange(contentInset: inset)
-            }
-        }
-
-        scrollView.panGestureRecognizer.addTarget(
-            self,
-            action: #selector(handlePanGestureStateChange(_:))
-        )
-
-        semanticContentObservation = scrollView.observe(
-            \.semanticContentAttribute,
-            options: [.new]
-        ) { [weak self] _, _ in
-            MainActor.assumeIsolated {
-                self?.scrollViewEnvironmentDidChange()
-            }
-        }
-    }
-
-    @objc
-    private func handlePanGestureStateChange(_ gestureRecognizer: UIPanGestureRecognizer) {
-        switch gestureRecognizer.state {
-        case .ended:
-            scrollViewDidEndDragging()
-        case .cancelled, .failed:
-            scrollViewDidCancelDragging()
-        default:
-            break
-        }
-    }
-
-    private func removeObservers() {
-        scrollView?.panGestureRecognizer.removeTarget(
-            self,
-            action: #selector(handlePanGestureStateChange(_:))
-        )
-        offsetObservation?.invalidate()
-        sizeObservation?.invalidate()
-        boundsObservation?.invalidate()
-        insetObservation?.invalidate()
-        semanticContentObservation?.invalidate()
-        offsetObservation = nil
-        sizeObservation = nil
-        boundsObservation = nil
-        insetObservation = nil
-        semanticContentObservation = nil
-    }
 }
