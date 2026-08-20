@@ -77,6 +77,18 @@ UITableView、UICollectionView 及任何 UIScrollView 子类均可使用。
 ## 4. 公开 API
 
 ```swift
+let coordinator = scrollView.refreshableCoordinator
+coordinator.install(edge: .top, operation: .refresh, style: style, options: options) { await vm.fetch() }
+coordinator.install(edge: .bottom, operation: .loadMore, style: style, options: options) { await vm.loadNext() }
+coordinator.state(for: .top)
+coordinator.begin(for: .top)
+coordinator.end(for: .top)
+coordinator.setEnabled(false, for: .bottom)
+coordinator.markNoMoreData(for: .bottom)
+coordinator.resetNoMoreData(for: .bottom)
+coordinator.remove(for: .top)
+
+// v1 compatibility forwarding API
 // 下拉刷新
 scrollView.refreshable { await vm.fetch() }
 scrollView.refreshable(edge: .leading) { await vm.fetch() }
@@ -251,18 +263,23 @@ scrollView.refreshable(style: SystemNativeRefreshStyle()) {}
 ## 9. 实现架构
 
 ```
-UIScrollView+Refreshable.swift    公开 API（associated object 持有 edge store）
+UIScrollView.refreshableCoordinator
         │
-        └── EdgeRefreshComponent      UIKit 事件、几何与副作用适配
-              ├── RefreshEventReducer         纯 Swift 状态与 generation
-              ├── RefreshableInsetCoordinator scroll-view 级增量 inset
-              ├── EdgeRefreshGeometry         四方向纯几何
-              └── RefreshableStyleRenderer    独立 UIView 渲染器
+        └── RefreshableCoordinator       scroll-view 级观察、生命周期和 inset 编排
+              ├── RefreshableScrollObservationSet  单组 KVO / pan target
+              ├── [RefreshableEdge: EdgeRefreshComponent]
+              │      ├── RefreshComponent       effect 顺序与 renderer 编排
+              │      ├── RefreshMachineDriver   reducer、generation、异步 action
+              │      └── EdgePresentationDriver host、inset/offset 展示状态
+              ├── RefreshableInsetCoordinator   scroll-view 级增量 inset
+              └── EdgeRefreshGeometry           四方向纯几何
 ```
 
 **关键实现细节：**
 
-- **关联存储**：`objc_setAssociatedObject` 存放 edge store，scrollView 强引用 component，component weak 引用 scrollView
+- **关联存储**：`objc_setAssociatedObject` 存放唯一 coordinator；coordinator 持有 edge session，session weak 引用 scrollView
+- **统一观察**：同一 scroll view 只建立一组 contentOffset/contentSize/bounds/contentInset/semantic KVO 和一个 pan target，再向所有 edge session 分发快照
+- **组合式组件**：`EdgeRefreshComponent` 是 final facade，不继承运行时基类；machine、observation 和 presentation 分别持有各自状态
 - **事件 Reducer**：拖动、手势结束/取消、自动/手动触发、action/animation completion、noMoreData、启停和挂载都经 reducer；旧 generation completion 不得修改新状态
 - **固定执行顺序**：提交状态 → inset/布局副作用 → renderer/可见性 → `onStateChange` → generation 校验后启动 action
 - **KVO 监听**：`contentOffset`、`contentSize`、`bounds`、`contentInset` 和 `panGestureRecognizer.state`；host 在 layout、安全区、trait、RTL 和几何变化时失效
@@ -283,11 +300,15 @@ Refreshable/
 │   │   ├── RefreshableOptions.swift
 │   │   ├── ResolvedRefreshableOptions.swift
 │   │   ├── RefreshEventReducer.swift
+│   │   ├── RefreshMachineDriver.swift
+│   │   ├── RefreshableCoordinator.swift
+│   │   ├── RefreshableScrollObservation.swift
 │   │   ├── RefreshableInsetCoordinator.swift
 │   │   └── EdgeRefreshGeometry.swift
 │   ├── Components/
 │   │   ├── RefreshComponent.swift
 │   │   ├── EdgeRefreshComponent.swift
+│   │   ├── EdgePresentationDriver.swift
 │   │   └── RefreshHostView.swift
 │   ├── Extensions/
 │   │   └── UIScrollView+Refreshable.swift

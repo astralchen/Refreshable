@@ -40,7 +40,32 @@ tableView.onLoadMore { [weak self] in
 }
 ```
 
-## API
+## 统一 Coordinator API
+
+每个 UIScrollView 只创建一个 RefreshableCoordinator。它统一管理所有 edge 的观察、
+生命周期、inset 和任务：
+
+    let refresh = tableView.refreshableCoordinator
+
+    refresh.install(edge: .top, operation: .refresh) { [weak self] in
+        await self?.viewModel.fetchLatest()
+    }
+
+    refresh.install(edge: .bottom, operation: .loadMore) { [weak self] in
+        await self?.viewModel.fetchNextPage()
+    }
+
+    refresh.begin(for: .top)
+    refresh.end(for: .top)
+    refresh.markNoMoreData(for: .bottom)
+    refresh.resetNoMoreData(for: .bottom)
+    refresh.setEnabled(false, for: .bottom)
+    refresh.remove(for: .top)
+
+同一个 edge 再次调用 install 会取消并移除旧 session、恢复它的 inset，再安装新
+session。省略 style 时仍使用按 edge 和 operation 解析的统一默认控件。
+
+## v1 兼容 API
 
 ```swift
 // 下拉刷新
@@ -81,6 +106,9 @@ scrollView.setLoadMoreEnabled(false)
 scrollView.removeRefreshable()
 scrollView.removeLoadMore()
 ```
+
+这些 convenience API 作为 coordinator 的迁移期转发层保留；新代码优先使用
+refreshableCoordinator。完整映射见 [MIGRATION.md](MIGRATION.md)。
 
 `leading` 和 `trailing` 是语义方向，会根据 `UIScrollView.effectiveUserInterfaceLayoutDirection` 在 LTR/RTL 下自动映射到物理 left/right。
 

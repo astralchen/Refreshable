@@ -4,17 +4,29 @@ import ObjectiveC
 // MARK: - 关联对象键
 
 private enum AssociatedKeys {
-    nonisolated(unsafe) static let componentStore = malloc(1)!
-}
-
-@MainActor
-private final class RefreshableComponentStore {
-    var components: [RefreshableEdge: EdgeRefreshComponent] = [:]
+    nonisolated(unsafe) static let coordinator = malloc(1)!
 }
 
 // MARK: - 公开 API
 
 extension UIScrollView {
+
+    /// The unified coordinator for all refresh and load-more sessions on this scroll view.
+    @MainActor
+    public var refreshableCoordinator: RefreshableCoordinator {
+        if let coordinator = objc_getAssociatedObject(self, AssociatedKeys.coordinator)
+            as? RefreshableCoordinator {
+            return coordinator
+        }
+        let coordinator = RefreshableCoordinator(scrollView: self)
+        objc_setAssociatedObject(
+            self,
+            AssociatedKeys.coordinator,
+            coordinator,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        return coordinator
+    }
 
     // MARK: - 刷新
 
@@ -365,7 +377,7 @@ extension UIScrollView {
 
     @MainActor
     func component(for edge: RefreshableEdge) -> EdgeRefreshComponent? {
-        componentStore.components[edge]
+        refreshableCoordinator.component(for: edge)
     }
 
     @MainActor
@@ -388,25 +400,19 @@ extension UIScrollView {
         }
     }
 
-    private var componentStore: RefreshableComponentStore {
-        if let store = objc_getAssociatedObject(self, AssociatedKeys.componentStore) as? RefreshableComponentStore {
-            return store
-        }
-
-        let store = RefreshableComponentStore()
-        objc_setAssociatedObject(self, AssociatedKeys.componentStore, store, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        return store
-    }
-
     private func installRefreshable(
         edge: RefreshableEdge,
         style: any RefreshableStyle,
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        let component = EdgeRefreshComponent(edge: edge, role: .refresh, style: style, options: options, action: action)
-        setComponent(component, for: edge)
-        component.scrollView = self
+        refreshableCoordinator.install(
+            edge: edge,
+            operation: .refresh,
+            style: style,
+            options: options,
+            action: action
+        )
     }
 
     private func installLoadMore(
@@ -415,18 +421,17 @@ extension UIScrollView {
         options: RefreshableOptions,
         action: @escaping @Sendable () async -> Void
     ) {
-        let component = EdgeRefreshComponent(edge: edge, role: .loadMore, style: style, options: options, action: action)
-        setComponent(component, for: edge)
-        component.scrollView = self
+        refreshableCoordinator.install(
+            edge: edge,
+            operation: .loadMore,
+            style: style,
+            options: options,
+            action: action
+        )
     }
 
     private func setComponent(_ component: EdgeRefreshComponent?, for edge: RefreshableEdge) {
-        let old = componentStore.components[edge]
-        if let old, old !== component {
-            old.prepareForRemoval()
-        }
-
-        componentStore.components[edge] = component
+        refreshableCoordinator.setComponent(component, at: edge)
     }
 
     private func refreshComponent(for edge: RefreshableEdge) -> EdgeRefreshComponent? {
