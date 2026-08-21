@@ -1,6 +1,6 @@
 import UIKit
 
-/// Owns the mutable UIKit presentation state for one edge session.
+/// 持有单个 edge session 的 UIKit 展示状态。
 @MainActor
 final class EdgePresentationDriver {
     let hostView = RefreshHostView()

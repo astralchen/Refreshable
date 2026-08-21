@@ -55,8 +55,9 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
         collectionView.register(VideoFeedCell.self, forCellWithReuseIdentifier: VideoFeedCell.reuseIdentifier)
         view.addSubview(collectionView)
 
-        collectionView.refreshable(
-            edge: .top,
+        collectionView.setRefreshableOperation(
+            .refresh,
+            for: .top,
             style: VideoTopRefreshStyle(),
             options: RefreshableOptions(
                 triggerDistance: refreshTriggerDistance,
@@ -71,13 +72,14 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 let previousCount = self.items.count
                 self.items = self.makeItems(start: 1 + self.refreshSeed * 20, count: 5)
                 self.reconfigureRefreshItems(previousCount: previousCount)
-                self.collectionView.resetNoMoreData(edge: .bottom)
+                self.collectionView.resetNoMoreData(for: .bottom)
                 self.playCurrentCellAfterLayout()
             }
         }
 
-        collectionView.onLoadMore(
-            edge: .bottom,
+        collectionView.setRefreshableOperation(
+            .loadMore,
+            for: .bottom,
             style: VideoBottomLoadMoreStyle(extent: loadMoreTriggerDistance),
             options: RefreshableOptions(
                 triggerDistance: loadMoreTriggerDistance,
@@ -92,7 +94,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
                 guard let self else { return }
                 let nextPage = self.page + 1
                 guard nextPage < self.maxPage else {
-                    self.collectionView.markNoMoreData(edge: .bottom)
+                    self.collectionView.markNoMoreData(for: .bottom)
                     return
                 }
 

@@ -17,7 +17,7 @@ protocol RefreshComponentEffects: AnyObject {
     func removeInset(animated: Bool, completion: @escaping @MainActor () -> Void)
 }
 
-/// Composes state-machine, action, rendering, and observation drivers.
+/// 组合状态机、action、渲染和观察驱动职责的内部组件。
 @MainActor
 final class RefreshComponent: NSObject {
 
@@ -115,12 +115,13 @@ final class RefreshComponent: NSObject {
         effects?.scrollViewEnvironmentDidChange()
     }
 
-    // MARK: - Reducer
+    // MARK: - 状态归约
 
     func dispatch(_ event: RefreshEvent) {
         dispatchDepth += 1
         let reduction = machine.reduce(event)
 
+        // 严格保持 reducer 约定的副作用顺序：先布局，再渲染和回调，最后启动 action。
         for effect in reduction.effects {
             switch effect {
             case .setInsetVisible(let reveal):
@@ -155,6 +156,7 @@ final class RefreshComponent: NSObject {
 
         for effect in reduction.effects {
             guard case .startAction(let generation) = effect else { continue }
+            // generation 校验必须紧邻启动点，避免前面的回调改变 session 后仍启动旧 action。
             guard machine.canStartAction(generation: generation) else { continue }
             machine.startAction(generation: generation) { [weak self] generation in
                 self?.dispatch(.actionCompleted(generation: generation))

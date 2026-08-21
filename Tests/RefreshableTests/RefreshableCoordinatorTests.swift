@@ -17,7 +17,7 @@ struct RefreshableCoordinatorTests {
         let coordinator = scrollView.refreshableCoordinator
 
         for edge in RefreshableEdge.allCases {
-            coordinator.install(edge: edge, operation: .refresh, style: MockStyle()) {}
+            coordinator.setOperation(.refresh, for: edge, style: MockStyle()) {}
         }
 
         #expect(coordinator.installedSessionCount == 4)
@@ -32,18 +32,18 @@ struct RefreshableCoordinatorTests {
         let coordinator = scrollView.refreshableCoordinator
         let options = RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
 
-        coordinator.install(
-            edge: .top,
-            operation: .refresh,
+        coordinator.setOperation(
+            .refresh,
+            for: .top,
             style: firstStyle,
             options: options
         ) {}
-        coordinator.begin(for: .top)
+        coordinator.beginOperation(for: .top)
         #expect(scrollView.contentInset.top == 74)
 
-        coordinator.install(
-            edge: .top,
-            operation: .refresh,
+        coordinator.setOperation(
+            .refresh,
+            for: .top,
             style: MockStyle(),
             options: options
         ) {}
@@ -57,7 +57,7 @@ struct RefreshableCoordinatorTests {
     func refreshIgnoresNoMoreData() {
         let scrollView = UIScrollView()
         let coordinator = scrollView.refreshableCoordinator
-        coordinator.install(edge: .leading, operation: .refresh, style: MockStyle()) {}
+        coordinator.setOperation(.refresh, for: .leading, style: MockStyle()) {}
 
         coordinator.markNoMoreData(for: .leading)
 
@@ -69,14 +69,34 @@ struct RefreshableCoordinatorTests {
         let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
         let coordinator = scrollView.refreshableCoordinator
         let options = RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
-        coordinator.install(edge: .top, operation: .refresh, style: MockStyle(), options: options) {}
-        coordinator.install(edge: .bottom, operation: .loadMore, style: MockStyle(), options: options) {}
+        coordinator.setOperation(.refresh, for: .top, style: MockStyle(), options: options) {}
+        coordinator.setOperation(.loadMore, for: .bottom, style: MockStyle(), options: options) {}
 
-        coordinator.begin(for: .top)
-        coordinator.remove(for: .bottom)
+        coordinator.beginOperation(for: .top)
+        coordinator.removeOperation(for: .bottom)
 
         #expect(coordinator.state(for: .top) == .active)
         #expect(coordinator.state(for: .bottom) == .idle)
         #expect(coordinator.installedSessionCount == 1)
+    }
+
+    @Test("UIScrollView API controls an operation by edge")
+    func publicOperationControls() {
+        let scrollView = UIScrollView()
+        scrollView.setRefreshableOperation(
+            .refresh,
+            for: .top,
+            options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
+        ) {}
+
+        scrollView.setRefreshableOperationEnabled(false, for: .top)
+        scrollView.beginRefreshableOperation(for: .top)
+        #expect(scrollView.refreshableState(for: .top) == .idle)
+
+        scrollView.setRefreshableOperationEnabled(true, for: .top)
+        scrollView.beginRefreshableOperation(for: .top)
+        #expect(scrollView.refreshableState(for: .top) == .active)
+
+        scrollView.endRefreshableOperation(for: .top)
     }
 }

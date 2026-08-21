@@ -211,8 +211,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     private func installSelectedComponent() {
         boundaryPositionGeneration += 1
         for edge in RefreshableEdge.allCases {
-            canvas.removeRefreshable(edge: edge)
-            canvas.removeLoadMore(edge: edge)
+            canvas.removeRefreshableOperation(for: edge)
         }
 
         selectedState = .idle
@@ -228,15 +227,13 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         )
         let actionDuration = previewActionDurationNanoseconds
 
-        switch selectedRole {
-        case .refresh:
-            canvas.refreshable(edge: selectedEdge, options: options) {
-                try? await Task.sleep(nanoseconds: actionDuration)
-            }
-        case .loadMore:
-            canvas.onLoadMore(edge: selectedEdge, options: options) {
-                try? await Task.sleep(nanoseconds: actionDuration)
-            }
+        let operation: RefreshableOperation = selectedRole == .refresh ? .refresh : .loadMore
+        canvas.setRefreshableOperation(
+            operation,
+            for: selectedEdge,
+            options: options
+        ) {
+            try? await Task.sleep(nanoseconds: actionDuration)
         }
 
         noMoreDataButton.isEnabled = selectedRole == .loadMore
@@ -329,24 +326,19 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     }
 
     @objc private func triggerSelectedComponent() {
-        switch selectedRole {
-        case .refresh:
-            canvas.beginRefreshing(edge: selectedEdge)
-        case .loadMore:
-            canvas.beginLoadingMore(edge: selectedEdge)
-        }
+        canvas.beginRefreshableOperation(for: selectedEdge)
         updateStatus()
     }
 
     @objc private func markNoMoreData() {
         guard selectedRole == .loadMore else { return }
-        canvas.markNoMoreData(edge: selectedEdge)
+        canvas.markNoMoreData(for: selectedEdge)
         repositionCanvasAtSelectedBoundary(expectedState: .noMoreData)
     }
 
     @objc private func resetNoMoreData() {
         guard selectedRole == .loadMore else { return }
-        canvas.resetNoMoreData(edge: selectedEdge)
+        canvas.resetNoMoreData(for: selectedEdge)
         repositionCanvasAtSelectedBoundary(expectedState: .idle)
     }
 

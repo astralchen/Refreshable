@@ -1,6 +1,6 @@
 import UIKit
 
-/// Owns the reducer and asynchronous action lifecycle for one edge session.
+/// 持有单个 edge session 的 reducer 和异步 action 生命周期。
 @MainActor
 final class RefreshMachineDriver {
     private var reducer: RefreshEventReducer
@@ -38,6 +38,7 @@ final class RefreshMachineDriver {
         generation: UInt,
         completion: @escaping @MainActor (UInt) -> Void
     ) {
+        // 新 action 启动前取消旧 task，并记录 generation；旧 completion 即使返回也不能提交状态。
         currentTask?.cancel()
         currentActionGeneration = generation
         let action = action
@@ -47,6 +48,7 @@ final class RefreshMachineDriver {
             await action()
             guard !Task.isCancelled else { return }
             await MainActor.run {
+                // completion 仍带着启动时的 generation，由上层 reducer 再次校验有效性。
                 guard !Task.isCancelled, self != nil else { return }
                 completion(generation)
             }
@@ -54,6 +56,7 @@ final class RefreshMachineDriver {
     }
 
     func cancelAction() {
+        // 移除、替换和禁用都会走这里，确保 action 与 generation 一起失效。
         currentTask?.cancel()
         currentTask = nil
         currentActionGeneration = nil

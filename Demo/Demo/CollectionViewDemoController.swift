@@ -103,7 +103,9 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
         )
         view.addSubview(collectionView)
 
-        collectionView.refreshable(
+        collectionView.setRefreshableOperation(
+            .refresh,
+            for: .top,
             style: SystemNativeRefreshStyle(
                 extent: 52,
                 lastUpdatedText: "刷新后重置加载状态"
@@ -124,7 +126,9 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
     }
 
     private func installBottomLoadMore() {
-        collectionView.onLoadMore(
+        collectionView.setRefreshableOperation(
+            .loadMore,
+            for: .bottom,
             options: RefreshableOptions(
                 animationDuration: 0.28,
                 automaticTriggerDistance: 120,
@@ -405,7 +409,7 @@ final class CollectionViewDemoController: UIViewController, UICollectionViewData
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self, self.hasLoadedAllPages else { return }
-            self.collectionView.removeLoadMore()
+            self.collectionView.removeRefreshableOperation(for: .bottom)
         }
     }
 

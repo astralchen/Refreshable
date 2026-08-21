@@ -123,8 +123,8 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
     }
 
     private func installSelectedStyle() {
-        tableView.removeRefreshable()
-        tableView.removeLoadMore()
+        tableView.removeRefreshableOperation(for: .top)
+        tableView.removeRefreshableOperation(for: .bottom)
 
         let options = RefreshableOptions(
             triggerDistance: triggerDistance,
@@ -133,17 +133,30 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
         switch selectedStyle {
         case .system:
-            tableView.refreshable(style: SystemNativeRefreshStyle(), options: options) { [weak self] in
+            tableView.setRefreshableOperation(
+                .refresh,
+                for: .top,
+                style: SystemNativeRefreshStyle(),
+                options: options
+            ) { [weak self] in
                 await self?.performRefresh()
             }
 
         case .kinetic:
-            tableView.refreshable(style: KineticRefreshStyle(), options: options) { [weak self] in
+            tableView.setRefreshableOperation(
+                .refresh,
+                for: .top,
+                style: KineticRefreshStyle(),
+                options: options
+            ) { [weak self] in
                 await self?.performRefresh()
             }
         }
 
-        tableView.onLoadMore { [weak self] in
+        tableView.setRefreshableOperation(
+            .loadMore,
+            for: .bottom
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
             await MainActor.run {
                 self?.appendMoreRows()
@@ -179,14 +192,14 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
             )
             items.insert(item, at: 0)
             tableView.reloadData()
-            tableView.resetNoMoreData()
+            tableView.resetNoMoreData(for: .bottom)
         }
     }
 
     private func appendMoreRows() {
         page += 1
         guard page <= 2 else {
-            tableView.markNoMoreData()
+            tableView.markNoMoreData(for: .bottom)
             return
         }
 

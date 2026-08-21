@@ -122,12 +122,12 @@ public struct RefreshableOptions: Sendable {
     /// 一个布尔值，指示刷新动作结束后是否自动收起刷新组件。
     ///
     /// 默认值为 `true`。如果设置为 `false`，需要在 `action` 完成后手动调用
-    /// `endRefreshing()` 或 `endLoadingMore()`。
+    /// `endRefreshableOperation(for:)`。
     public var automaticallyEnds: Bool
 
     /// 一个布尔值，指示内容未填满当前滚动轴时是否仍允许触发加载更多。
     ///
-    /// 此选项仅影响通过 `onLoadMore` 安装的组件。
+    /// 此选项仅影响 operation 为 `.loadMore` 的组件。
     public var allowsLoadMoreWhenContentFits: Bool
 
     /// 自动触发刷新或加载更多的边缘距离。

@@ -10,13 +10,17 @@ struct RefreshableLifecycleTests {
     func removalReleasesComponentAndRenderer() throws {
         let scrollView = UIScrollView()
         var style: LifecycleStyle? = LifecycleStyle()
-        scrollView.refreshable(style: try #require(style)) {}
+        scrollView.setRefreshableOperation(
+            .refresh,
+            for: .top,
+            style: try #require(style)
+        ) {}
 
-        let component = WeakReference(scrollView.component(for: .top))
+        let component = WeakReference(scrollView.refreshableCoordinator.component(for: .top))
         let renderer = WeakReference(style?.latestRenderer)
         let rendererView = WeakReference(style?.latestRenderer?.view)
 
-        scrollView.removeRefreshable()
+        scrollView.removeRefreshableOperation(for: .top)
         style = nil
 
         #expect(component.value == nil)
@@ -33,10 +37,14 @@ struct RefreshableLifecycleTests {
         autoreleasepool {
             var scrollView: UIScrollView? = UIScrollView()
             var style: LifecycleStyle? = LifecycleStyle()
-            scrollView?.refreshable(style: try! #require(style)) {}
+            scrollView?.setRefreshableOperation(
+                .refresh,
+                for: .top,
+                style: try! #require(style)
+            ) {}
 
             scrollViewReference = scrollView
-            componentReference = scrollView?.component(for: .top)
+            componentReference = scrollView?.refreshableCoordinator.component(for: .top)
             rendererReference = style?.latestRenderer
             style = nil
             scrollView = nil
@@ -105,7 +113,10 @@ private final class LifecycleViewController: UIViewController {
 
     override func loadView() {
         view = scrollView
-        scrollView.refreshable { [weak self] in
+        scrollView.setRefreshableOperation(
+            .refresh,
+            for: .top
+        ) { [weak self] in
             await self?.didRefresh()
         }
     }

@@ -133,7 +133,9 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
             placement: RefreshablePlacement(contentSpacing: 4)
         )
 
-        tableView.refreshable(
+        tableView.setRefreshableOperation(
+            .refresh,
+            for: .top,
             style: SystemNativeRefreshStyle(
                 extent: 72,
                 lastUpdatedText: "松手即可查看最新内容"
@@ -150,7 +152,11 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
             placement: RefreshablePlacement(contentSpacing: 6)
         )
 
-        tableView.onLoadMore(options: loadMoreOptions) { [weak self] in
+        tableView.setRefreshableOperation(
+            .loadMore,
+            for: .bottom,
+            options: loadMoreOptions
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
             await self?.appendNextPage()
         }
@@ -172,13 +178,13 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
             selectedIndex: selectedFilter.selectedIndex
         )
         applyCurrentFilter(animated: false, scrollToTop: false)
-        tableView.resetNoMoreData()
+        tableView.resetNoMoreData(for: .bottom)
     }
 
     private func appendNextPage() {
         page += 1
         guard page <= 3 else {
-            tableView.markNoMoreData()
+            tableView.markNoMoreData(for: .bottom)
             return
         }
         allItems.append(contentsOf: makePageItems(page: page))

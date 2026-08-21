@@ -61,8 +61,8 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
     private func setLayoutDirection(_ direction: HorizontalLayoutDirection) {
         guard direction != layoutDirection else { return }
 
-        collectionView.removeRefreshable(edge: .leading)
-        collectionView.removeLoadMore(edge: .trailing)
+        collectionView.removeRefreshableOperation(for: .leading)
+        collectionView.removeRefreshableOperation(for: .trailing)
 
         layoutDirection = direction
         applyLayoutDirection()
@@ -243,24 +243,28 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
         page = 0
         items = makeItems(start: currentContentStartIndex, count: 8)
         collectionView.reloadData()
-        collectionView.resetNoMoreData(edge: .trailing)
+        collectionView.resetNoMoreData(for: .trailing)
         scrollToCurrentDirectionStartItem()
     }
 
     private func installEdgeControls() {
-        collectionView.refreshable(edge: .leading) { [weak self] in
+        collectionView.setRefreshableOperation(
+            .refresh,
+            for: .leading
+        ) { [weak self] in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             await MainActor.run {
                 guard let self else { return }
                 self.page = 0
                 self.items = self.makeItems(start: self.currentContentStartIndex, count: 8)
                 self.collectionView.reloadData()
-                self.collectionView.resetNoMoreData(edge: .trailing)
+                self.collectionView.resetNoMoreData(for: .trailing)
             }
         }
 
-        collectionView.onLoadMore(
-            edge: .trailing,
+        collectionView.setRefreshableOperation(
+            .loadMore,
+            for: .trailing,
             options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)
         ) { [weak self] in
             try? await Task.sleep(nanoseconds: 800_000_000)
@@ -268,7 +272,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
                 guard let self else { return }
                 self.page += 1
                 guard self.page < 3 else {
-                    self.collectionView.markNoMoreData(edge: .trailing)
+                    self.collectionView.markNoMoreData(for: .trailing)
                     return
                 }
 

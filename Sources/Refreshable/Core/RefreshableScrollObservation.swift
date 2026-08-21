@@ -1,6 +1,6 @@
 import UIKit
 
-/// A complete, immutable view of the scroll-view inputs used by edge runtimes.
+/// Edge runtime 使用的完整、不可变 scroll view 输入快照。
 @MainActor
 struct RefreshableScrollSnapshot {
     let contentOffset: CGPoint
@@ -31,7 +31,7 @@ struct RefreshableScrollSnapshot {
     }
 }
 
-/// Owns one set of UIKit observations for a scroll view and forwards snapshots.
+/// 为一个 scroll view 持有唯一一组 UIKit 观察，并转发环境快照。
 @MainActor
 final class RefreshableScrollObservationSet: NSObject {
     private weak var scrollView: UIScrollView?

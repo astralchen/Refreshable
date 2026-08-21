@@ -120,8 +120,7 @@ struct RefreshEventReducer {
             guard isEnabled != enabled else { return RefreshReduction() }
             isEnabled = enabled
             guard !enabled else {
-                // Re-enabling must not invalidate an already-running ending animation.
-                // That completion is the only event able to move `.ending` back to `.idle`.
+                // 重新启用不能使正在执行的 ending 动画失效；该 completion 仍负责回到 idle。
                 return RefreshReduction()
             }
             transitionGeneration &+= 1

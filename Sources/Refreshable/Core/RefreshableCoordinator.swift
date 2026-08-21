@@ -1,15 +1,15 @@
 import ObjectiveC
 import UIKit
 
-/// The operation installed at a semantic edge.
+/// 安装在语义边缘上的刷新操作类型。
 public enum RefreshableOperation: Sendable, Equatable {
     case refresh
     case loadMore
 }
 
-/// A scroll-view-level runtime that owns edge sessions and one observation set.
+/// ScrollView 内部的统一运行时，持有各边缘 session 和唯一观察集合。
 @MainActor
-public final class RefreshableCoordinator {
+final class RefreshableCoordinator {
     private weak var scrollView: UIScrollView?
     private var sessions: [RefreshableEdge: EdgeRefreshComponent] = [:]
     private let observations = RefreshableScrollObservationSet()
@@ -20,15 +20,19 @@ public final class RefreshableCoordinator {
         self.scrollView = scrollView
     }
 
-    /// Installs or replaces one edge session.
-    public func install(
-        edge: RefreshableEdge,
-        operation: RefreshableOperation,
+    /// 设置或替换指定语义边缘上的操作。
+    ///
+    /// 同一 edge 再次设置时，会先取消旧 session、恢复其 inset 贡献并移除 host，
+    /// 然后再挂载新的 session。
+    func setOperation(
+        _ operation: RefreshableOperation,
+        for edge: RefreshableEdge,
         style: (any RefreshableStyle)? = nil,
         options: RefreshableOptions = .init(),
         action: @escaping @Sendable () async -> Void
     ) {
         guard let scrollView else { return }
+        // 观察集合只在第一个 session 安装时启动，之后由 coordinator 统一分发快照。
         attach(to: scrollView)
         let role: RefreshableRole = operation == .refresh ? .refresh : .loadMore
         let resolvedStyle = style ?? DefaultRefreshControlStyle(
@@ -49,31 +53,31 @@ public final class RefreshableCoordinator {
         component.scrollView = scrollView
     }
 
-    public func state(for edge: RefreshableEdge) -> RefreshState {
+    func state(for edge: RefreshableEdge) -> RefreshState {
         sessions[edge]?.state ?? .idle
     }
 
-    public func begin(for edge: RefreshableEdge) {
+    func beginOperation(for edge: RefreshableEdge) {
         sessions[edge]?.trigger()
     }
 
-    public func end(for edge: RefreshableEdge) {
+    func endOperation(for edge: RefreshableEdge) {
         sessions[edge]?.endAction()
     }
 
-    public func setEnabled(_ enabled: Bool, for edge: RefreshableEdge) {
+    func setEnabled(_ enabled: Bool, for edge: RefreshableEdge) {
         sessions[edge]?.setEnabled(enabled)
     }
 
-    public func markNoMoreData(for edge: RefreshableEdge) {
+    func markNoMoreData(for edge: RefreshableEdge) {
         sessions[edge]?.markNoMoreData()
     }
 
-    public func resetNoMoreData(for edge: RefreshableEdge) {
+    func resetNoMoreData(for edge: RefreshableEdge) {
         sessions[edge]?.resetNoMoreData()
     }
 
-    public func remove(for edge: RefreshableEdge) {
+    func removeOperation(for edge: RefreshableEdge) {
         guard let component = sessions.removeValue(forKey: edge) else { return }
         component.prepareForRemoval()
         stopObservingIfEmpty()
@@ -89,6 +93,7 @@ public final class RefreshableCoordinator {
     private func attach(to scrollView: UIScrollView) {
         guard !isAttached else { return }
         isAttached = true
+        // inset coordinator 以 scroll view 为 owner，记录 baseline 与每个 edge 的增量。
         insetCoordinator = RefreshableInsetCoordinator.coordinator(for: scrollView)
         observations.onSnapshot = { [weak self] snapshot in
             self?.receive(snapshot)
@@ -106,27 +111,16 @@ public final class RefreshableCoordinator {
         sessions.values.forEach { $0.receive(snapshot) }
     }
 
-    func setComponent(_ component: EdgeRefreshComponent?, at edge: RefreshableEdge) {
-        if let component {
-            if let scrollView {
-                attach(to: scrollView)
-            }
-            replace(component, at: edge)
-            component.scrollView = scrollView
-        } else if let old = sessions.removeValue(forKey: edge) {
-            old.prepareForRemoval()
-            stopObservingIfEmpty()
-        }
-    }
-
     private func replace(_ component: EdgeRefreshComponent, at edge: RefreshableEdge) {
         if let old = sessions.updateValue(component, forKey: edge), old !== component {
+            // 先清理旧 runtime，确保旧 action completion 不会影响新 session。
             old.prepareForRemoval()
         }
     }
 
     private func stopObservingIfEmpty() {
         guard sessions.isEmpty, isAttached else { return }
+        // 最后一个 session 移除后释放 KVO、pan target 和 inset coordinator，避免持有 scroll view。
         observations.stop()
         observations.onSnapshot = nil
         observations.onPanEnded = nil
