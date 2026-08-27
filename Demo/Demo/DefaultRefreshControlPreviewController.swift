@@ -211,7 +211,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     private func installSelectedComponent() {
         boundaryPositionGeneration += 1
         for edge in RefreshableEdge.allCases {
-            canvas.removeRefreshableOperation(for: edge)
+            canvas.removeRefreshable(for: edge)
         }
 
         selectedState = .idle
@@ -228,7 +228,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
         let actionDuration = previewActionDurationNanoseconds
 
         let operation: RefreshableOperation = selectedRole == .refresh ? .refresh : .loadMore
-        canvas.setRefreshableOperation(
+        canvas.refreshable(
             operation,
             for: selectedEdge,
             options: options
@@ -326,7 +326,7 @@ final class DefaultRefreshControlPreviewController: UIViewController {
     }
 
     @objc private func triggerSelectedComponent() {
-        canvas.beginRefreshableOperation(for: selectedEdge)
+        canvas.beginRefreshing(for: selectedEdge)
         updateStatus()
     }
 

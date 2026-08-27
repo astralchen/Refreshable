@@ -23,8 +23,8 @@
 - 默认 edge 为 `.top`，也支持 `.bottom`、`.leading`、`.trailing`
 - 刷新期间显示 loading indicator，对应方向的 `contentInset` 自动增加露出视图
 - async 闭包返回后自动结束刷新，动画收回
-- 支持 `beginRefreshableOperation(for:)` 手动触发
-- 支持 `endRefreshableOperation(for:)` 手动结束（兜底）
+- 支持 `beginRefreshing(for:)` 手动触发
+- 支持 `endRefreshing(for:)` 手动结束（兜底）
 - 支持通过 `RefreshableOptions` 调整触发距离、动画时长、自动结束、短内容加载、展示方式和状态回调
 - 支持运行时启用、禁用和移除指定边缘刷新组件
 
@@ -34,7 +34,7 @@
 - 默认 edge 为 `.bottom`，也支持 `.top`、`.leading`、`.trailing`
 - 加载期间显示 loading indicator，对应方向的 `contentInset` 自动增加
 - async 闭包返回后自动结束加载
-- 支持 `beginRefreshableOperation(for:)` 与 `endRefreshableOperation(for:)` 手动启停
+- 支持 `beginRefreshing(for:)` 与 `endRefreshing(for:)` 手动启停
 - 支持 `markNoMoreData(for:)` 标记无更多数据（显示终态文案，停止触发）
 - 支持 `resetNoMoreData(for:)` 重置状态（如下拉刷新后重新允许加载）
 - 内容不足当前 edge 所在轴的视口时默认不触发加载，可通过 `allowsLoadMoreWhenContentFits` 开启
@@ -50,7 +50,7 @@
 - 提供 `RefreshableStyle` 配置/工厂协议和 `RefreshableStyleRenderer` 渲染协议
 - 同一 style 每次安装必须创建独立 renderer 和 UIView，避免多 scroll view 共享渲染状态
 - `RefreshableStyleContext` 由组件创建并提供状态与归一化拖动进度
-- 通过 `setRefreshableOperation(_:for:style:options:action:)` 传入自定义样式
+- 通过 `refreshable(_:for:style:options:action:)` 传入自定义样式
 - 核心产品 `Refreshable` 保留默认 spinner、DefaultTop、DefaultBottom 和 SystemNative
 - Kinetic、Video 展示型样式由独立产品 `RefreshableStyles` 提供，并依赖核心产品
 
@@ -73,15 +73,15 @@ UITableView、UICollectionView 及任何 UIScrollView 子类均可使用。
 ## 4. 公开 API
 
 ```swift
-scrollView.setRefreshableOperation(.refresh, for: .top, style: style, options: options) { await vm.fetch() }
-scrollView.setRefreshableOperation(.loadMore, for: .bottom, style: style, options: options) { await vm.loadNext() }
-scrollView.refreshableState(for: .top)
-scrollView.beginRefreshableOperation(for: .top)
-scrollView.endRefreshableOperation(for: .top)
-scrollView.setRefreshableOperationEnabled(false, for: .bottom)
+scrollView.refreshable(.refresh, for: .top, style: style, options: options) { await vm.fetch() }
+scrollView.refreshable(.loadMore, for: .bottom, style: style, options: options) { await vm.loadNext() }
+scrollView.refreshState(for: .top)
+scrollView.beginRefreshing(for: .top)
+scrollView.endRefreshing(for: .top)
+scrollView.setRefreshableEnabled(false, for: .bottom)
 scrollView.markNoMoreData(for: .bottom)
 scrollView.resetNoMoreData(for: .bottom)
-scrollView.removeRefreshableOperation(for: .top)
+scrollView.removeRefreshable(for: .top)
 ```
 
 v2 不提供 v1 convenience API、deprecated 标记或 forwarding 适配层。
@@ -114,7 +114,7 @@ func enableBuiltInRefreshText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
         textConfiguration: RefreshableTextConfiguration()
     )
-    scrollView.setRefreshableOperation(
+    scrollView.refreshable(
         .refresh,
         for: .top,
         options: options
@@ -127,7 +127,7 @@ func overrideActiveText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
         textConfiguration: RefreshableTextConfiguration(active: "正在同步...")
     )
-    scrollView.setRefreshableOperation(
+    scrollView.refreshable(
         .refresh,
         for: .top,
         options: options
@@ -140,7 +140,7 @@ func hideEndingText(on scrollView: UIScrollView) {
     let options = RefreshableOptions(
         textConfiguration: RefreshableTextConfiguration(ending: "")
     )
-    scrollView.setRefreshableOperation(
+    scrollView.refreshable(
         .loadMore,
         for: .bottom,
         options: options
@@ -226,9 +226,9 @@ style.view 的 alpha 由组件自动管理，idle 时完全不可见，拖拽时
 `ClassicTopRefreshStyle`、`ClassicBottomLoadMoreStyle` 和 `SystemNativeRefreshStyle` 仍可显式传入，并保留原有行为：
 
 ```swift
-scrollView.setRefreshableOperation(.refresh, for: .top, style: ClassicTopRefreshStyle()) {}
-scrollView.setRefreshableOperation(.loadMore, for: .bottom, style: ClassicBottomLoadMoreStyle()) {}
-scrollView.setRefreshableOperation(.refresh, for: .top, style: SystemNativeRefreshStyle()) {}
+scrollView.refreshable(.refresh, for: .top, style: ClassicTopRefreshStyle()) {}
+scrollView.refreshable(.loadMore, for: .bottom, style: ClassicBottomLoadMoreStyle()) {}
+scrollView.refreshable(.refresh, for: .top, style: SystemNativeRefreshStyle()) {}
 ```
 
 `RefreshableOptions.textConfiguration` 只供省略 `style:` 的统一默认控件使用。显式传入上述样式或任意自定义 `RefreshableStyle` 时，该字段不会改变样式行为。

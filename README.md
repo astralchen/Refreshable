@@ -20,7 +20,7 @@ App target 至少依赖 `Refreshable`；需要 Kinetic 或 Video 样式时，再
 ```swift
 import Refreshable
 
-tableView.setRefreshableOperation(.refresh, for: .top) { [weak self] in
+tableView.refreshable(.refresh, for: .top) { [weak self] in
     guard let self else { return }
     let items = await service.fetchLatest()
     await MainActor.run {
@@ -29,7 +29,7 @@ tableView.setRefreshableOperation(.refresh, for: .top) { [weak self] in
     }
 }
 
-tableView.setRefreshableOperation(.loadMore, for: .bottom) { [weak self] in
+tableView.refreshable(.loadMore, for: .bottom) { [weak self] in
     guard let self else { return }
     let page = await service.fetchNextPage()
     await MainActor.run {
@@ -39,18 +39,18 @@ tableView.setRefreshableOperation(.loadMore, for: .bottom) { [weak self] in
 }
 ```
 
-同一个 edge 再次 `setRefreshableOperation` 会取消旧任务、恢复旧 inset、移除旧 host，再设置新 session。省略 `style` 时，内部 coordinator 会根据 `operation + edge` 选择默认样式。
+同一个 edge 再次 `refreshable` 会取消旧任务、恢复旧 inset、移除旧 host，再设置新 session。省略 `style` 时，内部 coordinator 会根据 `operation + edge` 选择默认样式。
 
 ## 控制与状态
 
 ```swift
-scrollView.refreshableState(for: .top)
-scrollView.beginRefreshableOperation(for: .top)
-scrollView.endRefreshableOperation(for: .top)
-scrollView.setRefreshableOperationEnabled(false, for: .bottom)
+scrollView.refreshState(for: .top)
+scrollView.beginRefreshing(for: .top)
+scrollView.endRefreshing(for: .top)
+scrollView.setRefreshableEnabled(false, for: .bottom)
 scrollView.markNoMoreData(for: .bottom)
 scrollView.resetNoMoreData(for: .bottom)
-scrollView.removeRefreshableOperation(for: .top)
+scrollView.removeRefreshable(for: .top)
 ```
 
 `markNoMoreData` 只对 `.loadMore` session 生效；刷新 session 会忽略它。`leading` 和 `trailing` 会根据 `effectiveUserInterfaceLayoutDirection` 自动映射到物理 left/right。
@@ -75,14 +75,14 @@ let options = RefreshableOptions(
     }
 )
 
-tableView.setRefreshableOperation(
+tableView.refreshable(
     .refresh,
     for: .top,
     options: options
 ) { [weak self, weak tableView] in
     await self?.viewModel.fetchLatest()
     await MainActor.run {
-        tableView?.endRefreshableOperation(for: .top)
+        tableView?.endRefreshing(for: .top)
     }
 }
 ```
@@ -106,7 +106,7 @@ let options = RefreshableOptions(
     textConfiguration: RefreshableTextConfiguration(active: "正在同步…")
 )
 
-scrollView.setRefreshableOperation(
+scrollView.refreshable(
     .refresh,
     for: .top,
     options: options
@@ -122,8 +122,8 @@ scrollView.setRefreshableOperation(
 内置显式样式仍可直接安装：
 
 ```swift
-scrollView.setRefreshableOperation(.refresh, for: .top, style: SystemNativeRefreshStyle()) {}
-scrollView.setRefreshableOperation(.loadMore, for: .bottom, style: ClassicBottomLoadMoreStyle()) {}
+scrollView.refreshable(.refresh, for: .top, style: SystemNativeRefreshStyle()) {}
+scrollView.refreshable(.loadMore, for: .bottom, style: ClassicBottomLoadMoreStyle()) {}
 ```
 
 ## 自定义样式
@@ -156,7 +156,7 @@ final class MyHeaderRenderer: RefreshableStyleRenderer {
     }
 }
 
-scrollView.setRefreshableOperation(
+scrollView.refreshable(
     .refresh,
     for: .top,
     style: MyHeaderStyle()
@@ -173,7 +173,7 @@ scrollView.setRefreshableOperation(
 import Refreshable
 import RefreshableStyles
 
-scrollView.setRefreshableOperation(
+scrollView.refreshable(
     .refresh,
     for: .top,
     style: KineticRefreshStyle()

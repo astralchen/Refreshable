@@ -61,8 +61,8 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
     private func setLayoutDirection(_ direction: HorizontalLayoutDirection) {
         guard direction != layoutDirection else { return }
 
-        collectionView.removeRefreshableOperation(for: .leading)
-        collectionView.removeRefreshableOperation(for: .trailing)
+        collectionView.removeRefreshable(for: .leading)
+        collectionView.removeRefreshable(for: .trailing)
 
         layoutDirection = direction
         applyLayoutDirection()
@@ -248,7 +248,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
     }
 
     private func installEdgeControls() {
-        collectionView.setRefreshableOperation(
+        collectionView.refreshable(
             .refresh,
             for: .leading
         ) { [weak self] in
@@ -262,7 +262,7 @@ final class HorizontalEdgeDemoController: UIViewController, UICollectionViewData
             }
         }
 
-        collectionView.setRefreshableOperation(
+        collectionView.refreshable(
             .loadMore,
             for: .trailing,
             options: RefreshableOptions(allowsLoadMoreWhenContentFits: true)

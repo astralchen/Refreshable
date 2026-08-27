@@ -83,20 +83,20 @@ struct RefreshableCoordinatorTests {
     @Test("UIScrollView API controls an operation by edge")
     func publicOperationControls() {
         let scrollView = UIScrollView()
-        scrollView.setRefreshableOperation(
+        scrollView.refreshable(
             .refresh,
             for: .top,
             options: RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
         ) {}
 
-        scrollView.setRefreshableOperationEnabled(false, for: .top)
-        scrollView.beginRefreshableOperation(for: .top)
-        #expect(scrollView.refreshableState(for: .top) == .idle)
+        scrollView.setRefreshableEnabled(false, for: .top)
+        scrollView.beginRefreshing(for: .top)
+        #expect(scrollView.refreshState(for: .top) == .idle)
 
-        scrollView.setRefreshableOperationEnabled(true, for: .top)
-        scrollView.beginRefreshableOperation(for: .top)
-        #expect(scrollView.refreshableState(for: .top) == .active)
+        scrollView.setRefreshableEnabled(true, for: .top)
+        scrollView.beginRefreshing(for: .top)
+        #expect(scrollView.refreshState(for: .top) == .active)
 
-        scrollView.endRefreshableOperation(for: .top)
+        scrollView.endRefreshing(for: .top)
     }
 }

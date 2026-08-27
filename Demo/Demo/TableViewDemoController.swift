@@ -133,7 +133,7 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
             placement: RefreshablePlacement(contentSpacing: 4)
         )
 
-        tableView.setRefreshableOperation(
+        tableView.refreshable(
             .refresh,
             for: .top,
             style: SystemNativeRefreshStyle(
@@ -152,7 +152,7 @@ final class TableViewDemoController: UIViewController, UITableViewDataSource {
             placement: RefreshablePlacement(contentSpacing: 6)
         )
 
-        tableView.setRefreshableOperation(
+        tableView.refreshable(
             .loadMore,
             for: .bottom,
             options: loadMoreOptions

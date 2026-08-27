@@ -123,8 +123,8 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
     }
 
     private func installSelectedStyle() {
-        tableView.removeRefreshableOperation(for: .top)
-        tableView.removeRefreshableOperation(for: .bottom)
+        tableView.removeRefreshable(for: .top)
+        tableView.removeRefreshable(for: .bottom)
 
         let options = RefreshableOptions(
             triggerDistance: triggerDistance,
@@ -133,7 +133,7 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
 
         switch selectedStyle {
         case .system:
-            tableView.setRefreshableOperation(
+            tableView.refreshable(
                 .refresh,
                 for: .top,
                 style: SystemNativeRefreshStyle(),
@@ -143,7 +143,7 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
             }
 
         case .kinetic:
-            tableView.setRefreshableOperation(
+            tableView.refreshable(
                 .refresh,
                 for: .top,
                 style: KineticRefreshStyle(),
@@ -153,7 +153,7 @@ final class CustomStylesDemoController: UIViewController, UITableViewDataSource 
             }
         }
 
-        tableView.setRefreshableOperation(
+        tableView.refreshable(
             .loadMore,
             for: .bottom
         ) { [weak self] in

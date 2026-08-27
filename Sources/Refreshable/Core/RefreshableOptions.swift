@@ -122,7 +122,7 @@ public struct RefreshableOptions: Sendable {
     /// 一个布尔值，指示刷新动作结束后是否自动收起刷新组件。
     ///
     /// 默认值为 `true`。如果设置为 `false`，需要在 `action` 完成后手动调用
-    /// `endRefreshableOperation(for:)`。
+    /// `endRefreshing(for:)`。
     public var automaticallyEnds: Bool
 
     /// 一个布尔值，指示内容未填满当前滚动轴时是否仍允许触发加载更多。

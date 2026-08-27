@@ -55,7 +55,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
         collectionView.register(VideoFeedCell.self, forCellWithReuseIdentifier: VideoFeedCell.reuseIdentifier)
         view.addSubview(collectionView)
 
-        collectionView.setRefreshableOperation(
+        collectionView.refreshable(
             .refresh,
             for: .top,
             style: VideoTopRefreshStyle(),
@@ -77,7 +77,7 @@ final class VideoFeedDemoController: UIViewController, UICollectionViewDataSourc
             }
         }
 
-        collectionView.setRefreshableOperation(
+        collectionView.refreshable(
             .loadMore,
             for: .bottom,
             style: VideoBottomLoadMoreStyle(extent: loadMoreTriggerDistance),

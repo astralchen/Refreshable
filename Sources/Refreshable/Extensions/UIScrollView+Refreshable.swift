@@ -24,7 +24,7 @@ extension UIScrollView {
         return coordinator
     }
 
-    /// 设置或替换指定语义边缘上的刷新操作。
+    /// 为指定语义边缘配置刷新操作。
     ///
     /// - Parameters:
     ///   - operation: 刷新或加载更多操作。
@@ -33,7 +33,7 @@ extension UIScrollView {
     ///   - options: 触发距离、展示方式和生命周期配置。
     ///   - action: 操作触发后执行的异步闭包。
     @MainActor
-    public func setRefreshableOperation(
+    public func refreshable(
         _ operation: RefreshableOperation,
         for edge: RefreshableEdge,
         style: (any RefreshableStyle)? = nil,
@@ -51,25 +51,25 @@ extension UIScrollView {
 
     /// 返回指定边缘的操作状态；未设置操作时返回 `.idle`。
     @MainActor
-    public func refreshableState(for edge: RefreshableEdge) -> RefreshState {
+    public func refreshState(for edge: RefreshableEdge) -> RefreshState {
         refreshableCoordinator.state(for: edge)
     }
 
     /// 尝试开始指定边缘的操作。
     @MainActor
-    public func beginRefreshableOperation(for edge: RefreshableEdge) {
+    public func beginRefreshing(for edge: RefreshableEdge) {
         refreshableCoordinator.beginOperation(for: edge)
     }
 
     /// 结束指定边缘的操作。
     @MainActor
-    public func endRefreshableOperation(for edge: RefreshableEdge) {
+    public func endRefreshing(for edge: RefreshableEdge) {
         refreshableCoordinator.endOperation(for: edge)
     }
 
     /// 启用或禁用指定边缘的操作。
     @MainActor
-    public func setRefreshableOperationEnabled(_ enabled: Bool, for edge: RefreshableEdge) {
+    public func setRefreshableEnabled(_ enabled: Bool, for edge: RefreshableEdge) {
         refreshableCoordinator.setEnabled(enabled, for: edge)
     }
 
@@ -87,7 +87,7 @@ extension UIScrollView {
 
     /// 移除指定边缘的操作，并恢复它产生的布局贡献。
     @MainActor
-    public func removeRefreshableOperation(for edge: RefreshableEdge) {
+    public func removeRefreshable(for edge: RefreshableEdge) {
         refreshableCoordinator.removeOperation(for: edge)
     }
 }

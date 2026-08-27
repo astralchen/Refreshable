@@ -7,7 +7,7 @@ v2 将刷新与加载更多统一成一组 UIKit 风格的 `UIScrollView` 方法
 设置操作时明确指定语义 operation 与 edge：
 
 ```swift
-scrollView.setRefreshableOperation(
+scrollView.refreshable(
     .refresh,
     for: .top,
     style: headerStyle,
@@ -16,7 +16,7 @@ scrollView.setRefreshableOperation(
     await viewModel.fetchLatest()
 }
 
-scrollView.setRefreshableOperation(
+scrollView.refreshable(
     .loadMore,
     for: .bottom,
     style: footerStyle,
@@ -32,15 +32,15 @@ scrollView.setRefreshableOperation(
 
 | v1 职责 | v2 写法 |
 |---|---|
-| 安装刷新 | `scrollView.setRefreshableOperation(.refresh, for: ...)` |
-| 安装加载更多 | `scrollView.setRefreshableOperation(.loadMore, for: ...)` |
-| 手动开始 | `scrollView.beginRefreshableOperation(for:)` |
-| 手动结束 | `scrollView.endRefreshableOperation(for:)` |
-| 查询状态 | `scrollView.refreshableState(for:)` |
-| 启用或禁用 | `scrollView.setRefreshableOperationEnabled(_:for:)` |
+| 安装刷新 | `scrollView.refreshable(.refresh, for: ...)` |
+| 安装加载更多 | `scrollView.refreshable(.loadMore, for: ...)` |
+| 手动开始 | `scrollView.beginRefreshing(for:)` |
+| 手动结束 | `scrollView.endRefreshing(for:)` |
+| 查询状态 | `scrollView.refreshState(for:)` |
+| 启用或禁用 | `scrollView.setRefreshableEnabled(_:for:)` |
 | 标记无更多数据 | `scrollView.markNoMoreData(for:)` |
 | 重置无更多数据 | `scrollView.resetNoMoreData(for:)` |
-| 移除 session | `scrollView.removeRefreshableOperation(for:)` |
+| 移除 session | `scrollView.removeRefreshable(for:)` |
 
 ## 语义变化
 

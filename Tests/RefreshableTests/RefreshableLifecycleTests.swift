@@ -10,7 +10,7 @@ struct RefreshableLifecycleTests {
     func removalReleasesComponentAndRenderer() throws {
         let scrollView = UIScrollView()
         var style: LifecycleStyle? = LifecycleStyle()
-        scrollView.setRefreshableOperation(
+        scrollView.refreshable(
             .refresh,
             for: .top,
             style: try #require(style)
@@ -20,7 +20,7 @@ struct RefreshableLifecycleTests {
         let renderer = WeakReference(style?.latestRenderer)
         let rendererView = WeakReference(style?.latestRenderer?.view)
 
-        scrollView.removeRefreshableOperation(for: .top)
+        scrollView.removeRefreshable(for: .top)
         style = nil
 
         #expect(component.value == nil)
@@ -37,7 +37,7 @@ struct RefreshableLifecycleTests {
         autoreleasepool {
             var scrollView: UIScrollView? = UIScrollView()
             var style: LifecycleStyle? = LifecycleStyle()
-            scrollView?.setRefreshableOperation(
+            scrollView?.refreshable(
                 .refresh,
                 for: .top,
                 style: try! #require(style)
@@ -113,7 +113,7 @@ private final class LifecycleViewController: UIViewController {
 
     override func loadView() {
         view = scrollView
-        scrollView.setRefreshableOperation(
+        scrollView.refreshable(
             .refresh,
             for: .top
         ) { [weak self] in
