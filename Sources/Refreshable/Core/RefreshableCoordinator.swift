@@ -15,6 +15,8 @@ final class RefreshableCoordinator {
     private let observations = RefreshableScrollObservationSet()
     private var insetCoordinator: RefreshableInsetCoordinator?
     private var isAttached = false
+    private var isDeliveringUpdate = false
+    private var pendingUpdate: RefreshableScrollUpdate?
 
     init(scrollView: UIScrollView) {
         self.scrollView = scrollView
@@ -95,20 +97,41 @@ final class RefreshableCoordinator {
         isAttached = true
         // inset coordinator 以 scroll view 为 owner，记录 baseline 与每个 edge 的增量。
         insetCoordinator = RefreshableInsetCoordinator.coordinator(for: scrollView)
-        observations.onSnapshot = { [weak self] snapshot in
-            self?.receive(snapshot)
+        observations.onUpdate = { [weak self] update in
+            self?.receive(update)
         }
         observations.onPanEnded = { [weak self] in
-            self?.sessions.values.forEach { $0.scrollViewDidEndDragging() }
+            guard let self else { return }
+            Array(sessions.values).forEach { $0.scrollViewDidEndDragging() }
         }
         observations.onPanCancelled = { [weak self] in
-            self?.sessions.values.forEach { $0.scrollViewDidCancelDragging() }
+            guard let self else { return }
+            Array(sessions.values).forEach { $0.scrollViewDidCancelDragging() }
         }
         observations.start(for: scrollView)
     }
 
-    private func receive(_ snapshot: RefreshableScrollSnapshot) {
-        sessions.values.forEach { $0.receive(snapshot) }
+    private func receive(_ update: RefreshableScrollUpdate) {
+        if let pendingUpdate {
+            self.pendingUpdate = RefreshableScrollUpdate(
+                snapshot: update.snapshot,
+                changes: pendingUpdate.changes.union(update.changes)
+            )
+        } else {
+            pendingUpdate = update
+        }
+
+        // UIKit 的 KVO 会在 contentInset/contentOffset setter 内同步回调。嵌套更新只合并到
+        // pendingUpdate，由当前分发完成后继续消费，避免递归进入所有 edge session。
+        guard !isDeliveringUpdate else { return }
+        isDeliveringUpdate = true
+        defer { isDeliveringUpdate = false }
+
+        while let currentUpdate = pendingUpdate {
+            pendingUpdate = nil
+            let currentSessions = Array(sessions.values)
+            currentSessions.forEach { $0.receive(currentUpdate) }
+        }
     }
 
     private func replace(_ component: EdgeRefreshComponent, at edge: RefreshableEdge) {
@@ -122,7 +145,7 @@ final class RefreshableCoordinator {
         guard sessions.isEmpty, isAttached else { return }
         // 最后一个 session 移除后释放 KVO、pan target 和 inset coordinator，避免持有 scroll view。
         observations.stop()
-        observations.onSnapshot = nil
+        observations.onUpdate = nil
         observations.onPanEnded = nil
         observations.onPanCancelled = nil
         insetCoordinator = nil

@@ -5,7 +5,8 @@ import UIKit
 final class EdgePresentationDriver {
     let hostView = RefreshHostView()
     var insetCoordinator: RefreshableInsetCoordinator?
-    var isLockingOverlayContentOffset = false
+    private(set) var contentOffsetMutationDepth = 0
+    var isApplyingContentOffset: Bool { contentOffsetMutationDepth > 0 }
     var isApplyingInsetEffect = false
     var maintainsLockedOverlayBoundary = false
     var maintainsContentInsetRefreshBoundary = false
@@ -13,6 +14,13 @@ final class EdgePresentationDriver {
 
     init(insetCoordinator: RefreshableInsetCoordinator?) {
         self.insetCoordinator = insetCoordinator
+    }
+
+    /// UIScrollView 的 offset KVO 会同步重入；使用嵌套深度保证内部写入作用域不会被提前解除。
+    func withContentOffsetMutation(_ mutation: () -> Void) {
+        contentOffsetMutationDepth += 1
+        defer { contentOffsetMutationDepth -= 1 }
+        mutation()
     }
 
     func reset(owner: AnyObject) {

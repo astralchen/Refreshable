@@ -99,4 +99,31 @@ struct RefreshableCoordinatorTests {
 
         scrollView.endRefreshing(for: .top)
     }
+
+    @Test("顶部刷新与底部加载共存时同步 KVO 不会递归恢复 offset")
+    func sharedObservationsDoNotRecursivelyRestoreOffset() {
+        let scrollView = UIScrollView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        scrollView.contentSize = CGSize(width: 390, height: 1_688)
+        let coordinator = scrollView.refreshableCoordinator
+        let options = RefreshableOptions(animationDuration: 0, automaticallyEnds: false)
+        coordinator.setOperation(.refresh, for: .top, style: MockStyle(extent: 44), options: options) {}
+        coordinator.setOperation(.loadMore, for: .bottom, style: MockStyle(extent: 44), options: options) {}
+
+        coordinator.beginOperation(for: .top)
+
+        #expect(coordinator.state(for: .top) == .active)
+        #expect(scrollView.contentInset.top == 44)
+        #expect(scrollView.contentOffset.y == -44)
+
+        // 普通滚动只应触发滚动输入；内容尺寸真正变化时才恢复 active 刷新边界。
+        scrollView.contentOffset.y = 120
+        #expect(scrollView.contentOffset.y == 120)
+        scrollView.contentSize.height = 1_900
+        #expect(scrollView.contentOffset.y == -44)
+
+        coordinator.endOperation(for: .top)
+        #expect(coordinator.state(for: .top) == .idle)
+        #expect(scrollView.contentInset.top == 0)
+        #expect(scrollView.contentOffset.y == 0)
+    }
 }

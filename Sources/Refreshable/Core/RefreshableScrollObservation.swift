@@ -1,5 +1,27 @@
 import UIKit
 
+/// 描述一次滚动环境更新中真正发生变化的输入。
+///
+/// 完整快照用于保证各组件读取同一时刻的数据；变化集合用于避免把一次
+/// `contentOffset` KVO 错误解释为内容尺寸、视口或 inset 同时发生变化。
+@MainActor
+struct RefreshableScrollChanges: OptionSet {
+    let rawValue: UInt8
+
+    static let contentOffset = Self(rawValue: 1 << 0)
+    static let contentSize = Self(rawValue: 1 << 1)
+    static let viewportSize = Self(rawValue: 1 << 2)
+    static let contentInset = Self(rawValue: 1 << 3)
+    static let environment = Self(rawValue: 1 << 4)
+    static let all: Self = [
+        .contentOffset,
+        .contentSize,
+        .viewportSize,
+        .contentInset,
+        .environment,
+    ]
+}
+
 /// Edge runtime 使用的完整、不可变 scroll view 输入快照。
 @MainActor
 struct RefreshableScrollSnapshot {
@@ -31,6 +53,13 @@ struct RefreshableScrollSnapshot {
     }
 }
 
+/// 一次滚动环境更新及其对应的完整输入快照。
+@MainActor
+struct RefreshableScrollUpdate {
+    let snapshot: RefreshableScrollSnapshot
+    let changes: RefreshableScrollChanges
+}
+
 /// 为一个 scroll view 持有唯一一组 UIKit 观察，并转发环境快照。
 @MainActor
 final class RefreshableScrollObservationSet: NSObject {
@@ -39,7 +68,7 @@ final class RefreshableScrollObservationSet: NSObject {
     private var observesPan = false
     private(set) var startCount = 0
 
-    var onSnapshot: (@MainActor (RefreshableScrollSnapshot) -> Void)?
+    var onUpdate: (@MainActor (RefreshableScrollUpdate) -> Void)?
     var onPanEnded: (@MainActor () -> Void)?
     var onPanCancelled: (@MainActor () -> Void)?
 
@@ -49,24 +78,27 @@ final class RefreshableScrollObservationSet: NSObject {
         self.scrollView = scrollView
         observations = [
             scrollView.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
-                MainActor.assumeIsolated { self?.emit() }
+                MainActor.assumeIsolated { self?.emit(changes: .contentOffset) }
             },
             scrollView.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
-                MainActor.assumeIsolated { self?.emit() }
+                MainActor.assumeIsolated { self?.emit(changes: .contentSize) }
             },
-            scrollView.observe(\.bounds, options: [.new]) { [weak self] _, _ in
-                MainActor.assumeIsolated { self?.emit() }
+            scrollView.observe(\.bounds, options: [.old, .new]) { [weak self] _, change in
+                MainActor.assumeIsolated {
+                    guard change.oldValue?.size != change.newValue?.size else { return }
+                    self?.emit(changes: .viewportSize)
+                }
             },
             scrollView.observe(\.contentInset, options: [.new]) { [weak self] _, _ in
-                MainActor.assumeIsolated { self?.emit() }
+                MainActor.assumeIsolated { self?.emit(changes: .contentInset) }
             },
             scrollView.observe(\.semanticContentAttribute, options: [.new]) { [weak self] _, _ in
-                MainActor.assumeIsolated { self?.emit() }
+                MainActor.assumeIsolated { self?.emit(changes: .environment) }
             }
         ]
         scrollView.panGestureRecognizer.addTarget(self, action: #selector(handlePan(_:)))
         observesPan = true
-        emit()
+        emit(changes: .all)
     }
 
     func stop() {
@@ -89,13 +121,18 @@ final class RefreshableScrollObservationSet: NSObject {
         default:
             break
         }
-        emit()
+        emit(changes: .contentOffset)
     }
 
-    private func emit() {
+    private func emit(changes: RefreshableScrollChanges) {
         guard let scrollView else { return }
         MainActor.assumeIsolated {
-            onSnapshot?(RefreshableScrollSnapshot(scrollView: scrollView))
+            onUpdate?(
+                RefreshableScrollUpdate(
+                    snapshot: RefreshableScrollSnapshot(scrollView: scrollView),
+                    changes: changes
+                )
+            )
         }
     }
 }

@@ -12,10 +12,7 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
         get { presentationDriver.insetCoordinator }
         set { presentationDriver.insetCoordinator = newValue }
     }
-    private var isLockingOverlayContentOffset: Bool {
-        get { presentationDriver.isLockingOverlayContentOffset }
-        set { presentationDriver.isLockingOverlayContentOffset = newValue }
-    }
+    private var isApplyingContentOffset: Bool { presentationDriver.isApplyingContentOffset }
     private var isApplyingInsetEffect: Bool {
         get { presentationDriver.isApplyingInsetEffect }
         set { presentationDriver.isApplyingInsetEffect = newValue }
@@ -52,7 +49,7 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
     var isEnabled: Bool { runtime.isEnabled }
 
     func dispatch(_ event: RefreshEvent) { runtime.dispatch(event) }
-    func receive(_ snapshot: RefreshableScrollSnapshot) { runtime.receive(snapshot) }
+    func receive(_ update: RefreshableScrollUpdate) { runtime.receive(update) }
     func trigger() { runtime.trigger() }
     func endAction() { runtime.endAction() }
     func setEnabled(_ enabled: Bool) { runtime.setEnabled(enabled) }
@@ -148,7 +145,7 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
             return
         }
 
-        if isLockingOverlayContentOffset {
+        if isApplyingContentOffset {
             updatePresentationFrameForScrolling(in: scrollView)
             return
         }
@@ -212,7 +209,10 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
             guard shouldReserveInset else {
                 insetCoordinator.removeContribution(owner: self)
                 if reveal {
-                    scrollView.contentOffset = self.lockedOverlayContentOffset(in: scrollView)
+                    self.applyContentOffset(
+                        self.lockedOverlayContentOffset(in: scrollView),
+                        in: scrollView
+                    )
                 } else {
                     self.applyMaintainedContentOffset(preservedContentOffset, in: scrollView)
                 }
@@ -560,9 +560,7 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
         let lockedOffset = lockedOverlayContentOffset(in: scrollView)
         guard lockedOffset != scrollView.contentOffset else { return }
 
-        isLockingOverlayContentOffset = true
-        scrollView.contentOffset = lockedOffset
-        isLockingOverlayContentOffset = false
+        applyContentOffset(lockedOffset, in: scrollView)
     }
 
     private func establishLockedOverlayBoundaryIfNeeded(reveal: Bool) {
@@ -575,6 +573,10 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
     }
 
     private func restoreMaintainedRefreshBoundaryIfNeeded(in scrollView: UIScrollView) {
+        // 内部 inset/offset setter 会同步触发 KVO；当前 transaction 会在末尾设置最终边界，
+        // 此处不得在 setter 尚未返回时再次写入 contentOffset。
+        guard !isApplyingInsetEffect, !isApplyingContentOffset else { return }
+
         let maintainedOffset: CGPoint
         if maintainsLockedOverlayBoundary {
             maintainedOffset = lockedOverlayContentOffset(in: scrollView)
@@ -593,10 +595,14 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
     }
 
     private func applyMaintainedContentOffset(_ contentOffset: CGPoint, in scrollView: UIScrollView) {
+        applyContentOffset(contentOffset, in: scrollView)
+    }
+
+    private func applyContentOffset(_ contentOffset: CGPoint, in scrollView: UIScrollView) {
         guard contentOffset != scrollView.contentOffset else { return }
-        isLockingOverlayContentOffset = true
-        scrollView.contentOffset = contentOffset
-        isLockingOverlayContentOffset = false
+        presentationDriver.withContentOffsetMutation {
+            scrollView.contentOffset = contentOffset
+        }
     }
 
     private func lockedOverlayContentOffset(in scrollView: UIScrollView) -> CGPoint {
@@ -630,7 +636,7 @@ final class EdgeRefreshComponent: NSObject, RefreshComponentEffects {
     }
 
     private func adjustContentOffsetForStartEdgeIfNeeded(in scrollView: UIScrollView) {
-        scrollView.contentOffset = geometry(in: scrollView).revealContentOffset
+        applyContentOffset(geometry(in: scrollView).revealContentOffset, in: scrollView)
     }
 
     private func geometry(

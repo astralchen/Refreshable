@@ -88,8 +88,8 @@ final class RefreshComponent: NSObject {
     }
 
     func startObservations(in scrollView: UIScrollView) {
-        observationSet.onSnapshot = { [weak self] snapshot in
-            self?.receive(snapshot)
+        observationSet.onUpdate = { [weak self] update in
+            self?.receive(update)
         }
         observationSet.onPanEnded = { [weak self] in
             self?.effects?.scrollViewDidEndDragging()
@@ -102,17 +102,29 @@ final class RefreshComponent: NSObject {
 
     func stopObservations() {
         observationSet.stop()
-        observationSet.onSnapshot = nil
+        observationSet.onUpdate = nil
         observationSet.onPanEnded = nil
         observationSet.onPanCancelled = nil
     }
 
-    func receive(_ snapshot: RefreshableScrollSnapshot) {
-        effects?.scrollViewDidScroll(contentOffset: snapshot.contentOffset)
-        effects?.scrollViewContentSizeDidChange(contentSize: snapshot.contentSize)
-        effects?.scrollViewBoundsDidChange(bounds: snapshot.bounds)
-        effects?.scrollViewContentInsetDidChange(contentInset: snapshot.contentInset)
-        effects?.scrollViewEnvironmentDidChange()
+    func receive(_ update: RefreshableScrollUpdate) {
+        let snapshot = update.snapshot
+        let changes = update.changes
+        if changes.contains(.contentOffset) {
+            effects?.scrollViewDidScroll(contentOffset: snapshot.contentOffset)
+        }
+        if changes.contains(.contentSize) {
+            effects?.scrollViewContentSizeDidChange(contentSize: snapshot.contentSize)
+        }
+        if changes.contains(.viewportSize) {
+            effects?.scrollViewBoundsDidChange(bounds: snapshot.bounds)
+        }
+        if changes.contains(.contentInset) {
+            effects?.scrollViewContentInsetDidChange(contentInset: snapshot.contentInset)
+        }
+        if changes.contains(.environment) {
+            effects?.scrollViewEnvironmentDidChange()
+        }
     }
 
     // MARK: - 状态归约
